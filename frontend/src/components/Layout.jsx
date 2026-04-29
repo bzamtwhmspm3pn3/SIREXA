@@ -3,37 +3,13 @@ import { useAuth } from "../contexts/AuthContext";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useState, useEffect, useCallback } from "react";
 import { 
-  ArrowLeft, 
-  ChevronDown,
-  ShoppingCart, 
-  Package, 
-  Receipt, 
-  ClipboardList, 
-  Wallet,
-  Calendar, 
-  Gift, 
-  BarChart3, 
-  Car, 
-  Fuel, 
-  Wrench, 
-  Boxes,
-  Truck,
-  TrendingUp,
-  PieChart,
-  Eye,
-  ArrowRightLeft,
-  Users,
-  DollarSign,
-  FileText,
-  Home,
-  Building2,
-  Shield,
-  Settings,
-  LogOut
+  ArrowLeft, ChevronDown, ShoppingCart, Package, Receipt, ClipboardList, Wallet,
+  Calendar, Gift, BarChart3, Car, Fuel, Wrench, Boxes, Truck, TrendingUp,
+  PieChart, Eye, ArrowRightLeft, Users, DollarSign, FileText, Home, Building2,
+  Shield, Settings, LogOut
 } from "lucide-react";
 import logo from "../assets/sirexa-logo.ico";
 
-// Estrutura dos módulos (ROTAS 100% ALINHADAS COM APP.JSX)
 const ESTRUTURA_MODULOS = {
   "Operacional": {
     icon: ShoppingCart,
@@ -97,7 +73,6 @@ function Layout({ title, children, showBackButton = false, backToRoute = null })
   const location = useLocation();
   const estaNaRotaDeLogin = location.pathname.includes("/login");
 
-  // Encontra qual seção contém a rota atual
   const encontrarSecaoAtiva = useCallback(() => {
     for (const [secao, dados] of Object.entries(ESTRUTURA_MODULOS)) {
       const encontrado = Object.values(dados.modulos).some(
@@ -112,24 +87,18 @@ function Layout({ title, children, showBackButton = false, backToRoute = null })
     const token = localStorage.getItem("token");
     setIsAuthenticated(!!token);
     
-    // LÓGICA INTELIGENTE: Expande apenas a seção ativa, colapsa as outras
     const secaoAtiva = encontrarSecaoAtiva();
     const novasSecoes = {};
-    
     Object.keys(ESTRUTURA_MODULOS).forEach(secao => {
-      // Apenas a seção ativa fica expandida
       novasSecoes[secao] = (secao === secaoAtiva);
     });
-    
     setSecoesExpandidas(novasSecoes);
   }, [user, location.pathname, encontrarSecaoAtiva]);
 
   const podeAcessarModulo = (moduloId) => {
     if (!user) return false;
     if (user.role === "gestor") return true;
-    if (user.role === "tecnico") {
-      return user.modulos && user.modulos[moduloId] === true;
-    }
+    if (user.role === "tecnico") return user.modulos && user.modulos[moduloId] === true;
     return false;
   };
 
@@ -156,11 +125,7 @@ function Layout({ title, children, showBackButton = false, backToRoute = null })
 
   const toggleSecao = (secao) => {
     setSecoesExpandidas(prev => {
-      // Se já está expandida, colapsa
-      if (prev[secao]) {
-        return { ...prev, [secao]: false };
-      }
-      // Se está colapsada, expande apenas esta e colapsa as outras
+      if (prev[secao]) return { ...prev, [secao]: false };
       const novasSecoes = {};
       Object.keys(ESTRUTURA_MODULOS).forEach(s => {
         novasSecoes[s] = (s === secao);
@@ -187,41 +152,27 @@ function Layout({ title, children, showBackButton = false, backToRoute = null })
         />
       )}
 
-      {/* 🔷 SIDEBAR */}
+      {/* 🔷 SIDEBAR (apenas autenticado e não na rota de login) */}
       {isAuthenticated && !estaNaRotaDeLogin && (
         <aside
           className={`
-            fixed md:sticky top-0 left-0 z-50
-            w-72 h-screen flex flex-col
-            transition-transform duration-300
+            fixed md:sticky top-0 left-0 z-50 w-72 h-screen flex flex-col
+            transition-transform duration-300 shadow-2xl
             ${sidebarAberta ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
-            rounded-tr-3xl rounded-br-3xl shadow-2xl
           `}
-          style={{
-            background: "linear-gradient(180deg, #002244 0%, #003366 100%)",
-          }}
+          style={{ background: "linear-gradient(180deg, #002244 0%, #003366 100%)" }}
         >
-          {/* Cabeçalho da Sidebar */}
+          {/* Logo + Info */}
           <div className="p-6 border-b border-white/10">
             <div className="flex items-center gap-3 mb-4">
-              <img
-                src={logo}
-                alt="SIREXA"
-                className="w-12 h-12 object-contain"
-              />
+              <img src={logo} alt="SIREXA" className="w-12 h-12 object-contain" />
               <div>
-                <span className="text-2xl font-bold tracking-wide text-white">
-                  SIREXA
-                </span>
+                <span className="text-2xl font-bold text-white">SIREXA</span>
                 <p className="text-xs text-blue-300">Plataforma Integrada</p>
               </div>
             </div>
-            
-            {/* Info do usuário */}
             <div className="mt-3 pt-3 border-t border-white/10">
-              <p className="text-sm font-medium text-white truncate">
-                👤 {user?.nome || "Usuário"}
-              </p>
+              <p className="text-sm font-medium text-white truncate">👤 {user?.nome || "Usuário"}</p>
               <p className="text-xs text-blue-300 mt-1 capitalize">
                 {user?.role === "gestor" ? "👑 Gestor" : "🔧 Técnico"}
                 {user?.empresaNome && ` • ${user.empresaNome}`}
@@ -229,89 +180,54 @@ function Layout({ title, children, showBackButton = false, backToRoute = null })
             </div>
           </div>
 
-          {/* Menu de Navegação */}
+          {/* Menu */}
           <nav className="flex-1 overflow-y-auto p-4 space-y-1">
-            {/* Menu Inicial */}
-            <Link
-              to="/menu"
-              onClick={() => setSidebarAberta(false)}
+            <Link to="/menu" onClick={() => setSidebarAberta(false)}
               className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 ${
-                location.pathname === "/menu" || location.pathname === "/"
-                  ? "bg-white/20 text-white font-medium shadow-lg"
-                  : "text-gray-300 hover:text-white hover:bg-white/10"
-              }`}
-            >
-              <Home size={18} />
-              <span>Menu Inicial</span>
+                location.pathname === "/menu" || location.pathname === "/" ? "bg-white/20 text-white font-medium" : "text-gray-300 hover:text-white hover:bg-white/10"
+              }`}>
+              <Home size={18} /><span>Menu Inicial</span>
             </Link>
 
-            {/* Links de Gestão (apenas gestor) */}
             {user?.role === "gestor" && (
               <>
-                <Link
-                  to="/empresa"
-                  onClick={() => setSidebarAberta(false)}
+                <Link to="/empresa" onClick={() => setSidebarAberta(false)}
                   className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 ${
-                    location.pathname.startsWith("/empresa")
-                      ? "bg-white/20 text-white font-medium shadow-lg"
-                      : "text-gray-300 hover:text-white hover:bg-white/10"
-                  }`}
-                >
-                  <Building2 size={18} />
-                  <span>Empresas</span>
+                    location.pathname.startsWith("/empresa") ? "bg-white/20 text-white font-medium" : "text-gray-300 hover:text-white hover:bg-white/10"
+                  }`}>
+                  <Building2 size={18} /><span>Empresas</span>
                 </Link>
-                <Link
-                  to="/tecnico"
-                  onClick={() => setSidebarAberta(false)}
+                <Link to="/tecnico" onClick={() => setSidebarAberta(false)}
                   className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 ${
-                    location.pathname.startsWith("/tecnico")
-                      ? "bg-white/20 text-white font-medium shadow-lg"
-                      : "text-gray-300 hover:text-white hover:bg-white/10"
-                  }`}
-                >
-                  <Shield size={18} />
-                  <span>Técnicos</span>
+                    location.pathname.startsWith("/tecnico") ? "bg-white/20 text-white font-medium" : "text-gray-300 hover:text-white hover:bg-white/10"
+                  }`}>
+                  <Shield size={18} /><span>Técnicos</span>
                 </Link>
-                
-                {/* Separador com label */}
                 <div className="my-3 border-t border-white/10 pt-3">
-                  <p className="text-xs text-gray-500 uppercase tracking-wider px-3 mb-2">Módulos do Sistema</p>
+                  <p className="text-xs text-gray-500 uppercase tracking-wider px-3 mb-2">Módulos</p>
                 </div>
               </>
             )}
 
-            {/* Seções de Módulos */}
             {Object.entries(ESTRUTURA_MODULOS).map(([secao, dados]) => {
               if (!secaoTemModulos(secao)) return null;
-              
               const IconeSecao = dados.icon;
               const expandido = secoesExpandidas[secao] ?? false;
               const ativa = secao === secaoAtiva;
 
               return (
                 <div key={secao} className="mb-1">
-                  <button
-                    onClick={() => toggleSecao(secao)}
+                  <button onClick={() => toggleSecao(secao)}
                     className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg transition-all duration-200 ${
-                      ativa
-                        ? "bg-white/20 text-white font-medium shadow-lg"
-                        : expandido
-                          ? "text-gray-200 bg-white/5"
-                          : "text-gray-400 hover:text-white hover:bg-white/10"
-                    }`}
-                  >
+                      ativa ? "bg-white/20 text-white font-medium" : expandido ? "text-gray-200 bg-white/5" : "text-gray-400 hover:text-white hover:bg-white/10"
+                    }`}>
                     <div className="flex items-center gap-3">
                       <IconeSecao size={18} className={ativa ? "text-blue-400" : "text-gray-400"} />
                       <span className="text-sm font-medium">{secao}</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      {ativa && (
-                        <span className="w-2 h-2 rounded-full bg-blue-400 animate-pulse"></span>
-                      )}
-                      <ChevronDown 
-                        size={16} 
-                        className={`transition-transform duration-200 ${expandido ? 'rotate-180' : ''}`}
-                      />
+                      {ativa && <span className="w-2 h-2 rounded-full bg-blue-400 animate-pulse"></span>}
+                      <ChevronDown size={16} className={`transition-transform duration-200 ${expandido ? 'rotate-180' : ''}`} />
                     </div>
                   </button>
 
@@ -319,27 +235,15 @@ function Layout({ title, children, showBackButton = false, backToRoute = null })
                     <div className="ml-4 mt-1 space-y-0.5 border-l-2 border-blue-500/30 pl-3 animate-fadeIn">
                       {Object.entries(dados.modulos).map(([id, modulo]) => {
                         if (!podeAcessarModulo(id)) return null;
-                        
                         const IconeModulo = modulo.icon;
-                        const ativo = location.pathname === modulo.rota || 
-                                     location.pathname.startsWith(modulo.rota + "/");
-
+                        const ativo = location.pathname === modulo.rota || location.pathname.startsWith(modulo.rota + "/");
                         return (
-                          <Link
-                            key={id}
-                            to={modulo.rota}
-                            onClick={() => setSidebarAberta(false)}
+                          <Link key={id} to={modulo.rota} onClick={() => setSidebarAberta(false)}
                             className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all duration-200 ${
-                              ativo
-                                ? "bg-blue-500/20 text-white font-medium border-l-2 border-blue-400 -ml-[15px] pl-[19px]"
-                                : "text-gray-400 hover:text-white hover:bg-white/5"
-                            }`}
-                          >
+                              ativo ? "bg-blue-500/20 text-white font-medium border-l-2 border-blue-400 -ml-[15px] pl-[19px]" : "text-gray-400 hover:text-white hover:bg-white/5"
+                            }`}>
                             <IconeModulo size={16} className={ativo ? "text-blue-400" : "text-gray-500"} />
                             <span>{modulo.label}</span>
-                            {ativo && (
-                              <span className="ml-auto w-1.5 h-1.5 rounded-full bg-blue-400"></span>
-                            )}
                           </Link>
                         );
                       })}
@@ -349,38 +253,22 @@ function Layout({ title, children, showBackButton = false, backToRoute = null })
               );
             })}
 
-            {/* Separador */}
             <div className="my-2 border-t border-white/10"></div>
-
-            {/* Sobre */}
-            <Link
-              to="/sobre"
-              onClick={() => setSidebarAberta(false)}
+            <Link to="/sobre" onClick={() => setSidebarAberta(false)}
               className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 ${
-                location.pathname === "/sobre"
-                  ? "bg-white/20 text-white font-medium"
-                  : "text-gray-400 hover:text-white hover:bg-white/10"
-              }`}
-            >
-              <Settings size={18} />
-              <span>Sobre</span>
+                location.pathname === "/sobre" ? "bg-white/20 text-white font-medium" : "text-gray-400 hover:text-white hover:bg-white/10"
+              }`}>
+              <Settings size={18} /><span>Sobre</span>
             </Link>
           </nav>
 
-          {/* Rodapé com Logout - DESIGN PROFISSIONAL */}
+          {/* Logout */}
           <div className="p-4 border-t border-white/10">
-            <button
-              onClick={handleLogout}
+            <button onClick={handleLogout}
               className="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-xl 
-                bg-gradient-to-r from-red-500/10 to-red-600/10 
-                hover:from-red-500/20 hover:to-red-600/20
-                text-red-400 hover:text-red-300 
-                border border-red-500/20 hover:border-red-500/40
-                transition-all duration-300 
-                font-medium text-sm
-                hover:shadow-lg hover:shadow-red-500/10
-                group"
-            >
+                bg-gradient-to-r from-red-500/10 to-red-600/10 hover:from-red-500/20 hover:to-red-600/20
+                text-red-400 hover:text-red-300 border border-red-500/20 hover:border-red-500/40
+                transition-all duration-300 font-medium text-sm hover:shadow-lg hover:shadow-red-500/10 group">
               <LogOut size={18} className="transition-transform duration-300 group-hover:translate-x-1" />
               <span>Sair da Sessão</span>
             </button>
@@ -388,73 +276,52 @@ function Layout({ title, children, showBackButton = false, backToRoute = null })
         </aside>
       )}
 
-      {/* 🔷 MAIN CONTENT */}
-      <main className="flex-1">
-        {/* Header */}
-        <div className="sticky top-0 z-30 backdrop-blur-md bg-[#003366]/80 border-b border-white/10 px-6 py-4">
-          <div className="flex items-center justify-between">
-            {/* Botão menu mobile */}
-            {isAuthenticated && !estaNaRotaDeLogin && (
-              <button
-                onClick={() => setSidebarAberta(true)}
-                className="md:hidden text-white hover:text-blue-300 mr-4"
-              >
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M3 12h18M3 6h18M3 18h18"/>
-                </svg>
-              </button>
-            )}
+      {/* 🔷 MAIN - Área LIMPA (sem container extra) */}
+      <main className="flex-1 flex flex-col min-h-screen">
+        {/* Header - apenas para título e botão voltar */}
+        {title && (
+          <div className="sticky top-0 z-30 backdrop-blur-md bg-[#003366]/80 border-b border-white/10 px-6 py-4">
+            <div className="flex items-center justify-between">
+              {isAuthenticated && !estaNaRotaDeLogin && (
+                <button onClick={() => setSidebarAberta(true)}
+                  className="md:hidden text-white hover:text-blue-300 mr-4">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M3 12h18M3 6h18M3 18h18"/>
+                  </svg>
+                </button>
+              )}
 
-            {/* Botão Voltar */}
-            {showBackButton ? (
-              <button
-                onClick={handleVoltar}
-                className="bg-white/10 hover:bg-white/20 backdrop-blur-md px-4 py-2 rounded-lg font-semibold text-white transition duration-200 flex items-center gap-2 shadow-md"
-              >
-                <ArrowLeft className="w-4 h-4" />
-                Voltar
-              </button>
-            ) : (
-              <div className="w-24"></div>
-            )}
+              {showBackButton ? (
+                <button onClick={handleVoltar}
+                  className="bg-white/10 hover:bg-white/20 backdrop-blur-md px-4 py-2 rounded-lg font-semibold text-white transition duration-200 flex items-center gap-2 shadow-md">
+                  <ArrowLeft className="w-4 h-4" /> Voltar
+                </button>
+              ) : (
+                <div className="w-24"></div>
+              )}
 
-            {/* Título */}
-            {title && (
               <div className="flex items-center gap-3">
                 <img src={logo} alt="SIREXA" className="w-8 h-8 object-contain" />
-                <h1 className="text-2xl md:text-3xl font-bold text-white">
-                  {title}
-                </h1>
+                <h1 className="text-2xl font-bold text-white">{title}</h1>
               </div>
-            )}
 
-            <div className="w-24"></div>
+              <div className="w-24"></div>
+            </div>
           </div>
-        </div>
+        )}
 
-        {/* Conteúdo */}
-        <div className="p-6">
-          <div className="bg-white/10 backdrop-blur-md p-6 rounded-2xl shadow-lg border border-white/10">
-            {children}
-          </div>
+        {/* Conteúdo DIRETO - sem container extra! */}
+        <div className="flex-1 p-6">
+          {children}
         </div>
       </main>
 
-      {/* Estilos de animação */}
       <style>{`
         @keyframes fadeIn {
-          from {
-            opacity: 0;
-            transform: translateY(-5px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
+          from { opacity: 0; transform: translateY(-5px); }
+          to { opacity: 1; transform: translateY(0); }
         }
-        .animate-fadeIn {
-          animation: fadeIn 0.3s ease-out;
-        }
+        .animate-fadeIn { animation: fadeIn 0.3s ease-out; }
       `}</style>
     </div>
   );

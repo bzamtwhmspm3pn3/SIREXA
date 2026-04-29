@@ -381,59 +381,58 @@ const FolhaSalarial = () => {
     const nomeEmpresa = detalhes.empresaNome || "Empresa";
     const nifEmpresa = detalhes.empresaNif || "---";
     
-    // TÍTULO PRINCIPAL
+    // ============================================
+    // CABEÇALHO - PÁGINA 1
+    // ============================================
     doc.setFontSize(22);
     doc.setFont("helvetica", "bold");
     doc.setTextColor(37, 99, 235);
-    doc.text("FOLHA SALARIAL", 148.5, 20, { align: "center" });
+    doc.text("FOLHA SALARIAL", 148.5, 15, { align: "center" });
     
-    // NOME DA EMPRESA
     doc.setFontSize(12);
     doc.setFont("helvetica", "bold");
     doc.setTextColor(0, 0, 0);
-    doc.text(nomeEmpresa, 148.5, 30, { align: "center" });
+    doc.text(nomeEmpresa, 148.5, 23, { align: "center" });
     
-    // PERÍODO
     doc.setFontSize(10);
     doc.setFont("helvetica", "normal");
     doc.setTextColor(100, 100, 100);
-    doc.text(`${meses[detalhes.mesReferencia - 1]} / ${detalhes.anoReferencia}`, 148.5, 38, { align: "center" });
+    doc.text(`${meses[detalhes.mesReferencia - 1]} / ${detalhes.anoReferencia}`, 148.5, 30, { align: "center" });
     
-    // LINHA QUE SERVE DE REFERÊNCIA PARA A LARGURA
     doc.setDrawColor(37, 99, 235);
-    doc.line(15, 44, 282, 44);
+    doc.line(15, 35, 282, 35);
     
-    // INFORMAÇÕES DA EMPRESA - LINHA SUPERIOR
-    doc.setFontSize(9);
-    doc.setFont("helvetica", "normal");
-    doc.setTextColor(0, 0, 0);
-    doc.text(`NIF: ${nifEmpresa}`, 20, 52);
-    doc.text(`Data: ${dataAtual.toLocaleDateString("pt-AO")}`, 120, 52);
-    doc.text(`Status: ${detalhes.status === "finalizado" ? "FINALIZADO" : "RASCUNHO"}`, 220, 52);
-    
-    let y = 62;
-    
-    // ============================================
-    // SEÇÃO: RESUMO FINANCEIRO
-    // ============================================
-    doc.setFontSize(10);
-    doc.setFont("helvetica", "bold");
-    doc.setTextColor(37, 99, 235);
-    doc.text("RESUMO FINANCEIRO", 20, y);
-    y += 6;
-    
+    // Informações da empresa
     doc.setFontSize(8);
     doc.setFont("helvetica", "normal");
     doc.setTextColor(0, 0, 0);
+    doc.text(`NIF: ${nifEmpresa}`, 15, 42);
+    doc.text(`Data: ${dataAtual.toLocaleDateString("pt-AO")}`, 100, 42);
+    doc.text(`Status: ${detalhes.status === "finalizado" ? "FINALIZADO" : "RASCUNHO"}`, 200, 42);
+    doc.text(`Regime INSS: ${detalhes.regimeINSS || "Normal"}`, 15, 48);
     
+    // ============================================
+    // RESUMO FINANCEIRO (COMPACTO)
+    // ============================================
     const totais = detalhes.totais || {};
+    let y = 55;
+    
+    doc.setFontSize(9);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(37, 99, 235);
+    doc.text("RESUMO FINANCEIRO", 15, y);
+    y += 5;
+    
+    doc.setFontSize(7);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(0, 0, 0);
     
     const resumoItems = [
       { label: "Total Salários:", valor: formatarNumero(totais.totalSalarios) },
       { label: "Total Faltas:", valor: formatarNumero(totais.totalFaltas) },
-      { label: "Subsídio Alimentação:", valor: formatarNumero(totais.totalAbonosAlimentacao) },
-      { label: "Subsídio Transporte:", valor: formatarNumero(totais.totalAbonosTransporte) },
-      { label: "Subsídio Férias:", valor: formatarNumero(totais.totalAbonosFerias) },
+      { label: "Subs. Alimentação:", valor: formatarNumero(totais.totalAbonosAlimentacao) },
+      { label: "Subs. Transporte:", valor: formatarNumero(totais.totalAbonosTransporte) },
+      { label: "Subs. Férias:", valor: formatarNumero(totais.totalAbonosFerias) },
       { label: "Décimo Terceiro:", valor: formatarNumero(totais.totalAbonosDecimoTerceiro) },
       { label: "Bónus/Prémios:", valor: formatarNumero(totais.totalAbonosBonus) },
       { label: "Outros Abonos:", valor: formatarNumero(totais.totalAbonosOutros) },
@@ -442,40 +441,43 @@ const FolhaSalarial = () => {
       { label: "Total IRT:", valor: formatarNumero(totais.totalIRT) }
     ];
     
-    // Dividir em duas colunas
-    const metade = Math.ceil(resumoItems.length / 2);
-    const col1 = resumoItems.slice(0, metade);
-    const col2 = resumoItems.slice(metade);
+    // Layout em 3 colunas para caber melhor
+    const colWidth = 90;
+    const startX = [15, 105, 195];
     
-    for (let i = 0; i < Math.max(col1.length, col2.length); i++) {
-      if (col1[i]) {
-        doc.text(col1[i].label, 20, y);
-        doc.text(`${col1[i].valor} Kz`, 70, y, { align: "right" });
-      }
-      if (col2[i]) {
-        doc.text(col2[i].label, 150, y);
-        doc.text(`${col2[i].valor} Kz`, 200, y, { align: "right" });
-      }
-      y += 5;
-    }
+    resumoItems.forEach((item, index) => {
+      const col = Math.floor(index / 4); // 4 itens por coluna
+      const row = index % 4;
+      const x = startX[col];
+      const yy = y + (row * 4.5);
+      
+      doc.setFont("helvetica", "bold");
+      doc.text(item.label, x, yy);
+      doc.setFont("helvetica", "normal");
+      doc.text(`${item.valor} Kz`, x + 40, yy);
+    });
     
-    y += 5;
+    y += 22;
+    
+    // Total Líquido (destaque)
+    doc.setDrawColor(34, 197, 94);
+    doc.setFillColor(240, 255, 244);
+    doc.rect(15, y - 2, 270, 8, 'F');
     doc.setFontSize(11);
     doc.setFont("helvetica", "bold");
     doc.setTextColor(34, 197, 94);
-    doc.text(`TOTAL LÍQUIDO A PAGAR: ${formatarNumero(totais.totalLiquido)} Kz`, 20, y);
+    doc.text(`TOTAL LÍQUIDO A PAGAR: ${formatarNumero(totais.totalLiquido)} Kz`, 148.5, y + 3, { align: "center" });
     
     y += 12;
     
     // ============================================
-    // SEÇÃO: TABELA DE FUNCIONÁRIOS - COM BORDAS
+    // TABELA DE FUNCIONÁRIOS (COM QUEBRA DE PÁGINA)
     // ============================================
-    doc.setFontSize(10);
+    doc.setFontSize(9);
     doc.setFont("helvetica", "bold");
     doc.setTextColor(37, 99, 235);
-    doc.text("DETALHES DOS FUNCIONÁRIOS", 20, y);
+    doc.text("DETALHES DOS FUNCIONÁRIOS", 15, y);
     
-    // TABELA COMPLETA COM TODOS OS FUNCIONÁRIOS
     const funcionariosData = detalhes.funcionarios?.map(f => [
       f.nome || "-",
       f.cargo || "-",
@@ -490,27 +492,28 @@ const FolhaSalarial = () => {
       f.iban || "-"
     ]) || [];
     
-    // TABELA COM BORDAS E CONTORNO
     autoTable(doc, {
-      startY: y + 5,
+      startY: y + 3,
       head: [[
         "Funcionário", "Função", "Salário", "Alim", "Transp", 
         "Férias", "Faltas", "INSS", "IRT", "Líquido", "IBAN"
       ]],
       body: funcionariosData,
-      theme: "grid", // MUDADO DE "striped" PARA "grid" - ADICIONA BORDAS COMPLETAS
+      theme: "grid",
       styles: { 
-        fontSize: 7, 
-        cellPadding: 2, 
+        fontSize: 6.5, 
+        cellPadding: 1.5, 
         halign: "right",
-        lineColor: [0, 0, 0],     // COR DA BORDA PRETA
-        lineWidth: 0.1            // ESPESSURA DA BORDA
+        lineColor: [0, 0, 0],
+        lineWidth: 0.1,
+        overflow: 'linebreak',     // QUEBRA TEXTO LONGO
+        cellWidth: 'wrap'          // AJUSTA LARGURA
       },
       headStyles: { 
         fillColor: [37, 99, 235], 
         textColor: [255, 255, 255], 
         fontStyle: "bold", 
-        fontSize: 7, 
+        fontSize: 6.5, 
         halign: "center",
         lineColor: [0, 0, 0],
         lineWidth: 0.1
@@ -520,54 +523,76 @@ const FolhaSalarial = () => {
         lineWidth: 0.1
       },
       alternateRowStyles: {
-        fillColor: [240, 240, 240] // COR DE FUNDO PARA LINHAS ALTERNADAS (OPCIONAL)
+        fillColor: [245, 247, 250]
       },
-      margin: { left: 15, right: 15 },
-      tableWidth: 267,
+      // 🔥 CONFIGURAÇÕES DE QUEBRA DE PÁGINA 🔥
+      didDrawPage: (data) => {
+        // Adicionar cabeçalho da tabela em cada página
+        // Rodapé em cada página
+        doc.setFontSize(7);
+        doc.setFont("helvetica", "italic");
+        doc.setTextColor(120, 120, 120);
+        doc.text(`Gerado por: ${user?.nome || user?.email || "Sistema"} - ${nomeEmpresa}`, 148.5, 200, { align: "center" });
+        doc.text(`Página ${doc.internal.getNumberOfPages()} - © ${new Date().getFullYear()} SIREXA`, 148.5, 204, { align: "center" });
+      },
+      margin: { top: 5, left: 10, right: 10, bottom: 15 }, // MARGEM INFERIOR PARA O RODAPÉ
+      tableWidth: 277,
+      showHead: 'everyPage',       // MOSTRA CABEÇALHO EM TODAS AS PÁGINAS
+      pageBreak: 'auto',           // QUEBRA AUTOMÁTICA DE PÁGINA
+      rowPageBreak: 'auto',        // QUEBRA DE LINHA AUTOMÁTICA
+      // 🔥 Altura máxima da tabela antes de quebrar 🔥
+      maxTableHeight: 120,         // RESERVA ESPAÇO PARA RODAPÉ
       columnStyles: {
-        0: { cellWidth: 'auto', halign: "left" },
-        1: { cellWidth: 'auto', halign: "left" },
-        2: { cellWidth: 'auto', halign: "right" },
-        3: { cellWidth: 'auto', halign: "right" },
-        4: { cellWidth: 'auto', halign: "right" },
-        5: { cellWidth: 'auto', halign: "right" },
-        6: { cellWidth: 'auto', halign: "right" },
-        7: { cellWidth: 'auto', halign: "right" },
-        8: { cellWidth: 'auto', halign: "right" },
-        9: { cellWidth: 'auto', halign: "right" },
-        10: { cellWidth: 'auto', halign: "left" }
+        0: { cellWidth: 35, halign: "left" },
+        1: { cellWidth: 25, halign: "left" },
+        2: { cellWidth: 18, halign: "right" },
+        3: { cellWidth: 13, halign: "right" },
+        4: { cellWidth: 13, halign: "right" },
+        5: { cellWidth: 13, halign: "right" },
+        6: { cellWidth: 13, halign: "right" },
+        7: { cellWidth: 15, halign: "right" },
+        8: { cellWidth: 15, halign: "right" },
+        9: { cellWidth: 18, halign: "right" },
+        10: { cellWidth: 35, halign: "left" }
       }
     });
     
-    // ASSINATURAS
-    const assinaturaY = doc.lastAutoTable.finalY + 20;
+    // ============================================
+    // ASSINATURAS (APÓS A TABELA)
+    // ============================================
+    const assinaturaY = doc.lastAutoTable.finalY + 15;
+    
+    // Verificar se precisa de nova página para assinaturas
+    if (assinaturaY > 185) {
+      doc.addPage();
+    }
+    
+    const assY = assinaturaY > 185 ? 30 : assinaturaY;
     
     doc.setFontSize(9);
     doc.setFont("helvetica", "normal");
     doc.setTextColor(80, 80, 80);
     
     // Linha de assinatura do Gestor
-    doc.line(30, assinaturaY, 130, assinaturaY);
+    doc.line(30, assY, 130, assY);
     doc.setFont("helvetica", "bold");
-    doc.text("Assinatura do Gestor", 80, assinaturaY - 3, { align: "center" });
+    doc.text("Assinatura do Gestor", 80, assY - 3, { align: "center" });
     
     // Linha de assinatura do Técnico RH
-    doc.line(160, assinaturaY, 260, assinaturaY);
+    doc.line(160, assY, 260, assY);
     doc.setFont("helvetica", "bold");
-    doc.text("Assinatura do Técnico RH", 210, assinaturaY - 3, { align: "center" });
+    doc.text("Assinatura do Técnico RH", 210, assY - 3, { align: "center" });
     
-    // RODAPÉ
-    const pageCount = doc.internal.getNumberOfPages();
-    for (let i = 1; i <= pageCount; i++) {
-      doc.setPage(i);
+    // Rodapé final (apenas se não usou didDrawPage)
+    if (doc.internal.getNumberOfPages() === 1) {
       doc.setFontSize(7);
       doc.setFont("helvetica", "italic");
       doc.setTextColor(120, 120, 120);
       doc.text(`Gerado por: ${user?.nome || user?.email || "Sistema"}`, 148.5, 195, { align: "center" });
-      doc.text(`© ${new Date().getFullYear()} Sistema de Gestão`, 148.5, 200, { align: "center" });
+      doc.text(`© ${new Date().getFullYear()} SIREXA - One Platform`, 148.5, 200, { align: "center" });
     }
     
-    doc.save(`folha_${nomeEmpresa}_${meses[detalhes.mesReferencia - 1]}_${detalhes.anoReferencia}.pdf`);
+    doc.save(`Folha_Salarial_${nomeEmpresa}_${meses[detalhes.mesReferencia - 1]}_${detalhes.anoReferencia}.pdf`);
     mostrarMensagem("PDF exportado com sucesso!", "sucesso");
   } catch (error) {
     console.error("Erro:", error);
@@ -576,6 +601,7 @@ const FolhaSalarial = () => {
     setExportando(false);
   }
 };
+
 
 const exportarFicheiroPagamento = async (codigoBanco) => {
   if (!detalhes) {
