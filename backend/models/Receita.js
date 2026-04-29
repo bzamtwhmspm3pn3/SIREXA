@@ -1,0 +1,23 @@
+const mongoose = require('mongoose');
+
+const ReceitaSchema = new mongoose.Schema({
+  descricao: { type: String, required: true },
+  valor: { type: Number, required: true },
+  categoria: { type: String, default: 'Outras' },
+  codigo: { type: String, default: '7.1' },
+  data: { type: Date, default: Date.now },
+  mes: { type: Number },
+  ano: { type: Number },
+  createdAt: { type: Date, default: Date.now }
+});
+
+ReceitaSchema.pre('save', function(next) {
+  if (this.data) {
+    const data = new Date(this.data);
+    this.mes = data.getMonth() + 1;
+    this.ano = data.getFullYear();
+  }
+  next();
+});
+
+module.exports = mongoose.model('Receita', ReceitaSchema);

@@ -1,0 +1,13 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+/* Estilos personalizados para inputs e botões */
+
+.input {
+  @apply w-full p-2 border rounded border-gray-300;
+}
+
+.btn {
+  @apply px-4 py-2 rounded font-semibold flex items-center gap-2;
+}
+

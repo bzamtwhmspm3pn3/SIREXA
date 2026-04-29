@@ -1,0 +1,111 @@
+# ============================================
+# DEPENDÊNCIAS
+# ============================================
+node_modules/
+.pnp
+.pnp.js
+package-lock.json
+yarn.lock
+
+# ============================================
+# BUILD E COMPILAÇÃO
+# ============================================
+dist/
+build/
+.vite/
+.next/
+out/
+
+# ============================================
+# VARIÁVEIS DE AMBIENTE
+# ============================================
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env.*.local
+
+# ============================================
+# LOGS E DEBUG
+# ============================================
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+logs/
+*.log
+
+# ============================================
+# SISTEMA OPERACIONAL
+# ============================================
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# ============================================
+# EDITOR E IDE
+# ============================================
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.settings/
+*.sublime-project
+*.sublime-workspace
+.code-workspace
+
+# ============================================
+# UPLOADS E ARQUIVOS GRANDES
+# ============================================
+uploads/
+downloads/
+temp/
+tmp/
+*.tar.gz
+*.zip
+*.rar
+*.7z
+
+# ============================================
+# CERTIFICADOS E CHAVES
+# ============================================
+*.pem
+*.key
+*.crt
+*.csr
+*.p12
+*.pfx
+
+# ============================================
+# BANCO DE DADOS
+# ============================================
+*.db
+*.sqlite
+*.sqlite3
+dump/
+
+# ============================================
+# COBERTURA DE TESTES
+# ============================================
+coverage/
+.nyc_output/
+*.lcov
+
+# ============================================
+# DOCKER
+# ============================================
+docker-compose.override.yml
+
+# ============================================
+# MÓDULOS C++ COMPILADOS
+# ============================================
+*.node

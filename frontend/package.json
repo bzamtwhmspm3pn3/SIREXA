@@ -1,0 +1,51 @@
+{
+  "name": "AnDio Gest - Corporativo-frontend",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "lint": "eslint .",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@heroicons/react": "^2.2.0",
+    "axios": "^1.10.0",
+    "chart.js": "^4.5.0",
+    "html2canvas": "^1.4.1",
+    "html2pdf.js": "^0.14.0",
+    "jspdf": "^3.0.4",
+    "jspdf-autotable": "^5.0.7",
+    "jwt-decode": "^4.0.0",
+    "lucide-react": "^0.515.0",
+    "qrcode": "^1.5.4",
+    "qrcode.react": "^4.2.0",
+    "quagga": "^0.12.1",
+    "react": "^19.1.0",
+    "react-chartjs-2": "^5.3.0",
+    "react-dom": "^19.1.0",
+    "react-icons": "^5.5.0",
+    "react-qr-code": "^2.0.16",
+    "react-router-dom": "^7.6.2",
+    "react-toastify": "^11.0.5",
+    "recharts": "^2.15.3",
+    "sonner": "^2.0.6",
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.25.0",
+    "@types/react": "^19.1.2",
+    "@types/react-dom": "^19.1.2",
+    "@vitejs/plugin-react": "^4.4.1",
+    "autoprefixer": "^10.4.21",
+    "eslint": "^9.25.0",
+    "eslint-plugin-react-hooks": "^5.2.0",
+    "eslint-plugin-react-refresh": "^0.4.19",
+    "glob": "^13.0.6",
+    "globals": "^16.0.0",
+    "postcss": "^8.5.5",
+    "tailwindcss": "^3.4.17",
+    "vite": "^6.3.5"
+  }
+}
