@@ -88,7 +88,7 @@ const FolhaSalarial = () => {
     setLoadingEmpresas(true);
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch("http://localhost:5000/api/empresa", {
+      const response = await fetch("https://sirexa-api.onrender.com/api/empresa", {
         headers: { "Authorization": `Bearer ${token}` }
       });
       
@@ -123,7 +123,7 @@ const FolhaSalarial = () => {
     setLoading(true);
     try {
       const token = localStorage.getItem("token");
-      let url = `http://localhost:5000/api/folha-salarial?empresaId=${empresaSelecionada}`;
+      let url = `https://sirexa-api.onrender.com/api/folha-salarial?empresaId=${empresaSelecionada}`;
       if (periodo.ano) url += `&ano=${periodo.ano}`;
       if (periodo.mes) url += `&mes=${periodo.mes}`;
       if (statusFiltro) url += `&status=${statusFiltro}`;
@@ -160,7 +160,7 @@ const FolhaSalarial = () => {
     try {
       const token = localStorage.getItem("token");
       const response = await fetch(
-        `http://localhost:5000/api/funcionarios?empresaId=${empresaSelecionada}`,
+        `https://sirexa-api.onrender.com/api/funcionarios?empresaId=${empresaSelecionada}`,
         { headers: { "Authorization": `Bearer ${token}` } }
       );
       
@@ -182,7 +182,7 @@ const FolhaSalarial = () => {
     
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch(`http://localhost:5000/api/empresa/${empresaSelecionada}`, {
+      const response = await fetch(`https://sirexa-api.onrender.com/api/empresa/${empresaSelecionada}`, {
         headers: { "Authorization": `Bearer ${token}` }
       });
       
@@ -206,7 +206,7 @@ const FolhaSalarial = () => {
     
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch(`http://localhost:5000/api/gestor/${gestorId}`, {
+      const response = await fetch(`https://sirexa-api.onrender.com/api/gestor/${gestorId}`, {
         headers: { "Authorization": `Bearer ${token}` }
       });
       
@@ -228,7 +228,7 @@ const FolhaSalarial = () => {
     setCalculando(true);
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch(`http://localhost:5000/api/folha-salarial/calcular`, {
+      const response = await fetch(`https://sirexa-api.onrender.com/api/folha-salarial/calcular`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -265,7 +265,7 @@ const FolhaSalarial = () => {
   const verDetalhes = async (id) => {
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch(`http://localhost:5000/api/folha-salarial/${id}`, {
+      const response = await fetch(`https://sirexa-api.onrender.com/api/folha-salarial/${id}`, {
         headers: { "Authorization": `Bearer ${token}` }
       });
       const data = await response.json();
@@ -310,7 +310,7 @@ const FolhaSalarial = () => {
     setLoading(true);
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch(`http://localhost:5000/api/folha-salarial/${id}`, {
+      const response = await fetch(`https://sirexa-api.onrender.com/api/folha-salarial/${id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -355,7 +355,7 @@ const FolhaSalarial = () => {
     
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch(`http://localhost:5000/api/folha-salarial/${id}`, {
+      const response = await fetch(`https://sirexa-api.onrender.com/api/folha-salarial/${id}`, {
         method: "DELETE",
         headers: { "Authorization": `Bearer ${token}` }
       });
@@ -591,7 +591,7 @@ const exportarFicheiroPagamento = async (codigoBanco) => {
   setExportando(true);
   try {
     const token = localStorage.getItem("token");
-    const response = await fetch(`http://localhost:5000/api/folha-salarial/exportar-pagamento/${detalhes._id}`, {
+    const response = await fetch(`https://sirexa-api.onrender.com/api/folha-salarial/exportar-pagamento/${detalhes._id}`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

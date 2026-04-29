@@ -111,7 +111,7 @@ const EditarEmpresa = () => {
   const carregarEmpresa = async () => {
     setLoadingData(true);
     try {
-      const response = await fetch(`http://localhost:5000/api/empresa/${id}`, {
+      const response = await fetch(`https://sirexa-api.onrender.com/api/empresa/${id}`, {
         headers: { "Authorization": `Bearer ${localStorage.getItem("token")}` }
       });
       const data = await response.json();
@@ -147,7 +147,7 @@ const EditarEmpresa = () => {
       });
       
       if (data.logotipo) {
-        setLogoPreview(`http://localhost:5000/uploads/${data.logotipo}`);
+        setLogoPreview(`https://sirexa-api.onrender.com/uploads/${data.logotipo}`);
       }
     } catch (error) {
       console.error("Erro:", error);
@@ -263,7 +263,7 @@ const EditarEmpresa = () => {
     }
 
     try {
-      const response = await fetch(`http://localhost:5000/api/empresa/${id}`, {
+      const response = await fetch(`https://sirexa-api.onrender.com/api/empresa/${id}`, {
         method: "PUT",
         headers: {
           "Authorization": `Bearer ${localStorage.getItem("token")}`

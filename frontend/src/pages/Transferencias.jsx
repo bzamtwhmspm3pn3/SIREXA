@@ -84,7 +84,7 @@ function Transferencias() {
   const [mostrarModalExcluir, setMostrarModalExcluir] = useState(false);
   const [excluirId, setExcluirId] = useState(null);
 
-  const BASE_URL = "http://localhost:5000";
+  const BASE_URL = "https://sirexa-api.onrender.com";
 
   const getHeaders = () => ({
     'Authorization': `Bearer ${localStorage.getItem('token')}`,

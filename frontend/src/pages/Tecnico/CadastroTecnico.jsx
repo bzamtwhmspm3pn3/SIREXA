@@ -93,7 +93,7 @@ const CadastroTecnico = () => {
   const carregarEmpresas = async () => {
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch("http://localhost:5000/api/empresa", {
+      const response = await fetch("https://sirexa-api.onrender.com/api/empresa", {
         headers: { "Authorization": `Bearer ${token}` }
       });
       const data = await response.json();
@@ -109,7 +109,7 @@ const CadastroTecnico = () => {
   const carregarFuncionariosPorEmpresa = async (empresaId) => {
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch(`http://localhost:5000/api/funcionarios?empresaId=${empresaId}`, {
+      const response = await fetch(`https://sirexa-api.onrender.com/api/funcionarios?empresaId=${empresaId}`, {
         headers: { "Authorization": `Bearer ${token}` }
       });
       const data = await response.json();
@@ -162,7 +162,7 @@ const CadastroTecnico = () => {
     
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch(`http://localhost:5000/api/tecnico/promover/${formData.funcionarioId}`, {
+      const response = await fetch(`https://sirexa-api.onrender.com/api/tecnico/promover/${formData.funcionarioId}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

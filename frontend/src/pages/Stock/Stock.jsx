@@ -94,7 +94,7 @@ const Stock = () => {
   
   try {
     const token = localStorage.getItem("token");
-    const response = await fetch("http://localhost:5000/api/empresa", {
+    const response = await fetch("https://sirexa-api.onrender.com/api/empresa", {
       headers: { "Authorization": `Bearer ${token}` }
     });
     
@@ -129,7 +129,7 @@ const Stock = () => {
   setLoading(true);
   try {
     const token = localStorage.getItem("token");
-    const response = await fetch(`http://localhost:5000/api/stock?empresaId=${empresaSelecionada}`, {
+    const response = await fetch(`https://sirexa-api.onrender.com/api/stock?empresaId=${empresaSelecionada}`, {
       headers: { 
         "Authorization": `Bearer ${token}`,
         "Content-Type": "application/json"
@@ -171,7 +171,7 @@ const Stock = () => {
   
   // 🔒 Verificar acesso antes de salvar
   const token = localStorage.getItem("token");
-  const verificarResponse = await fetch(`http://localhost:5000/api/empresa/verificar-acesso/${empresaSelecionada}`, {
+  const verificarResponse = await fetch(`https://sirexa-api.onrender.com/api/empresa/verificar-acesso/${empresaSelecionada}`, {
     headers: { "Authorization": `Bearer ${token}` }
   });
   
@@ -196,7 +196,7 @@ const Stock = () => {
     
     try {
       const token = localStorage.getItem("token");
-      const url = editando ? `http://localhost:5000/api/stock/${editando}` : "http://localhost:5000/api/stock";
+      const url = editando ? `https://sirexa-api.onrender.com/api/stock/${editando}` : "https://sirexa-api.onrender.com/api/stock";
       const method = editando ? "PUT" : "POST";
       
       const dadosEnvio = { 
@@ -241,7 +241,7 @@ const Stock = () => {
   
   // 🔒 Verificar acesso antes de excluir
   const token = localStorage.getItem("token");
-  const verificarResponse = await fetch(`http://localhost:5000/api/empresa/verificar-acesso/${empresaSelecionada}`, {
+  const verificarResponse = await fetch(`https://sirexa-api.onrender.com/api/empresa/verificar-acesso/${empresaSelecionada}`, {
     headers: { "Authorization": `Bearer ${token}` }
   });
   
@@ -252,7 +252,7 @@ const Stock = () => {
   }
   
   try {
-    const response = await fetch(`http://localhost:5000/api/stock/${id}?empresaId=${empresaSelecionada}`, {
+    const response = await fetch(`https://sirexa-api.onrender.com/api/stock/${id}?empresaId=${empresaSelecionada}`, {
       method: "DELETE",
       headers: { "Authorization": `Bearer ${token}` }
     });

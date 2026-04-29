@@ -54,7 +54,7 @@ const RelatorioFornecedor = () => {
       const token = localStorage.getItem("token");
       
       // Carregar fornecedor
-      const responseFornecedor = await fetch(`http://localhost:5000/api/fornecedores/${id}`, {
+      const responseFornecedor = await fetch(`https://sirexa-api.onrender.com/api/fornecedores/${id}`, {
         headers: { "Authorization": `Bearer ${token}` }
       });
       const dataFornecedor = await responseFornecedor.json();
@@ -63,7 +63,7 @@ const RelatorioFornecedor = () => {
       // Carregar empresa do técnico
       const empresaId = localStorage.getItem("empresaId");
       if (empresaId) {
-        const responseEmpresa = await fetch(`http://localhost:5000/api/empresa/${empresaId}`, {
+        const responseEmpresa = await fetch(`https://sirexa-api.onrender.com/api/empresa/${empresaId}`, {
           headers: { "Authorization": `Bearer ${token}` }
         });
         if (responseEmpresa.ok) {

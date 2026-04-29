@@ -39,7 +39,7 @@ const VisualizarFuncionario = () => {
   const carregarEmpresas = async () => {
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch("http://localhost:5000/api/empresa", {
+      const response = await fetch("https://sirexa-api.onrender.com/api/empresa", {
         headers: { "Authorization": `Bearer ${token}` }
       });
       const data = await response.json();
@@ -63,7 +63,7 @@ const VisualizarFuncionario = () => {
     setLoading(true);
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch(`http://localhost:5000/api/funcionarios/${id}?empresaId=${empresaSelecionada}`, {
+      const response = await fetch(`https://sirexa-api.onrender.com/api/funcionarios/${id}?empresaId=${empresaSelecionada}`, {
         headers: { "Authorization": `Bearer ${token}` }
       });
       
@@ -141,7 +141,7 @@ const VisualizarFuncionario = () => {
               <div className="flex items-center gap-4">
                 {funcionario.foto ? (
                   <img 
-                    src={`http://localhost:5000${funcionario.foto}`} 
+                    src={`https://sirexa-api.onrender.com${funcionario.foto}`} 
                     alt={funcionario.nome}
                     className="w-20 h-20 rounded-full object-cover border-2 border-white"
                   />

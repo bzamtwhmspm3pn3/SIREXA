@@ -56,7 +56,7 @@ const ConfiguracaoBanco = ({ isOpen, onClose, empresaId, onSalvar }) => {
     setLoading(true);
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:5000/api/configuracao-banco/listar?empresaId=${empresaId}`, {
+      const response = await fetch(`https://sirexa-api.onrender.com/api/configuracao-banco/listar?empresaId=${empresaId}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (response.ok) {
@@ -128,7 +128,7 @@ const ConfiguracaoBanco = ({ isOpen, onClose, empresaId, onSalvar }) => {
     setLoading(true);
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5000/api/configuracao-banco/salvar', {
+      const response = await fetch('https://sirexa-api.onrender.com/api/configuracao-banco/salvar', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -62,7 +62,7 @@ const Login = () => {
     setMensagemRecuperacao({ texto: "", tipo: "" });
 
     try {
-      const response = await fetch("http://localhost:5000/api/gestor/recuperar-senha", {
+      const response = await fetch("https://sirexa-api.onrender.com/api/gestor/recuperar-senha", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: emailRecuperacao })
@@ -115,7 +115,7 @@ const Login = () => {
     setMensagemRecuperacao({ texto: "", tipo: "" });
 
     try {
-      const response = await fetch("http://localhost:5000/api/gestor/redefinir-senha", {
+      const response = await fetch("https://sirexa-api.onrender.com/api/gestor/redefinir-senha", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 

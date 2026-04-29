@@ -27,7 +27,7 @@ const ListaFornecedores = () => {
   const [empresaSelecionada, setEmpresaSelecionada] = useState("");
   const [showDeleteModal, setShowDeleteModal] = useState(null);
   
-  const BASE_URL = "http://localhost:5000";
+  const BASE_URL = "https://sirexa-api.onrender.com";
 
   const getHeaders = () => ({
     'Authorization': `Bearer ${localStorage.getItem('token')}`,

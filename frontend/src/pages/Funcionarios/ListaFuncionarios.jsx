@@ -106,7 +106,7 @@ const ListaFuncionarios = () => {
     setLoadingEmpresas(true);
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch("http://localhost:5000/api/empresa", {
+      const response = await fetch("https://sirexa-api.onrender.com/api/empresa", {
         headers: { "Authorization": `Bearer ${token}` }
       });
       
@@ -138,7 +138,7 @@ const ListaFuncionarios = () => {
     setLoading(true);
     try {
       const token = localStorage.getItem("token");
-      let url = "http://localhost:5000/api/funcionarios";
+      let url = "https://sirexa-api.onrender.com/api/funcionarios";
       if (empresaSelecionada) {
         url += `?empresaId=${empresaSelecionada}`;
       }
@@ -190,7 +190,7 @@ const ListaFuncionarios = () => {
     
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch(`http://localhost:5000/api/funcionarios/${id}`, {
+      const response = await fetch(`https://sirexa-api.onrender.com/api/funcionarios/${id}`, {
         method: "DELETE",
         headers: { "Authorization": `Bearer ${token}` }
       });
@@ -247,7 +247,7 @@ const ListaFuncionarios = () => {
     
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch(`http://localhost:5000/api/tecnico/promover/${selectedFuncionario._id}`, {
+      const response = await fetch(`https://sirexa-api.onrender.com/api/tecnico/promover/${selectedFuncionario._id}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -706,7 +706,7 @@ const ListaFuncionarios = () => {
                     <div className="p-5">
                       <div className="flex items-start justify-between mb-4">
                         <div className="flex items-center gap-3 flex-1">
-                          {func.foto ? <img src={`http://localhost:5000${func.foto}`} alt={func.nome} className="w-14 h-14 rounded-xl object-cover border border-gray-600" /> : <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center"><Users className="w-7 h-7 text-white" /></div>}
+                          {func.foto ? <img src={`https://sirexa-api.onrender.com${func.foto}`} alt={func.nome} className="w-14 h-14 rounded-xl object-cover border border-gray-600" /> : <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center"><Users className="w-7 h-7 text-white" /></div>}
                           <div className="flex-1 min-w-0"><h3 className="text-lg font-bold text-white truncate">{func.nome}</h3><p className="text-sm text-gray-400">{func.cargo}</p></div>
                         </div>
                         <div className="flex flex-col items-end gap-1">

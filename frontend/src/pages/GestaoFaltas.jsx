@@ -170,7 +170,7 @@ const GestaoFaltas = () => {
     setLoadingEmpresas(true);
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch("http://localhost:5000/api/empresa", {
+      const response = await fetch("https://sirexa-api.onrender.com/api/empresa", {
         headers: { "Authorization": `Bearer ${token}` }
       });
       
@@ -200,7 +200,7 @@ const GestaoFaltas = () => {
     if (!empresaSelecionada) return;
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch(`http://localhost:5000/api/faltas/biometrico/config/${empresaSelecionada}`, {
+      const response = await fetch(`https://sirexa-api.onrender.com/api/faltas/biometrico/config/${empresaSelecionada}`, {
         headers: { "Authorization": `Bearer ${token}` }
       });
       const data = await response.json();
@@ -222,7 +222,7 @@ const GestaoFaltas = () => {
     setLoading(true);
     try {
       const token = localStorage.getItem("token");
-      let url = `http://localhost:5000/api/faltas?empresaId=${empresaSelecionada}&page=${paginaAtual}&limit=20`;
+      let url = `https://sirexa-api.onrender.com/api/faltas?empresaId=${empresaSelecionada}&page=${paginaAtual}&limit=20`;
       if (filtroStatus) url += `&status=${filtroStatus}`;
       if (filtroTipo) url += `&tipoFalta=${filtroTipo}`;
       
@@ -259,7 +259,7 @@ const GestaoFaltas = () => {
     
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch(`http://localhost:5000/api/funcionarios?empresaId=${empresaSelecionada}`, {
+      const response = await fetch(`https://sirexa-api.onrender.com/api/funcionarios?empresaId=${empresaSelecionada}`, {
         headers: { "Authorization": `Bearer ${token}` }
       });
       
@@ -282,7 +282,7 @@ const GestaoFaltas = () => {
     
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch(`http://localhost:5000/api/faltas/${id}`, {
+      const response = await fetch(`https://sirexa-api.onrender.com/api/faltas/${id}`, {
         method: "DELETE",
         headers: { "Authorization": `Bearer ${token}` }
       });
@@ -313,7 +313,7 @@ const GestaoFaltas = () => {
     
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch(`http://localhost:5000/api/funcionarios/${funcionarioId}`, {
+      const response = await fetch(`https://sirexa-api.onrender.com/api/funcionarios/${funcionarioId}`, {
         headers: { "Authorization": `Bearer ${token}` }
       });
       const data = await response.json();
@@ -379,7 +379,7 @@ const GestaoFaltas = () => {
         tipo: configBiometrico.tipo
       };
       
-      const response = await fetch(`http://localhost:5000/api/faltas/biometrico/testar`, {
+      const response = await fetch(`https://sirexa-api.onrender.com/api/faltas/biometrico/testar`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -428,7 +428,7 @@ const GestaoFaltas = () => {
         dataFim: new Date().toISOString().split('T')[0]
       };
       
-      const response = await fetch(`http://localhost:5000/api/faltas/biometrico/sincronizar`, {
+      const response = await fetch(`https://sirexa-api.onrender.com/api/faltas/biometrico/sincronizar`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -478,7 +478,7 @@ const GestaoFaltas = () => {
         timeout: configBiometrico.timeout
       };
       
-      const response = await fetch(`http://localhost:5000/api/faltas/biometrico/config`, {
+      const response = await fetch(`https://sirexa-api.onrender.com/api/faltas/biometrico/config`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -518,7 +518,7 @@ const GestaoFaltas = () => {
     
     try {
       const token = localStorage.getItem("token");
-      const url = editando ? `http://localhost:5000/api/faltas/${editando}` : "http://localhost:5000/api/faltas";
+      const url = editando ? `https://sirexa-api.onrender.com/api/faltas/${editando}` : "https://sirexa-api.onrender.com/api/faltas";
       const method = editando ? "PUT" : "POST";
       
       const payload = {

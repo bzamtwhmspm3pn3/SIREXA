@@ -70,7 +70,7 @@ const AvaliacaoDesempenho = () => {
     setLoadingEmpresas(true);
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch("http://localhost:5000/api/empresa", {
+      const response = await fetch("https://sirexa-api.onrender.com/api/empresa", {
         headers: { "Authorization": `Bearer ${token}` }
       });
       const data = await response.json();
@@ -93,7 +93,7 @@ const AvaliacaoDesempenho = () => {
     
     setLoading(true);
     try {
-      let url = `http://localhost:5000/api/avaliacoes?empresaId=${empresaSelecionada}&ano=${filtroAno}`;
+      let url = `https://sirexa-api.onrender.com/api/avaliacoes?empresaId=${empresaSelecionada}&ano=${filtroAno}`;
       if (filtroStatus) url += `&status=${filtroStatus}`;
       
       const response = await fetch(url, {
@@ -113,7 +113,7 @@ const AvaliacaoDesempenho = () => {
     if (!empresaSelecionada) return;
     
     try {
-      const response = await fetch(`http://localhost:5000/api/funcionarios?empresaId=${empresaSelecionada}`, {
+      const response = await fetch(`https://sirexa-api.onrender.com/api/funcionarios?empresaId=${empresaSelecionada}`, {
         headers: { "Authorization": `Bearer ${localStorage.getItem("token")}` }
       });
       const data = await response.json();
@@ -127,7 +127,7 @@ const AvaliacaoDesempenho = () => {
     if (!empresaSelecionada) return;
     
     try {
-      const response = await fetch(`http://localhost:5000/api/avaliacoes/configuracao/${empresaSelecionada}`, {
+      const response = await fetch(`https://sirexa-api.onrender.com/api/avaliacoes/configuracao/${empresaSelecionada}`, {
         headers: { "Authorization": `Bearer ${localStorage.getItem("token")}` }
       });
       const data = await response.json();
@@ -145,7 +145,7 @@ const AvaliacaoDesempenho = () => {
   const excluirAvaliacao = async (id) => {
     if (!window.confirm("Tem certeza que deseja excluir esta avaliação?")) return;
     try {
-      const response = await fetch(`http://localhost:5000/api/avaliacoes/${id}`, { 
+      const response = await fetch(`https://sirexa-api.onrender.com/api/avaliacoes/${id}`, { 
         method: "DELETE", 
         headers: { "Authorization": `Bearer ${localStorage.getItem("token")}` } 
       });

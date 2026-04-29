@@ -85,7 +85,7 @@ const CadastroEmpresa = () => {
     }));
 
     try {
-      const response = await fetch(`http://localhost:5000/api/empresa`, {
+      const response = await fetch(`https://sirexa-api.onrender.com/api/empresa`, {
         method: "POST",
         headers: {
           "Authorization": `Bearer ${localStorage.getItem("token")}`

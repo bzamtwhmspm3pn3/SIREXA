@@ -1,5 +1,5 @@
 // services/stockService.js
-const BASE_URL = 'http://localhost:5000/api/stock';
+const BASE_URL = 'https://sirexa-api.onrender.com/api/stock';
 
 const getHeaders = () => ({
   'Authorization': `Bearer ${localStorage.getItem('token')}`,

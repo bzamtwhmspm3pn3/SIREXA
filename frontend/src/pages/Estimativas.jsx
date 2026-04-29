@@ -19,7 +19,7 @@ const Estimativas = () => {
   const carregarEstimativas = async () => {
     setLoading(true);
     try {
-      const response = await fetch(`http://localhost:5000/api/estimativa?empresaId=${user?.empresaId}`, {
+      const response = await fetch(`https://sirexa-api.onrender.com/api/estimativa?empresaId=${user?.empresaId}`, {
         headers: { "Authorization": `Bearer ${localStorage.getItem("token")}` }
       });
       const data = await response.json();
@@ -32,7 +32,7 @@ const Estimativas = () => {
     if (!formData.categoria || !formData.valorEstimado) { mostrarMensagem("Preencha todos os campos", "erro"); return; }
     setLoading(true);
     try {
-      const url = editando ? `http://localhost:5000/api/estimativa/${editando}` : "http://localhost:5000/api/estimativa";
+      const url = editando ? `https://sirexa-api.onrender.com/api/estimativa/${editando}` : "https://sirexa-api.onrender.com/api/estimativa";
       const method = editando ? "PUT" : "POST";
       const response = await fetch(url, { method, headers: { "Content-Type": "application/json", "Authorization": `Bearer ${localStorage.getItem("token")}` }, body: JSON.stringify({ ...formData, empresaId: user?.empresaId }) });
       if (response.ok) { mostrarMensagem(editando ? "Estimativa atualizada!" : "Estimativa adicionada!", "sucesso"); setModalOpen(false); setEditando(null); setFormData({ categoria: "", valorEstimado: 0, periodo: "", tipo: "receita" }); carregarEstimativas(); }
@@ -44,7 +44,7 @@ const Estimativas = () => {
   const excluirEstimativa = async (id) => {
     if (!window.confirm("Tem certeza?")) return;
     try {
-      const response = await fetch(`http://localhost:5000/api/estimativa/${id}`, { method: "DELETE", headers: { "Authorization": `Bearer ${localStorage.getItem("token")}` } });
+      const response = await fetch(`https://sirexa-api.onrender.com/api/estimativa/${id}`, { method: "DELETE", headers: { "Authorization": `Bearer ${localStorage.getItem("token")}` } });
       if (response.ok) { mostrarMensagem("Estimativa excluída!", "sucesso"); carregarEstimativas(); }
     } catch (error) { mostrarMensagem("Erro ao excluir", "erro"); }
   };

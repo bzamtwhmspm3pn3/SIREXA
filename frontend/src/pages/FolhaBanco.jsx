@@ -99,7 +99,7 @@ const FolhaBanco = () => {
     setLoadingEmpresas(true);
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch("http://localhost:5000/api/empresa", {
+      const response = await fetch("https://sirexa-api.onrender.com/api/empresa", {
         headers: { "Authorization": `Bearer ${token}` }
       });
       
@@ -135,7 +135,7 @@ const FolhaBanco = () => {
     setLoading(true);
     try {
       const token = localStorage.getItem("token");
-      const url = `http://localhost:5000/api/bancos?empresaId=${empresaSelecionada}`;
+      const url = `https://sirexa-api.onrender.com/api/bancos?empresaId=${empresaSelecionada}`;
       
       const response = await fetch(url, {
         headers: { 
@@ -180,7 +180,7 @@ const FolhaBanco = () => {
     setLoading(true);
     try {
       const token = localStorage.getItem("token");
-      let url = `http://localhost:5000/api/reconciliacao/registos?empresaId=${empresaSelecionada}&contaId=${bancoSelecionado}`;
+      let url = `https://sirexa-api.onrender.com/api/reconciliacao/registos?empresaId=${empresaSelecionada}&contaId=${bancoSelecionado}`;
       if (filtroStatus !== "") url += `&reconcilado=${filtroStatus === "reconciliado"}`;
       if (filtroAno) url += `&ano=${filtroAno}`;
       if (filtroMes) url += `&mes=${filtroMes}`;
@@ -228,7 +228,7 @@ const FolhaBanco = () => {
     
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch(`http://localhost:5000/api/reconciliacao/estatisticas?empresaId=${empresaSelecionada}&contaId=${bancoSelecionado}`, {
+      const response = await fetch(`https://sirexa-api.onrender.com/api/reconciliacao/estatisticas?empresaId=${empresaSelecionada}&contaId=${bancoSelecionado}`, {
         headers: { "Authorization": `Bearer ${token}` }
       });
       
@@ -266,8 +266,8 @@ const FolhaBanco = () => {
       const token = localStorage.getItem("token");
       
       const url = editandoConta 
-        ? `http://localhost:5000/api/bancos/${editandoConta}?empresaId=${empresaSelecionada}` 
-        : `http://localhost:5000/api/bancos?empresaId=${empresaSelecionada}`;
+        ? `https://sirexa-api.onrender.com/api/bancos/${editandoConta}?empresaId=${empresaSelecionada}` 
+        : `https://sirexa-api.onrender.com/api/bancos?empresaId=${empresaSelecionada}`;
       
       const method = editandoConta ? "PUT" : "POST";
 
@@ -313,7 +313,7 @@ const FolhaBanco = () => {
 
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch(`http://localhost:5000/api/bancos/${id}?empresaId=${empresaSelecionada}`, {
+      const response = await fetch(`https://sirexa-api.onrender.com/api/bancos/${id}?empresaId=${empresaSelecionada}`, {
         method: "DELETE",
         headers: {
           "Authorization": `Bearer ${token}`,
@@ -369,7 +369,7 @@ const FolhaBanco = () => {
     setLoading(true);
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch(`http://localhost:5000/api/reconciliacao/reconciliar-automatico`, {
+      const response = await fetch(`https://sirexa-api.onrender.com/api/reconciliacao/reconciliar-automatico`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -397,7 +397,7 @@ const FolhaBanco = () => {
   const reconciliarLancamento = async (id) => {
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch(`http://localhost:5000/api/reconciliacao/registos/${id}/reconciliar`, {
+      const response = await fetch(`https://sirexa-api.onrender.com/api/reconciliacao/registos/${id}/reconciliar`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -422,7 +422,7 @@ const FolhaBanco = () => {
   const desfazerReconciliacao = async (id) => {
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch(`http://localhost:5000/api/reconciliacao/registos/${id}/desfazer-reconciliacao`, {
+      const response = await fetch(`https://sirexa-api.onrender.com/api/reconciliacao/registos/${id}/desfazer-reconciliacao`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -462,7 +462,7 @@ const FolhaBanco = () => {
 
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch(`http://localhost:5000/api/reconciliacao/importar-pdf`, {
+      const response = await fetch(`https://sirexa-api.onrender.com/api/reconciliacao/importar-pdf`, {
         method: "POST",
         headers: { "Authorization": `Bearer ${token}` },
         body: formData

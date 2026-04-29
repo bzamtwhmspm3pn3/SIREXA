@@ -161,7 +161,7 @@ const Facturacao = () => {
   setLoadingEmpresas(true);
   try {
     const token = localStorage.getItem("token");
-    const response = await fetch("http://localhost:5000/api/empresa", {
+    const response = await fetch("https://sirexa-api.onrender.com/api/empresa", {
       headers: { "Authorization": `Bearer ${token}` }
     });
     
@@ -192,7 +192,7 @@ const Facturacao = () => {
     
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch(`http://localhost:5000/api/empresa/config-fiscal/${empresaSelecionada}`, {
+      const response = await fetch(`https://sirexa-api.onrender.com/api/empresa/config-fiscal/${empresaSelecionada}`, {
         headers: { "Authorization": `Bearer ${token}` }
       });
       if (response.ok) {
@@ -234,7 +234,7 @@ const Facturacao = () => {
   setLoading(true);
   try {
     const token = localStorage.getItem("token");
-    const url = `http://localhost:5000/api/facturas/listar?empresaId=${empresaSelecionada}&page=${paginaAtual}&limit=20${filtroTipo ? `&tipo=${filtroTipo}` : ''}`;
+    const url = `https://sirexa-api.onrender.com/api/facturas/listar?empresaId=${empresaSelecionada}&page=${paginaAtual}&limit=20${filtroTipo ? `&tipo=${filtroTipo}` : ''}`;
     
     console.log("📡 Buscando documentos na URL:", url);
     
@@ -276,7 +276,7 @@ const Facturacao = () => {
   if (!empresaSelecionada) return;
   try {
     const token = localStorage.getItem("token");
-    const response = await fetch(`http://localhost:5000/api/clientes/${empresaSelecionada}?limit=100`, {
+    const response = await fetch(`https://sirexa-api.onrender.com/api/clientes/${empresaSelecionada}?limit=100`, {
       headers: { "Authorization": `Bearer ${token}` }
     });
     
@@ -299,7 +299,7 @@ const Facturacao = () => {
   if (!empresaSelecionada) return;
   try {
     const token = localStorage.getItem("token");
-    const response = await fetch(`http://localhost:5000/api/stock?empresaId=${empresaSelecionada}`, {
+    const response = await fetch(`https://sirexa-api.onrender.com/api/stock?empresaId=${empresaSelecionada}`, {
       headers: { "Authorization": `Bearer ${token}` }
     });
     
@@ -486,7 +486,7 @@ const Facturacao = () => {
       const tipoInfo = tiposDocumento.find(t => t.value === tipoDocumento);
       const endpoint = tipoInfo?.endpoint || "/proforma";
       
-      const response = await fetch(`http://localhost:5000/api/facturas${endpoint}`, {
+      const response = await fetch(`https://sirexa-api.onrender.com/api/facturas${endpoint}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -553,7 +553,7 @@ const Facturacao = () => {
         empresaAtual = empresas.find(e => e._id === empresaSelecionada);
       }
       
-      const response = await fetch(`http://localhost:5000/api/facturas/recibo/${facturaParaPagamento._id}`, {
+      const response = await fetch(`https://sirexa-api.onrender.com/api/facturas/recibo/${facturaParaPagamento._id}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -604,7 +604,7 @@ const Facturacao = () => {
         empresaAtual = empresas.find(e => e._id === empresaSelecionada);
       }
       
-      const response = await fetch(`http://localhost:5000/api/facturas/nota-credito/${facturaId}`, {
+      const response = await fetch(`https://sirexa-api.onrender.com/api/facturas/nota-credito/${facturaId}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

@@ -166,7 +166,7 @@ const Vendas = () => {
     setLoadingEmpresas(true);
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch("http://localhost:5000/api/empresa", {
+      const response = await fetch("https://sirexa-api.onrender.com/api/empresa", {
         headers: { "Authorization": `Bearer ${token}` }
       });
       
@@ -197,7 +197,7 @@ const Vendas = () => {
     
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch(`http://localhost:5000/api/empresa/config-fiscal/${empresaSelecionada}`, {
+      const response = await fetch(`https://sirexa-api.onrender.com/api/empresa/config-fiscal/${empresaSelecionada}`, {
         headers: { "Authorization": `Bearer ${token}` }
       });
       
@@ -239,7 +239,7 @@ const Vendas = () => {
     setLoading(true);
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch(`http://localhost:5000/api/vendas/historico/${empresaSelecionada}?page=${paginaAtual}&limit=20`, {
+      const response = await fetch(`https://sirexa-api.onrender.com/api/vendas/historico/${empresaSelecionada}?page=${paginaAtual}&limit=20`, {
         headers: { "Authorization": `Bearer ${token}` }
       });
       
@@ -270,7 +270,7 @@ const Vendas = () => {
     if (!empresaSelecionada) return;
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch(`http://localhost:5000/api/clientes/${empresaSelecionada}?limit=100`, {
+      const response = await fetch(`https://sirexa-api.onrender.com/api/clientes/${empresaSelecionada}?limit=100`, {
         headers: { "Authorization": `Bearer ${token}` }
       });
       
@@ -292,7 +292,7 @@ const Vendas = () => {
     if (!empresaSelecionada) return;
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch(`http://localhost:5000/api/stock?empresaId=${empresaSelecionada}`, {
+      const response = await fetch(`https://sirexa-api.onrender.com/api/stock?empresaId=${empresaSelecionada}`, {
         headers: { "Authorization": `Bearer ${token}` }
       });
       
@@ -315,7 +315,7 @@ const Vendas = () => {
     if (!empresaSelecionada) return;
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch(`http://localhost:5000/api/bancos?empresaId=${empresaSelecionada}`, {
+      const response = await fetch(`https://sirexa-api.onrender.com/api/bancos?empresaId=${empresaSelecionada}`, {
         headers: { "Authorization": `Bearer ${token}` }
       });
       
@@ -349,7 +349,7 @@ const Vendas = () => {
 
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch(`http://localhost:5000/api/stock/por-codigo-barras/${codigoBarrasInput}?empresaId=${empresaSelecionada}`, {
+      const response = await fetch(`https://sirexa-api.onrender.com/api/stock/por-codigo-barras/${codigoBarrasInput}?empresaId=${empresaSelecionada}`, {
         headers: { "Authorization": `Bearer ${token}` }
       });
       
@@ -588,7 +588,7 @@ const Vendas = () => {
 
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch("http://localhost:5000/api/vendas/emitir", {
+      const response = await fetch("https://sirexa-api.onrender.com/api/vendas/emitir", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

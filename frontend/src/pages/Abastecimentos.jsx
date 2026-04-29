@@ -109,7 +109,7 @@ const Abastecimentos = () => {
     setLoadingEmpresas(true);
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch("http://localhost:5000/api/empresa", {
+      const response = await fetch("https://sirexa-api.onrender.com/api/empresa", {
         headers: { "Authorization": `Bearer ${token}` }
       });
       
@@ -141,7 +141,7 @@ const Abastecimentos = () => {
     setLoading(true);
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch(`http://localhost:5000/api/abastecimentos?empresaId=${empresaSelecionada}`, {
+      const response = await fetch(`https://sirexa-api.onrender.com/api/abastecimentos?empresaId=${empresaSelecionada}`, {
         headers: { "Authorization": `Bearer ${token}` }
       });
       
@@ -167,7 +167,7 @@ const Abastecimentos = () => {
     
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch(`http://localhost:5000/api/viaturas?empresaId=${empresaSelecionada}`, {
+      const response = await fetch(`https://sirexa-api.onrender.com/api/viaturas?empresaId=${empresaSelecionada}`, {
         headers: { "Authorization": `Bearer ${token}` }
       });
       
@@ -193,7 +193,7 @@ const Abastecimentos = () => {
     setLoading(true);
     try {
       const token = localStorage.getItem("token");
-      const url = editando ? `http://localhost:5000/api/abastecimentos/${editando}` : "http://localhost:5000/api/abastecimentos";
+      const url = editando ? `https://sirexa-api.onrender.com/api/abastecimentos/${editando}` : "https://sirexa-api.onrender.com/api/abastecimentos";
       const method = editando ? "PUT" : "POST";
 
       const dadosEnvio = {
@@ -245,7 +245,7 @@ const Abastecimentos = () => {
 
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch(`http://localhost:5000/api/abastecimentos/${id}?empresaId=${empresaSelecionada}`, {
+      const response = await fetch(`https://sirexa-api.onrender.com/api/abastecimentos/${id}?empresaId=${empresaSelecionada}`, {
         method: "DELETE",
         headers: { "Authorization": `Bearer ${token}` }
       });

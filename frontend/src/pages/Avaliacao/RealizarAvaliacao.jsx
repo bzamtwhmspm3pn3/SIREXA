@@ -121,7 +121,7 @@ const handleSubmit = async () => {
   
   setLoading(true);
   try {
-    const response = await fetch(`http://localhost:5000/api/avaliacoes`, {
+    const response = await fetch(`https://sirexa-api.onrender.com/api/avaliacoes`, {
       method: "POST",
       headers: { 
         "Content-Type": "application/json", 

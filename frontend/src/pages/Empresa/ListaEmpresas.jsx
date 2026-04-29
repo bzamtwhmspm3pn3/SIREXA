@@ -19,7 +19,7 @@ const ListaEmpresas = () => {
     setError(null);
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch("http://localhost:5000/api/empresa", {
+      const response = await fetch("https://sirexa-api.onrender.com/api/empresa", {
         headers: {
           "Authorization": `Bearer ${token}`
         }
@@ -104,7 +104,7 @@ const ListaEmpresas = () => {
                     <div className="flex items-center gap-3">
                       {emp.logotipo ? (
                         <img
-                          src={`http://localhost:5000/uploads/${emp.logotipo}`}
+                          src={`https://sirexa-api.onrender.com/uploads/${emp.logotipo}`}
                           alt={emp.nome}
                           className="w-12 h-12 rounded-xl object-cover"
                         />

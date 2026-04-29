@@ -81,7 +81,7 @@ const CadastroFornecedor = () => {
     
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch("http://localhost:5000/api/empresa", {
+      const response = await fetch("https://sirexa-api.onrender.com/api/empresa", {
         headers: { "Authorization": `Bearer ${token}` }
       });
       
@@ -178,7 +178,7 @@ const CadastroFornecedor = () => {
 
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch("http://localhost:5000/api/fornecedores", {
+      const response = await fetch("https://sirexa-api.onrender.com/api/fornecedores", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

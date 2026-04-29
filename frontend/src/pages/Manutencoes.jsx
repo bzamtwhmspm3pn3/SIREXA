@@ -127,7 +127,7 @@ const Manutencoes = () => {
     setLoadingEmpresas(true);
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch("http://localhost:5000/api/empresa", {
+      const response = await fetch("https://sirexa-api.onrender.com/api/empresa", {
         headers: { "Authorization": `Bearer ${token}` }
       });
       
@@ -159,7 +159,7 @@ const Manutencoes = () => {
     setLoading(true);
     try {
       const token = localStorage.getItem("token");
-      let url = `http://localhost:5000/api/manutencoes?empresaId=${empresaSelecionada}`;
+      let url = `https://sirexa-api.onrender.com/api/manutencoes?empresaId=${empresaSelecionada}`;
       
       const response = await fetch(url, {
         headers: { "Authorization": `Bearer ${token}` }
@@ -197,7 +197,7 @@ const Manutencoes = () => {
     
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch(`http://localhost:5000/api/viaturas?empresaId=${empresaSelecionada}`, {
+      const response = await fetch(`https://sirexa-api.onrender.com/api/viaturas?empresaId=${empresaSelecionada}`, {
         headers: { "Authorization": `Bearer ${token}` }
       });
       
@@ -223,7 +223,7 @@ const Manutencoes = () => {
     setLoading(true);
     try {
       const token = localStorage.getItem("token");
-      const url = editando ? `http://localhost:5000/api/manutencoes/${editando}` : "http://localhost:5000/api/manutencoes";
+      const url = editando ? `https://sirexa-api.onrender.com/api/manutencoes/${editando}` : "https://sirexa-api.onrender.com/api/manutencoes";
       const method = editando ? "PUT" : "POST";
 
       const dadosEnvio = {
@@ -276,7 +276,7 @@ const Manutencoes = () => {
 
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch(`http://localhost:5000/api/manutencoes/${id}?empresaId=${empresaSelecionada}`, {
+      const response = await fetch(`https://sirexa-api.onrender.com/api/manutencoes/${id}?empresaId=${empresaSelecionada}`, {
         method: "DELETE",
         headers: { "Authorization": `Bearer ${token}` }
       });
@@ -311,7 +311,7 @@ const Manutencoes = () => {
   const atualizarStatus = async (id, novoStatus) => {
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch(`http://localhost:5000/api/manutencoes/${id}`, {
+      const response = await fetch(`https://sirexa-api.onrender.com/api/manutencoes/${id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",

@@ -37,7 +37,7 @@ const ImportarFuncionarios = () => {
     
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch("http://localhost:5000/api/empresa", {
+      const response = await fetch("https://sirexa-api.onrender.com/api/empresa", {
         headers: { "Authorization": `Bearer ${token}` }
       });
       const data = await response.json();
@@ -211,7 +211,7 @@ const ImportarFuncionarios = () => {
               throw new Error("Salário base inválido");
             }
 
-            const response = await fetch(`http://localhost:5000/api/funcionarios`, {
+            const response = await fetch(`https://sirexa-api.onrender.com/api/funcionarios`, {
               method: "POST",
               headers: {
                 "Content-Type": "application/json",

@@ -136,7 +136,7 @@ const Inventario = () => {
     setLoadingEmpresas(true);
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch("http://localhost:5000/api/empresa", {
+      const response = await fetch("https://sirexa-api.onrender.com/api/empresa", {
         headers: { "Authorization": `Bearer ${token}` }
       });
       
@@ -168,7 +168,7 @@ const Inventario = () => {
     setLoading(true);
     try {
       const token = localStorage.getItem("token");
-      let url = `http://localhost:5000/api/inventario?empresaId=${empresaSelecionada}&page=${paginaAtual}&limit=${itensPorPagina}`;
+      let url = `https://sirexa-api.onrender.com/api/inventario?empresaId=${empresaSelecionada}&page=${paginaAtual}&limit=${itensPorPagina}`;
       if (categoriaFiltro) url += `&categoria=${categoriaFiltro}`;
       if (classeFiltro) url += `&classe=${classeFiltro}`;
       if (estadoFiltro) url += `&estado=${estadoFiltro}`;
@@ -201,7 +201,7 @@ const Inventario = () => {
     
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch(`http://localhost:5000/api/inventario/dashboard?empresaId=${empresaSelecionada}`, {
+      const response = await fetch(`https://sirexa-api.onrender.com/api/inventario/dashboard?empresaId=${empresaSelecionada}`, {
         headers: { "Authorization": `Bearer ${token}` }
       });
       
@@ -224,7 +224,7 @@ const Inventario = () => {
     
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch(`http://localhost:5000/api/inventario/categorias?empresaId=${empresaSelecionada}`, {
+      const response = await fetch(`https://sirexa-api.onrender.com/api/inventario/categorias?empresaId=${empresaSelecionada}`, {
         headers: { "Authorization": `Bearer ${token}` }
       });
       const data = await response.json();
@@ -239,7 +239,7 @@ const Inventario = () => {
     
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch(`http://localhost:5000/api/inventario/stats/classe?empresaId=${empresaSelecionada}`, {
+      const response = await fetch(`https://sirexa-api.onrender.com/api/inventario/stats/classe?empresaId=${empresaSelecionada}`, {
         headers: { "Authorization": `Bearer ${token}` }
       });
       const data = await response.json();
@@ -257,7 +257,7 @@ const Inventario = () => {
     
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch(`http://localhost:5000/api/inventario/importar/stock?empresaId=${empresaSelecionada}`, {
+      const response = await fetch(`https://sirexa-api.onrender.com/api/inventario/importar/stock?empresaId=${empresaSelecionada}`, {
         method: "POST",
         headers: { "Authorization": `Bearer ${token}` }
       });
@@ -292,7 +292,7 @@ const Inventario = () => {
     
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch(`http://localhost:5000/api/inventario/importar/viaturas?empresaId=${empresaSelecionada}`, {
+      const response = await fetch(`https://sirexa-api.onrender.com/api/inventario/importar/viaturas?empresaId=${empresaSelecionada}`, {
         method: "POST",
         headers: { "Authorization": `Bearer ${token}` }
       });
@@ -330,7 +330,7 @@ const Inventario = () => {
     setLoading(true);
     try {
       const token = localStorage.getItem("token");
-      const url = editando ? `http://localhost:5000/api/inventario/${editando}` : "http://localhost:5000/api/inventario";
+      const url = editando ? `https://sirexa-api.onrender.com/api/inventario/${editando}` : "https://sirexa-api.onrender.com/api/inventario";
       const method = editando ? "PUT" : "POST";
 
       const response = await fetch(url, {
@@ -368,7 +368,7 @@ const Inventario = () => {
 
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch(`http://localhost:5000/api/inventario/${id}`, {
+      const response = await fetch(`https://sirexa-api.onrender.com/api/inventario/${id}`, {
         method: "DELETE",
         headers: { 
           "Content-Type": "application/json",

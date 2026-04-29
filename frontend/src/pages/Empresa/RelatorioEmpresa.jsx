@@ -49,7 +49,7 @@ const RelatorioEmpresa = () => {
   const carregarEmpresa = async () => {
     setLoading(true);
     try {
-      const response = await fetch(`http://localhost:5000/api/empresa/${id}`, {
+      const response = await fetch(`https://sirexa-api.onrender.com/api/empresa/${id}`, {
         headers: { "Authorization": `Bearer ${localStorage.getItem("token")}` }
       });
       const data = await response.json();
@@ -139,7 +139,7 @@ const RelatorioEmpresa = () => {
       // ==================== CABEÇALHO ====================
       if (empresa.logotipo) {
         try {
-          const logoBase64 = await carregarLogoBase64(`http://localhost:5000/uploads/${empresa.logotipo}`);
+          const logoBase64 = await carregarLogoBase64(`https://sirexa-api.onrender.com/uploads/${empresa.logotipo}`);
           if (logoBase64) {
             doc.addImage(logoBase64, "PNG", 14, 8, 25, 25);
           }
@@ -532,7 +532,7 @@ const RelatorioEmpresa = () => {
             <div className="flex items-center gap-4">
               {empresa.logotipo ? (
                 <img 
-                  src={`http://localhost:5000/uploads/${empresa.logotipo}`}
+                  src={`https://sirexa-api.onrender.com/uploads/${empresa.logotipo}`}
                   alt={empresa.nome}
                   className="w-20 h-20 rounded-xl object-cover border-2 border-white/20"
                 />

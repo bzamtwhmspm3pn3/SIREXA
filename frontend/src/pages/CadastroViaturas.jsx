@@ -91,7 +91,7 @@ const CadastroViaturas = () => {
     setLoadingEmpresas(true);
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch("http://localhost:5000/api/empresa", {
+      const response = await fetch("https://sirexa-api.onrender.com/api/empresa", {
         headers: { "Authorization": `Bearer ${token}` }
       });
       
@@ -126,7 +126,7 @@ const CadastroViaturas = () => {
     setLoading(true);
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch(`http://localhost:5000/api/viaturas?empresaId=${empresaSelecionada}`, {
+      const response = await fetch(`https://sirexa-api.onrender.com/api/viaturas?empresaId=${empresaSelecionada}`, {
         headers: { "Authorization": `Bearer ${token}` }
       });
       
@@ -156,7 +156,7 @@ const CadastroViaturas = () => {
     setLoading(true);
     try {
       const token = localStorage.getItem("token");
-      const url = editando ? `http://localhost:5000/api/viaturas/${editando}` : "http://localhost:5000/api/viaturas";
+      const url = editando ? `https://sirexa-api.onrender.com/api/viaturas/${editando}` : "https://sirexa-api.onrender.com/api/viaturas";
       const method = editando ? "PUT" : "POST";
 
       const response = await fetch(url, {
@@ -196,7 +196,7 @@ const CadastroViaturas = () => {
 
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch(`http://localhost:5000/api/viaturas/${id}?empresaId=${empresaSelecionada}`, {
+      const response = await fetch(`https://sirexa-api.onrender.com/api/viaturas/${id}?empresaId=${empresaSelecionada}`, {
         method: "DELETE",
         headers: { "Authorization": `Bearer ${token}` }
       });

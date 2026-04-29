@@ -33,7 +33,7 @@ const RelatorioStock = ({ produtos = [], onClose, empresaId }) => {
       console.log("produtos recebidos:", produtosArray.length);
       
       if (idEmpresa && token) {
-        const response = await fetch(`http://localhost:5000/api/empresa/${idEmpresa}`, {
+        const response = await fetch(`https://sirexa-api.onrender.com/api/empresa/${idEmpresa}`, {
           headers: { 
             "Authorization": `Bearer ${token}`,
             "Content-Type": "application/json"

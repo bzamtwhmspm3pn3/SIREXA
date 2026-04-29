@@ -192,7 +192,7 @@ const ConfigurarAvaliacao = ({ empresaId, onClose, onSave }) => {
   const carregarConfiguracao = async () => {
     setLoading(true);
     try {
-      const response = await fetch(`http://localhost:5000/api/avaliacoes/configuracao/${empresaId}`, {
+      const response = await fetch(`https://sirexa-api.onrender.com/api/avaliacoes/configuracao/${empresaId}`, {
         headers: { "Authorization": `Bearer ${localStorage.getItem("token")}` }
       });
       const data = await response.json();
@@ -312,7 +312,7 @@ const ConfigurarAvaliacao = ({ empresaId, onClose, onSave }) => {
   
   setSalvando(true);
   try {
-    const response = await fetch(`http://localhost:5000/api/avaliacoes/configuracao`, {
+    const response = await fetch(`https://sirexa-api.onrender.com/api/avaliacoes/configuracao`, {
       method: "POST",
       headers: { 
         "Content-Type": "application/json", 

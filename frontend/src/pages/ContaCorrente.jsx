@@ -24,7 +24,7 @@ const ModalExtrato = ({ fornecedor, empresaId, onClose }) => {
   const [erro, setErro] = useState(null);
   
 
-  const BASE_URL = "http://localhost:5000";
+  const BASE_URL = "https://sirexa-api.onrender.com";
 
   const getHeaders = () => ({
     'Authorization': `Bearer ${localStorage.getItem('token')}`,
@@ -471,7 +471,7 @@ const ContaCorrente = () => {
   const [filtroStatus, setFiltroStatus] = useState("todos");
   const [filtroSituacao, setFiltroSituacao] = useState("todos");
 
-  const BASE_URL = "http://localhost:5000";
+  const BASE_URL = "https://sirexa-api.onrender.com";
   const tiposServico = ["Todos", "Informática", "Construção", "Limpeza", "Transporte", "Consultoria", "Fornecimento", "Outros"];
 
   const getHeaders = () => ({

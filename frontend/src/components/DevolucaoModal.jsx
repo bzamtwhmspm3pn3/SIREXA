@@ -21,7 +21,7 @@ const DevolucaoModal = ({ produto, onClose, onSuccess }) => {
 
     setLoading(true);
     try {
-      const response = await fetch(`http://localhost:5000/api/stock/${produto._id}/devolver`, {
+      const response = await fetch(`https://sirexa-api.onrender.com/api/stock/${produto._id}/devolver`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

@@ -29,7 +29,7 @@ const VisualizarFornecedor = () => {
   const carregarFornecedor = async () => {
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch(`http://localhost:5000/api/fornecedores/${id}`, {
+      const response = await fetch(`https://sirexa-api.onrender.com/api/fornecedores/${id}`, {
         headers: { "Authorization": `Bearer ${token}` }
       });
       const data = await response.json();

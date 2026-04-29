@@ -29,7 +29,7 @@ function FluxoCaixa() {
   const [mostrarAnalise, setMostrarAnalise] = useState(false);
   const [erro, setErro] = useState(false);
 
-  const BASE_URL = "http://localhost:5000";
+  const BASE_URL = "https://sirexa-api.onrender.com";
 
   const getHeaders = () => ({
     'Authorization': `Bearer ${localStorage.getItem('token')}`,

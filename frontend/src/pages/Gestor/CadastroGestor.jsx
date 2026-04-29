@@ -61,7 +61,7 @@ const CadastroGestor = () => {
     
     setLoading(true);
     try {
-      const response = await fetch("http://localhost:5000/api/gestor", {
+      const response = await fetch("https://sirexa-api.onrender.com/api/gestor", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

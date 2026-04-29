@@ -28,7 +28,7 @@ const DRE = () => {
   const [exportando, setExportando] = useState(false);
   const [recarregar, setRecarregar] = useState(false);
 
-  const BASE_URL = "http://localhost:5000";
+  const BASE_URL = "https://sirexa-api.onrender.com";
 
   const meses = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
                  "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];

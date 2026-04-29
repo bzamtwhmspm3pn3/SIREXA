@@ -36,7 +36,7 @@ const Indicadores = () => {
   const [abaAtiva, setAbaAtiva] = useState("inteligente");
   const [redirecting, setRedirecting] = useState(false);
 
-  const BASE_URL = "http://localhost:5000";
+  const BASE_URL = "https://sirexa-api.onrender.com";
   const meses = [
     "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
     "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"

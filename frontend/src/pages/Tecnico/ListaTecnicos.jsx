@@ -154,7 +154,7 @@ const ListaTecnicos = () => {
   const carregarEmpresas = async () => {
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch("http://localhost:5000/api/empresa", {
+      const response = await fetch("https://sirexa-api.onrender.com/api/empresa", {
         headers: { "Authorization": `Bearer ${token}` }
       });
       const data = await response.json();
@@ -178,13 +178,13 @@ const ListaTecnicos = () => {
     try {
       const token = localStorage.getItem("token");
       
-      const tecnicosRes = await fetch(`http://localhost:5000/api/tecnico/empresa/${selectedEmpresaId}`, {
+      const tecnicosRes = await fetch(`https://sirexa-api.onrender.com/api/tecnico/empresa/${selectedEmpresaId}`, {
         headers: { "Authorization": `Bearer ${token}` }
       });
       const tecnicosData = await tecnicosRes.json();
       setTecnicos(Array.isArray(tecnicosData) ? tecnicosData : []);
       
-      const funcionariosRes = await fetch(`http://localhost:5000/api/funcionarios?empresaId=${selectedEmpresaId}`, {
+      const funcionariosRes = await fetch(`https://sirexa-api.onrender.com/api/funcionarios?empresaId=${selectedEmpresaId}`, {
         headers: { "Authorization": `Bearer ${token}` }
       });
       const funcionariosData = await funcionariosRes.json();
@@ -205,7 +205,7 @@ const ListaTecnicos = () => {
     if (!window.confirm("Tem certeza que deseja excluir este técnico permanentemente?")) return;
 
     try {
-      const response = await fetch(`http://localhost:5000/api/tecnico/${id}`, {
+      const response = await fetch(`https://sirexa-api.onrender.com/api/tecnico/${id}`, {
         method: "DELETE",
         headers: { "Authorization": `Bearer ${localStorage.getItem("token")}` }
       });
@@ -225,7 +225,7 @@ const ListaTecnicos = () => {
     
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch(`http://localhost:5000/api/tecnico/despromover/${selectedTecnico._id}`, {
+      const response = await fetch(`https://sirexa-api.onrender.com/api/tecnico/despromover/${selectedTecnico._id}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -293,7 +293,7 @@ const ListaTecnicos = () => {
 
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch(`http://localhost:5000/api/tecnico/ativar/${selectedFuncionario._id}`, {
+      const response = await fetch(`https://sirexa-api.onrender.com/api/tecnico/ativar/${selectedFuncionario._id}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

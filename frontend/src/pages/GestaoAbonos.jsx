@@ -159,7 +159,7 @@ const GestaoAbonos = () => {
   setLoadingEmpresas(true);
   try {
     const token = localStorage.getItem("token");
-    const response = await fetch("http://localhost:5000/api/empresa", {
+    const response = await fetch("https://sirexa-api.onrender.com/api/empresa", {
       headers: { "Authorization": `Bearer ${token}` }
     });
     
@@ -195,7 +195,7 @@ const GestaoAbonos = () => {
   setLoading(true);
   try {
     const token = localStorage.getItem("token");
-    let url = `http://localhost:5000/api/abonos?empresaId=${empresaSelecionada}&page=${paginaAtual}&limit=20`;
+    let url = `https://sirexa-api.onrender.com/api/abonos?empresaId=${empresaSelecionada}&page=${paginaAtual}&limit=20`;
     if (filtroTipo) url += `&tipoAbono=${filtroTipo}`;
     if (filtroStatus) url += `&status=${filtroStatus}`;
     
@@ -236,7 +236,7 @@ const GestaoAbonos = () => {
   
   try {
     const token = localStorage.getItem("token");
-    const response = await fetch(`http://localhost:5000/api/funcionarios?empresaId=${empresaSelecionada}`, {
+    const response = await fetch(`https://sirexa-api.onrender.com/api/funcionarios?empresaId=${empresaSelecionada}`, {
       headers: { "Authorization": `Bearer ${token}` }
     });
     
@@ -283,7 +283,7 @@ const GestaoAbonos = () => {
   
   try {
     const token = localStorage.getItem("token");
-    const url = editando ? `http://localhost:5000/api/abonos/${editando}` : "http://localhost:5000/api/abonos";
+    const url = editando ? `https://sirexa-api.onrender.com/api/abonos/${editando}` : "https://sirexa-api.onrender.com/api/abonos";
     const method = editando ? "PUT" : "POST";
     
     const payload = {
@@ -330,7 +330,7 @@ const GestaoAbonos = () => {
     if (!window.confirm("Tem certeza que deseja excluir este abono?")) return;
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch(`http://localhost:5000/api/abonos/${id}`, {
+      const response = await fetch(`https://sirexa-api.onrender.com/api/abonos/${id}`, {
         method: "DELETE",
         headers: { "Authorization": `Bearer ${token}` }
       });
@@ -347,7 +347,7 @@ const GestaoAbonos = () => {
     if (!window.confirm("Integrar este abono à folha salarial?")) return;
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch(`http://localhost:5000/api/abonos/${id}/integrar`, {
+      const response = await fetch(`https://sirexa-api.onrender.com/api/abonos/${id}/integrar`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
