@@ -109,3 +109,7 @@ docker-compose.override.yml
 # MÓDULOS C++ COMPILADOS
 # ============================================
 *.node
+
+# VARIÁVEIS DE AMBIENTE (CONTÉM SENHAS)
+.env
+.env.local

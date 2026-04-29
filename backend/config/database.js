@@ -1,18 +1,14 @@
-const mongoose = require('mongoose');
+﻿const mongoose = require('mongoose');
+require('dotenv').config();
 
 const connectDB = async () => {
-  const uri = process.env.MONGO_URI || process.env.MONGODB_URI;
-
-  if (!uri) {
-    console.error('❌ URI do MongoDB não definida em .env');
-    process.exit(1);
-  }
-
   try {
+    const uri = process.env.MONGODB_URI;
     await mongoose.connect(uri);
-    console.log('✅ MongoDB conectado com sucesso!');
-  } catch (err) {
-    console.error('❌ Erro ao conectar ao MongoDB:', err.message);
+    console.log('☁️  MongoDB Atlas conectado com sucesso!');
+    console.log('🌐 Banco: SIREXA (Nuvem - África do Sul)');
+  } catch (error) {
+    console.error('❌ Erro ao conectar ao MongoDB:', error.message);
     process.exit(1);
   }
 };
