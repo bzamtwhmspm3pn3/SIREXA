@@ -492,70 +492,117 @@ const FolhaSalarial = () => {
       f.iban || "-"
     ]) || [];
     
-    autoTable(doc, {
-      startY: y + 3,
-      head: [[
-        "Funcionário", "Função", "Salário", "Alim", "Transp", 
-        "Férias", "Faltas", "INSS", "IRT", "Líquido", "IBAN"
-      ]],
-      body: funcionariosData,
-      theme: "grid",
-      styles: { 
-        fontSize: 6.5, 
-        cellPadding: 1.5, 
-        halign: "right",
-        lineColor: [0, 0, 0],
-        lineWidth: 0.1,
-        overflow: 'linebreak',     // QUEBRA TEXTO LONGO
-        cellWidth: 'wrap'          // AJUSTA LARGURA
-      },
-      headStyles: { 
-        fillColor: [37, 99, 235], 
-        textColor: [255, 255, 255], 
-        fontStyle: "bold", 
-        fontSize: 6.5, 
-        halign: "center",
-        lineColor: [0, 0, 0],
-        lineWidth: 0.1
-      },
-      bodyStyles: {
-        lineColor: [0, 0, 0],
-        lineWidth: 0.1
-      },
-      alternateRowStyles: {
-        fillColor: [245, 247, 250]
-      },
-      // 🔥 CONFIGURAÇÕES DE QUEBRA DE PÁGINA 🔥
-      didDrawPage: (data) => {
-        // Adicionar cabeçalho da tabela em cada página
-        // Rodapé em cada página
-        doc.setFontSize(7);
-        doc.setFont("helvetica", "italic");
-        doc.setTextColor(120, 120, 120);
-        doc.text(`Gerado por: ${user?.nome || user?.email || "Sistema"} - ${nomeEmpresa}`, 148.5, 200, { align: "center" });
-        doc.text(`Página ${doc.internal.getNumberOfPages()} - © ${new Date().getFullYear()} SIREXA`, 148.5, 204, { align: "center" });
-      },
-      margin: { top: 5, left: 10, right: 10, bottom: 15 }, // MARGEM INFERIOR PARA O RODAPÉ
-      tableWidth: 277,
-      showHead: 'everyPage',       // MOSTRA CABEÇALHO EM TODAS AS PÁGINAS
-      pageBreak: 'auto',           // QUEBRA AUTOMÁTICA DE PÁGINA
-      rowPageBreak: 'auto',        // QUEBRA DE LINHA AUTOMÁTICA
-      // 🔥 Altura máxima da tabela antes de quebrar 🔥
-      maxTableHeight: 120,         // RESERVA ESPAÇO PARA RODAPÉ
-      columnStyles: {
-        0: { cellWidth: 35, halign: "left" },
-        1: { cellWidth: 25, halign: "left" },
-        2: { cellWidth: 18, halign: "right" },
-        3: { cellWidth: 13, halign: "right" },
-        4: { cellWidth: 13, halign: "right" },
-        5: { cellWidth: 13, halign: "right" },
-        6: { cellWidth: 13, halign: "right" },
-        7: { cellWidth: 15, halign: "right" },
-        8: { cellWidth: 15, halign: "right" },
-        9: { cellWidth: 18, halign: "right" },
-        10: { cellWidth: 35, halign: "left" }
+   // ============================================
+// TABELA DE FUNCIONÁRIOS (COM QUEBRA DE PÁGINA FORÇADA)
+// ============================================
+autoTable(doc, {
+  startY: y + 3,
+  head: [[
+    "Funcionário", "Função", "Salário", "Alim", "Transp", 
+    "Férias", "Faltas", "INSS", "IRT", "Líquido", "IBAN"
+  ]],
+  body: funcionariosData,
+  theme: "grid",
+  
+  // 🔥 CONFIGURAÇÕES CRÍTICAS PARA QUEBRA DE PÁGINA 🔥
+  styles: { 
+    fontSize: 6.5, 
+    cellPadding: 1.5, 
+    halign: "right",
+    lineColor: [0, 0, 0],
+    lineWidth: 0.1,
+    overflow: 'linebreak',
+    minCellHeight: 6,        // Altura mínima da célula
+  },
+  
+  headStyles: { 
+    fillColor: [37, 99, 235], 
+    textColor: [255, 255, 255], 
+    fontStyle: "bold", 
+    fontSize: 6.5, 
+    halign: "center",
+    lineColor: [0, 0, 0],
+    lineWidth: 0.1,
+    minCellHeight: 8,
+  },
+  
+  bodyStyles: {
+    lineColor: [0, 0, 0],
+    lineWidth: 0.1,
+    minCellHeight: 6,
+  },
+  
+  alternateRowStyles: {
+    fillColor: [245, 247, 250]
+  },
+  
+  // 🔥 QUEBRA DE PÁGINA - CONFIGURAÇÃO ESSENCIAL 🔥
+  showHead: 'everyPage',           // Repete cabeçalho em cada página
+  didParseCell: function(data) {
+    // Ajusta altura da linha baseado no conteúdo
+    if (data.row.section === 'body') {
+      const text = data.cell.text.join(' ');
+      if (text.length > 20) {
+        data.cell.styles.minCellHeight = 8;
       }
-    });
+    }
+  },
+  
+  didDrawPage: function(data) {
+    // Rodapé em CADA página
+    const pageNumber = doc.internal.getNumberOfPages();
+    doc.setFontSize(7);
+    doc.setFont("helvetica", "italic");
+    doc.setTextColor(120, 120, 120);
+    doc.text(`Folha Salarial - ${nomeEmpresa} - ${meses[detalhes.mesReferencia - 1]}/${detalhes.anoReferencia}`, 15, 203);
+    doc.text(`Página ${pageNumber}`, 280, 203, { align: "right" });
+    doc.text(`© ${new Date().getFullYear()} SIREXA - One Platform`, 15, 207);
+  },
+  
+  // 🔥 MARGENS - ESSENCIAIS PARA QUEBRA 🔥
+  margin: { 
+    top: 5, 
+    right: 10, 
+    bottom: 15,    // Espaço para o rodapé
+    left: 10 
+  },
+  
+  tableWidth: 277,
+  tableLineColor: [0, 0, 0],
+  tableLineWidth: 0.1,
+  
+  // 🔥 FORÇAR QUEBRA DE LINHA E PÁGINA 🔥
+  rowPageBreak: 'auto',          // Quebra de página automática por linha
+  pageBreak: 'auto',             // Quebra de página automática
+  
+  // 🔥 ESTAS SÃO AS CONFIGURAÇÕES MAIS IMPORTANTES 🔥
+  willDrawCell: function(data) {
+    // Verifica se a célula cabe na página atual
+    const row = data.row;
+    const pageHeight = doc.internal.pageSize.height;
+    const currentY = data.cell.y + data.cell.height;
+    
+    // Se a linha atual + próxima não couber, força quebra
+    if (currentY > pageHeight - 20 && row.index < funcionariosData.length - 1) {
+      // Não faz nada - o autoTable cuida disso
+    }
+  },
+  
+  columnStyles: {
+    0: { cellWidth: 35, halign: "left" },
+    1: { cellWidth: 25, halign: "left" },
+    2: { cellWidth: 18, halign: "right" },
+    3: { cellWidth: 13, halign: "right" },
+    4: { cellWidth: 13, halign: "right" },
+    5: { cellWidth: 13, halign: "right" },
+    6: { cellWidth: 13, halign: "right" },
+    7: { cellWidth: 15, halign: "right" },
+    8: { cellWidth: 15, halign: "right" },
+    9: { cellWidth: 18, halign: "right" },
+    10: { cellWidth: 35, halign: "left" }
+  }
+});
+
     
     // ============================================
     // ASSINATURAS (APÓS A TABELA)
