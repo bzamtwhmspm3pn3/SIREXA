@@ -43,7 +43,7 @@ if (!fs.existsSync(uploadsDir)) {
 
 // 🌐 Middlewares globais
 app.use(cors({
-  origin: ["http://localhost:5173", "http://localhost:5174", "http://localhost:3000"],
+  origin: ["http://localhost:5173", "http://localhost:5174", "http://localhost:3000", "https://sirexa.vercel.app", "https://sirexa-git-main-bzamtwhmspm3pn3s-projects.vercel.app"],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization', 'Accept']
