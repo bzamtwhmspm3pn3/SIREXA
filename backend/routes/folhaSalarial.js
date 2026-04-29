@@ -352,7 +352,7 @@ router.post('/calcular', async (req, res) => {
       }
       
       const calculo = resultadoFolha.dados;
-      const inssEmpregador = calculo.inssEmpregador || (calculo.baseINSS * 0.08);
+      const inssEmpregador = calculo.inssEmpregador; // Já calculado corretamente pelo folhaService (0 para quem não contribui)
       
       funcionariosFolha.push({
         id: func._id,
