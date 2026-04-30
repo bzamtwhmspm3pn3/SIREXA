@@ -497,7 +497,7 @@ exports.criarFalta = async (req, res) => {
             
           } else {
             // Falta de dia completo
-            const valorDia = FolhaService.calcularValorDia(
+            const valorDia = FolhaService.calcularValorDiaFalta(
               funcionario.salarioBase,
               funcionario.horasSemanais || 40,
               funcionario.horasDiarias || 8
@@ -647,7 +647,7 @@ exports.importarCSV = async (req, res) => {
         
         let descontoSalario = 0;
         if (!justificada && tipoFalta === 'Falta Injustificada') {
-          const valorDia = FolhaService.calcularValorDia(
+          const valorDia = FolhaService.calcularValorDiaFalta(
             funcionario.salarioBase,
             funcionario.horasSemanais || 40,
             funcionario.horasDiarias || 8

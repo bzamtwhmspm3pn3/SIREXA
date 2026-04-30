@@ -21,7 +21,7 @@ export default function Menu() {
 
   const titulo = isGestor() ? "Painel de Controle - Gestor" : "Área do Técnico";
   const subtitulo = isGestor() 
-    ? "Bem-vindo ao centro de comando do AnDioGest"
+    ? "Bem-vindo ao centro de comando do SIREXA"
     : `Bem-vindo ao seu espaço de trabalho`;
 
   // Se for gestor, mostra o menu completo
