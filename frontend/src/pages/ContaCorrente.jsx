@@ -545,8 +545,11 @@ const ContaCorrente = () => {
     if (empresaSelecionada) {
       carregarContas();
       carregarResumoGeral();
+    } else {
+      setContas([]);
+      setContasFiltradas([]);
     }
-}, [empresaSelecionada, tipoConta]); 
+  }, [empresaSelecionada]);
 
   useEffect(() => {
     aplicarFiltros();
@@ -585,7 +588,7 @@ const ContaCorrente = () => {
   const carregarContas = async () => {
     setLoading(true);
     try {
-      const response = await fetch(`${BASE_URL}/api/contacorrente?empresaId=${empresaSelecionada}&tipo=${tipoConta}`, {
+      const response = await fetch(`${BASE_URL}/api/contacorrente?empresaId=${empresaSelecionada}`, {
         headers: getHeaders()
       });
       
@@ -1008,32 +1011,6 @@ const ContaCorrente = () => {
               </div>
             </div>
 
-            {/* 🔥 ABAS FORNECEDOR/CLIENTE */}
-<div className="flex gap-2 mb-4">
-  <button
-    onClick={() => setTipoConta("Fornecedor")}
-    className={`px-6 py-3 rounded-xl font-medium transition-all duration-200 ${
-      tipoConta === "Fornecedor"
-        ? "bg-blue-600 text-white shadow-lg"
-        : "bg-gray-700 text-gray-400 hover:text-white hover:bg-gray-600"
-    }`}
-  >
-    🏢 Fornecedores
-  </button>
-  <button
-    onClick={() => setTipoConta("Cliente")}
-    className={`px-6 py-3 rounded-xl font-medium transition-all duration-200 ${
-      tipoConta === "Cliente"
-        ? "bg-green-600 text-white shadow-lg"
-        : "bg-gray-700 text-gray-400 hover:text-white hover:bg-gray-600"
-    }`}
-  >
-    👥 Clientes
-  </button>
-</div>
-
-             
-
             {/* Botões de Ação */}
             <div className="flex flex-wrap justify-between gap-2">
               <button
@@ -1197,13 +1174,9 @@ const ContaCorrente = () => {
                             <td className="p-3 font-medium text-white">{conta.beneficiario}</td>
                             <td className="p-3 text-gray-300">{conta.beneficiarioDocumento || "—"}</td>
                             <td className="p-3">
-                              <span className={`px-2 py-1 rounded-full text-xs ${
-  conta.tipo === "Cliente" 
-    ? 'bg-green-600/20 text-green-400' 
-    : 'bg-blue-600/20 text-blue-400'
-}`}>
-  {conta.tipo || "Outro"}
-</span>
+                              <span className="px-2 py-1 rounded-full text-xs bg-blue-600/20 text-blue-400">
+                                {conta.tipo || "Outro"}
+                              </span>
                             </td>
                             <td className="p-3 text-gray-300">{conta.telefone || conta.email || "—"}</td>
                             <td className={`p-3 text-right font-bold ${situacaoCor}`}>

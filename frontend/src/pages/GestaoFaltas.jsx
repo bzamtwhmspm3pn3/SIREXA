@@ -289,7 +289,7 @@ const GestaoFaltas = () => {
       
       if (response.ok) {
         mostrarMensagem("Falta excluída!", "sucesso");
-        setRecarregar(true);
+        await carregarFaltas();
       } else {
         const error = await response.json();
         mostrarMensagem(error.mensagem || "Erro ao excluir", "erro");
@@ -547,7 +547,7 @@ const GestaoFaltas = () => {
         setModalOpen(false);
         setEditando(null);
         resetForm();
-        setRecarregar(true);
+        await carregarFaltas();
       } else {
         mostrarMensagem(data.mensagem || "Erro ao salvar", "erro");
       }

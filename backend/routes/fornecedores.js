@@ -78,13 +78,24 @@ router.post('/', async (req, res) => {
 
     await fornecedor.save();
     
-    // 🔥 INTEGRAÇÃO AUTOMÁTICA - GERAR PAGAMENTOS PARA CONTRATOS EXISTENTES
-    if (fornecedor.contratos && fornecedor.contratos.length > 0) {
-      console.log(`\n🏢 Gerando pagamentos para contratos de ${fornecedor.nome}...`);
-      for (const contrato of fornecedor.contratos) {
-        await integracaoPagamentos.integrarFornecedor(fornecedor, contrato, req.user?.nome || 'Sistema');
-      }
+    // 🔥 INTEGRAÇÃO AUTOMÁTICA - Gerar APENAS o PRÓXIMO pagamento
+if (fornecedor.contratos && fornecedor.contratos.length > 0) {
+    const hoje = new Date();
+    // Encontrar o contrato com a data de pagamento mais próxima
+    const contratosAtivos = fornecedor.contratos
+        .filter(c => new Date(c.dataFim) >= hoje && c.modalidadePagamento !== 'Único')
+        .sort((a, b) => {
+            const pa = a.proximoPagamento || new Date(a.dataInicio);
+            const pb = b.proximoPagamento || new Date(b.dataInicio);
+            return pa - pb;
+        });
+    
+    if (contratosAtivos.length > 0) {
+        const proximoContrato = contratosAtivos[0];
+        console.log(`🏢 Gerando APENAS o próximo pagamento para ${fornecedor.nome}`);
+        await integracaoPagamentos.integrarFornecedor(fornecedor, proximoContrato, req.user?.nome || 'Sistema');
     }
+}
     
     res.status(201).json(fornecedor);
   } catch (error) {
