@@ -14,7 +14,7 @@ const validarObjectId = (id, nome = 'ID') => {
 
 const sanitizarString = (str) => {
   if (!str) return '';
-  return str.trim().replace(/[<>]/g, ''); // Remove caracteres perigosos
+  return str.trim().replace(/[<>]/g, '');
 };
 
 const validarNumero = (valor, min = 0, max = Infinity, padrao = 0) => {
@@ -32,18 +32,38 @@ const validarData = (data, obrigatorio = false) => {
   return dataObj;
 };
 
-const calcularValorTotalStock = async (empresaId) => {
+// ============================================
+// FUNÇÕES AUXILIARES PARA SERVIÇOS
+// ============================================
+
+const validarServico = (dados) => {
+  const erros = [];
+  
+  if (dados.tipo === 'servico') {
+    // Validações específicas para serviços
+    if (dados.duracaoEstimada && dados.duracaoEstimada < 0) {
+      erros.push('Duração estimada não pode ser negativa');
+    }
+    // Serviços não precisam de quantidade, validade, etc.
+  }
+  
+  return erros;
+};
+
+const calcularValorTotalStock = async (empresaId, tipo = null) => {
   try {
     const empresaIdObj = validarObjectId(empresaId, 'Empresa');
+    const filtro = { empresaId: empresaIdObj, ativo: true };
+    if (tipo) filtro.tipo = tipo;
     
     const resultado = await Stock.aggregate([
-      { $match: { empresaId: empresaIdObj, ativo: true } },
+      { $match: filtro },
       { $group: {
         _id: null,
-        totalQuantidade: { $sum: "$quantidade" },
-        totalValorCompra: { $sum: { $multiply: ["$quantidade", "$precoCompra"] } },
-        totalValorVenda: { $sum: { $multiply: ["$quantidade", "$precoVenda"] } },
-        totalLucroEstimado: { $sum: { $multiply: ["$quantidade", { $subtract: ["$precoVenda", "$precoCompra"] }] } }
+        totalQuantidade: { $sum: { $cond: [{ $eq: ["$tipo", "produto"] }, "$quantidade", 0] } },
+        totalValorCompra: { $sum: { $multiply: [{ $ifNull: ["$quantidade", 1] }, "$precoCompra"] } },
+        totalValorVenda: { $sum: { $multiply: [{ $ifNull: ["$quantidade", 1] }, "$precoVenda"] } },
+        totalLucroEstimado: { $sum: { $multiply: [{ $ifNull: ["$quantidade", 1] }, { $subtract: ["$precoVenda", "$precoCompra"] }] } }
       }}
     ]);
     
@@ -67,6 +87,7 @@ const calcularProdutosVencidos = async (empresaId) => {
     
     return await Stock.countDocuments({
       empresaId: empresaIdObj,
+      tipo: 'produto',
       dataValidade: { $lt: hoje },
       ativo: true
     });
@@ -88,6 +109,7 @@ const calcularProdutosProximosVencer = async (empresaId, dias = 30) => {
     
     return await Stock.countDocuments({
       empresaId: empresaIdObj,
+      tipo: 'produto',
       dataValidade: { $gte: hoje, $lte: limite },
       ativo: true
     });
@@ -103,6 +125,7 @@ const calcularProdutosEstoqueBaixo = async (empresaId) => {
     
     return await Stock.countDocuments({
       empresaId: empresaIdObj,
+      tipo: 'produto',
       $expr: { $lte: ["$quantidade", "$quantidadeMinima"] },
       ativo: true,
       quantidade: { $gt: 0 }
@@ -117,25 +140,19 @@ const calcularProdutosEstoqueBaixo = async (empresaId) => {
 // CRUD PRINCIPAL BLINDADO
 // ============================================
 
-// GET - Listar todos os produtos
+// GET - Listar todos os itens (produtos e serviços)
 exports.getAllStock = async (req, res) => {
   try {
     const { 
       empresaId, 
       search, 
       categoria, 
+      tipo,
       statusEstoque, 
       statusValidade, 
       page = 1, 
       limit = 50 
     } = req.query;
-    
-    console.log('=' .repeat(60));
-    console.log('🔍 getAllStock CHAMADO');
-    console.log('📌 empresaId:', empresaId);
-    console.log('📌 search:', search);
-    console.log('📌 page:', page);
-    console.log('📌 limit:', limit);
     
     // Validação inicial
     if (!empresaId) {
@@ -155,20 +172,12 @@ exports.getAllStock = async (req, res) => {
     const empresaIdObj = new mongoose.Types.ObjectId(empresaId);
     const filtro = { empresaId: empresaIdObj, ativo: true };
     
-    console.log('📋 Filtro:', JSON.stringify(filtro));
+    // Filtrar por tipo (produto ou serviço)
+    if (tipo && ['produto', 'servico'].includes(tipo)) {
+      filtro.tipo = tipo;
+    }
     
-    // Buscar TODOS os produtos sem paginação para debug
-    const todosProdutos = await Stock.find({ empresaId: empresaIdObj }).lean();
-    console.log(`📦 Total de produtos na empresa (sem filtro ativo): ${todosProdutos.length}`);
-    todosProdutos.forEach(p => {
-      console.log(`   - ${p.produto}: ativo=${p.ativo}`);
-    });
-    
-    // Buscar com filtro ativo
-    const produtosAtivos = await Stock.find({ empresaId: empresaIdObj, ativo: true }).lean();
-    console.log(`📦 Produtos ativos: ${produtosAtivos.length}`);
-    
-    // Filtros adicionais
+    // Busca por texto
     if (search && typeof search === 'string') {
       const searchSanitized = sanitizarString(search);
       filtro.$or = [
@@ -176,7 +185,11 @@ exports.getAllStock = async (req, res) => {
         { codigoBarras: { $regex: searchSanitized, $options: 'i' } },
         { codigoInterno: { $regex: searchSanitized, $options: 'i' } }
       ];
-      console.log('🔍 Com filtro de busca:', filtro.$or);
+    }
+    
+    // Filtrar por categoria
+    if (categoria) {
+      filtro.categoria = categoria;
     }
     
     // Paginação segura
@@ -184,22 +197,19 @@ exports.getAllStock = async (req, res) => {
     const limite = Math.min(100, Math.max(1, parseInt(limit) || 50));
     const skip = (pagina - 1) * limite;
     
-    const [produtos, total] = await Promise.all([
+    const [itens, total] = await Promise.all([
       Stock.find(filtro)
         .select('-__v')
-        .sort({ createdAt: -1 })
+        .sort({ tipo: 1, createdAt: -1 })
         .skip(skip)
         .limit(limite)
         .lean(),
       Stock.countDocuments(filtro)
     ]);
     
-    console.log(`✅ Retornando ${produtos.length} produtos de ${total} total`);
-    console.log('=' .repeat(60));
-    
     res.json({
       sucesso: true,
-      dados: produtos,
+      dados: itens,
       total,
       pagina,
       totalPaginas: Math.ceil(total / limite)
@@ -209,7 +219,7 @@ exports.getAllStock = async (req, res) => {
     console.error('Erro em getAllStock:', error);
     res.status(500).json({ 
       sucesso: false, 
-      mensagem: "Erro interno ao buscar produtos" 
+      mensagem: "Erro interno ao buscar itens" 
     });
   }
 };
@@ -219,24 +229,18 @@ exports.getStockStats = async (req, res) => {
   try {
     const { empresaId } = req.query;
     
-    if (!empresaId) {
+    if (!empresaId || !mongoose.Types.ObjectId.isValid(empresaId)) {
       return res.status(400).json({ 
         sucesso: false, 
-        mensagem: "Empresa não informada" 
-      });
-    }
-    
-    if (!mongoose.Types.ObjectId.isValid(empresaId)) {
-      return res.status(400).json({ 
-        sucesso: false, 
-        mensagem: "ID da empresa inválido" 
+        mensagem: "Empresa inválida" 
       });
     }
     
     const empresaIdObj = new mongoose.Types.ObjectId(empresaId);
     
-    const [totais, vencidos, proximosVencer, baixoEstoque, categorias, totalProdutos] = await Promise.all([
-      calcularValorTotalStock(empresaIdObj),
+    const [totaisProdutos, totaisServicos, vencidos, proximosVencer, baixoEstoque, categorias, totalProdutos, totalServicos] = await Promise.all([
+      calcularValorTotalStock(empresaIdObj, 'produto'),
+      calcularValorTotalStock(empresaIdObj, 'servico'),
       calcularProdutosVencidos(empresaIdObj),
       calcularProdutosProximosVencer(empresaIdObj),
       calcularProdutosEstoqueBaixo(empresaIdObj),
@@ -245,22 +249,27 @@ exports.getStockStats = async (req, res) => {
         { $group: { 
           _id: "$categoria", 
           quantidade: { $sum: 1 }, 
-          valor: { $sum: { $multiply: ["$quantidade", "$precoVenda"] } } 
+          valor: { $sum: { $multiply: [{ $ifNull: ["$quantidade", 1] }, "$precoVenda"] } } 
         }},
         { $sort: { quantidade: -1 } },
         { $limit: 10 }
       ]),
-      Stock.countDocuments({ empresaId: empresaIdObj, ativo: true })
+      Stock.countDocuments({ empresaId: empresaIdObj, ativo: true, tipo: 'produto' }),
+      Stock.countDocuments({ empresaId: empresaIdObj, ativo: true, tipo: 'servico' })
     ]);
     
     res.json({
       sucesso: true,
       dados: {
         totalProdutos,
-        totalQuantidade: totais.totalQuantidade || 0,
-        valorTotalCompra: totais.totalValorCompra || 0,
-        valorTotalVenda: totais.totalValorVenda || 0,
-        lucroEstimado: totais.totalLucroEstimado || 0,
+        totalServicos,
+        totalItens: totalProdutos + totalServicos,
+        totalQuantidadeProdutos: totaisProdutos.totalQuantidade || 0,
+        valorTotalProdutos: totaisProdutos.totalValorVenda || 0,
+        valorTotalServicos: totaisServicos.totalValorVenda || 0,
+        valorTotalGeral: (totaisProdutos.totalValorVenda || 0) + (totaisServicos.totalValorVenda || 0),
+        lucroEstimadoProdutos: totaisProdutos.totalLucroEstimado || 0,
+        lucroEstimadoServicos: totaisServicos.totalLucroEstimado || 0,
         vencidos: vencidos || 0,
         proximosVencer: proximosVencer || 0,
         baixoEstoque: baixoEstoque || 0,
@@ -277,7 +286,7 @@ exports.getStockStats = async (req, res) => {
   }
 };
 
-// GET - Produtos com estoque baixo
+// GET - Itens com estoque baixo (apenas produtos)
 exports.getEstoqueBaixo = async (req, res) => {
   try {
     const { empresaId } = req.query;
@@ -291,6 +300,7 @@ exports.getEstoqueBaixo = async (req, res) => {
     
     const produtos = await Stock.find({
       empresaId: new mongoose.Types.ObjectId(empresaId),
+      tipo: 'produto',
       ativo: true,
       $expr: { $lte: ["$quantidade", "$quantidadeMinima"] },
       quantidade: { $gt: 0 }
@@ -311,7 +321,7 @@ exports.getEstoqueBaixo = async (req, res) => {
   }
 };
 
-// GET - Produtos próximos a vencer
+// GET - Itens próximos a vencer (apenas produtos)
 exports.getProximosVencer = async (req, res) => {
   try {
     const { empresaId, dias = 30 } = req.query;
@@ -332,6 +342,7 @@ exports.getProximosVencer = async (req, res) => {
     
     const produtos = await Stock.find({
       empresaId: new mongoose.Types.ObjectId(empresaId),
+      tipo: 'produto',
       ativo: true,
       dataValidade: { $gte: hoje, $lte: limite }
     })
@@ -347,6 +358,43 @@ exports.getProximosVencer = async (req, res) => {
     res.status(500).json({ 
       sucesso: false, 
       mensagem: "Erro interno ao buscar produtos próximos a vencer" 
+    });
+  }
+};
+
+// GET - Produtos vencidos (apenas produtos)
+exports.getProdutosVencidos = async (req, res) => {
+  try {
+    const { empresaId } = req.query;
+    
+    if (!empresaId || !mongoose.Types.ObjectId.isValid(empresaId)) {
+      return res.status(400).json({ 
+        sucesso: false, 
+        mensagem: "Empresa inválida" 
+      });
+    }
+    
+    const hoje = new Date();
+    hoje.setHours(0, 0, 0, 0);
+    
+    const produtos = await Stock.find({
+      empresaId: new mongoose.Types.ObjectId(empresaId),
+      tipo: 'produto',
+      ativo: true,
+      dataValidade: { $lt: hoje },
+      quantidade: { $gt: 0 }
+    })
+    .select('-__v')
+    .sort({ dataValidade: 1 })
+    .lean();
+    
+    res.json({ sucesso: true, dados: produtos });
+    
+  } catch (error) {
+    console.error('Erro em getProdutosVencidos:', error);
+    res.status(500).json({ 
+      sucesso: false, 
+      mensagem: "Erro interno ao buscar produtos vencidos" 
     });
   }
 };
@@ -371,7 +419,7 @@ exports.getStockByCodigoBarras = async (req, res) => {
       });
     }
     
-    const produto = await Stock.findOne({ 
+    const item = await Stock.findOne({ 
       empresaId: new mongoose.Types.ObjectId(empresaId),
       codigoBarras: sanitizarString(codigo), 
       ativo: true 
@@ -379,25 +427,25 @@ exports.getStockByCodigoBarras = async (req, res) => {
     .select('-__v')
     .lean();
     
-    if (!produto) {
+    if (!item) {
       return res.status(404).json({ 
         sucesso: false, 
-        mensagem: "Produto não encontrado" 
+        mensagem: "Item não encontrado" 
       });
     }
     
-    res.json({ sucesso: true, dados: produto });
+    res.json({ sucesso: true, dados: item });
     
   } catch (error) {
     console.error('Erro em getStockByCodigoBarras:', error);
     res.status(500).json({ 
       sucesso: false, 
-      mensagem: "Erro interno ao buscar produto" 
+      mensagem: "Erro interno ao buscar item" 
     });
   }
 };
 
-// GET - Produto por ID
+// GET - Item por ID
 exports.getStockById = async (req, res) => {
   try {
     const { id } = req.params;
@@ -406,7 +454,7 @@ exports.getStockById = async (req, res) => {
     if (!id || !mongoose.Types.ObjectId.isValid(id)) {
       return res.status(400).json({ 
         sucesso: false, 
-        mensagem: "ID do produto inválido" 
+        mensagem: "ID do item inválido" 
       });
     }
     
@@ -417,7 +465,7 @@ exports.getStockById = async (req, res) => {
       });
     }
     
-    const produto = await Stock.findOne({ 
+    const item = await Stock.findOne({ 
       _id: id, 
       empresaId: new mongoose.Types.ObjectId(empresaId),
       ativo: true
@@ -425,68 +473,45 @@ exports.getStockById = async (req, res) => {
     .select('-__v')
     .lean();
     
-    if (!produto) {
+    if (!item) {
       return res.status(404).json({ 
         sucesso: false, 
-        mensagem: "Produto não encontrado" 
+        mensagem: "Item não encontrado" 
       });
     }
     
-    res.json({ sucesso: true, dados: produto });
+    res.json({ sucesso: true, dados: item });
     
   } catch (error) {
     console.error('Erro em getStockById:', error);
     res.status(500).json({ 
       sucesso: false, 
-      mensagem: "Erro interno ao buscar produto" 
+      mensagem: "Erro interno ao buscar item" 
     });
   }
 };
 
-// POST - Criar produto (BLINDADO)
+// POST - Criar item (produto ou serviço)
 exports.createStock = async (req, res) => {
   try {
-    const { empresaId } = req.body;
+    const { empresaId, tipo = 'produto' } = req.body;
     
     // Validação da empresa
-    if (!empresaId) {
+    if (!empresaId || !mongoose.Types.ObjectId.isValid(empresaId)) {
       return res.status(400).json({ 
         sucesso: false, 
-        mensagem: "Empresa não informada" 
-      });
-    }
-    
-    if (!mongoose.Types.ObjectId.isValid(empresaId)) {
-      return res.status(400).json({ 
-        sucesso: false, 
-        mensagem: "ID da empresa inválido" 
+        mensagem: "Empresa inválida" 
       });
     }
     
     const empresaIdObj = new mongoose.Types.ObjectId(empresaId);
     
-    // Validação de campos obrigatórios
-    const produtoNome = sanitizarString(req.body.produto);
-    if (!produtoNome) {
+    // Validação de campos obrigatórios comuns
+    const nome = sanitizarString(req.body.produto);
+    if (!nome) {
       return res.status(400).json({ 
         sucesso: false, 
-        mensagem: "Nome do produto é obrigatório" 
-      });
-    }
-    
-    const quantidade = validarNumero(req.body.quantidade, 0);
-    if (quantidade < 0) {
-      return res.status(400).json({ 
-        sucesso: false, 
-        mensagem: "Quantidade inválida" 
-      });
-    }
-    
-    const precoCompra = validarNumero(req.body.precoCompra, 0);
-    if (precoCompra <= 0) {
-      return res.status(400).json({ 
-        sucesso: false, 
-        mensagem: "Preço de compra deve ser maior que zero" 
+        mensagem: "Nome do item é obrigatório" 
       });
     }
     
@@ -498,144 +523,167 @@ exports.createStock = async (req, res) => {
       });
     }
     
-    if (precoVenda < precoCompra) {
-      return res.status(400).json({ 
-        sucesso: false, 
-        mensagem: "Preço de venda não pode ser menor que o preço de compra" 
-      });
-    }
-    
-    const dataValidade = validarData(req.body.dataValidade, true);
-    if (!dataValidade) {
-      return res.status(400).json({ 
-        sucesso: false, 
-        mensagem: "Data de validade inválida" 
-      });
-    }
-    
-    const hoje = new Date();
-    hoje.setHours(0, 0, 0, 0);
-    
-    if (dataValidade <= hoje) {
-      return res.status(400).json({ 
-        sucesso: false, 
-        mensagem: "Data de validade deve ser futura" 
-      });
-    }
-    
     // Verificação de duplicatas
-    const [existeProduto, existeCodigoBarras, existeCodigoInterno] = await Promise.all([
-      Stock.findOne({ empresaId: empresaIdObj, produto: produtoNome }),
-      req.body.codigoBarras ? Stock.findOne({ empresaId: empresaIdObj, codigoBarras: sanitizarString(req.body.codigoBarras) }) : Promise.resolve(null),
-      req.body.codigoInterno ? Stock.findOne({ empresaId: empresaIdObj, codigoInterno: sanitizarString(req.body.codigoInterno) }) : Promise.resolve(null)
-    ]);
+    const existeItem = await Stock.findOne({ 
+      empresaId: empresaIdObj, 
+      produto: nome 
+    });
     
-    if (existeProduto) {
+    if (existeItem) {
       return res.status(400).json({ 
         sucesso: false, 
-        mensagem: `Já existe um produto com o nome "${produtoNome}" para esta empresa` 
+        mensagem: `Já existe um item com o nome "${nome}" para esta empresa` 
       });
     }
     
-    if (existeCodigoBarras) {
-      return res.status(400).json({ 
-        sucesso: false, 
-        mensagem: `Código de barras "${req.body.codigoBarras}" já está em uso` 
+    if (req.body.codigoBarras) {
+      const existeCodigoBarras = await Stock.findOne({ 
+        empresaId: empresaIdObj, 
+        codigoBarras: sanitizarString(req.body.codigoBarras) 
       });
+      if (existeCodigoBarras) {
+        return res.status(400).json({ 
+          sucesso: false, 
+          mensagem: `Código de barras "${req.body.codigoBarras}" já está em uso` 
+        });
+      }
     }
     
-    if (existeCodigoInterno) {
-      return res.status(400).json({ 
-        sucesso: false, 
-        mensagem: `Código interno "${req.body.codigoInterno}" já está em uso` 
+    if (req.body.codigoInterno) {
+      const existeCodigoInterno = await Stock.findOne({ 
+        empresaId: empresaIdObj, 
+        codigoInterno: sanitizarString(req.body.codigoInterno) 
       });
+      if (existeCodigoInterno) {
+        return res.status(400).json({ 
+          sucesso: false, 
+          mensagem: `Código interno "${req.body.codigoInterno}" já está em uso` 
+        });
+      }
     }
     
-    // Preparar dados do produto
-    const produtoData = {
+    // Validações específicas por tipo
+    let itemData = {
       ...req.body,
-      produto: produtoNome,
+      produto: nome,
       empresaId: empresaIdObj,
-      quantidade,
-      precoCompra,
+      tipo: tipo,
       precoVenda,
-      dataValidade,
-      precoVendaMinimo: validarNumero(req.body.precoVendaMinimo, 0),
-      precoPromocional: validarNumero(req.body.precoPromocional, 0),
-      taxaIVA: validarNumero(req.body.taxaIVA, 0, 100, 14),
-      taxaISC: validarNumero(req.body.taxaISC, 0, 100, 0),
-      quantidadeMinima: validarNumero(req.body.quantidadeMinima, 0, 999999, 5),
-      quantidadeMaxima: validarNumero(req.body.quantidadeMaxima, 0, 999999, 1000),
-      estoqueSeguranca: validarNumero(req.body.estoqueSeguranca, 0),
-      pontoReposicao: validarNumero(req.body.pontoReposicao, 0),
-      dataFabricacao: validarData(req.body.dataFabricacao),
-      dataInicioPromocao: validarData(req.body.dataInicioPromocao),
-      dataFimPromocao: validarData(req.body.dataFimPromocao),
-      fornecedor: sanitizarString(req.body.fornecedor),
-      fornecedorReferencia: sanitizarString(req.body.fornecedorReferencia),
-      localizacao: sanitizarString(req.body.localizacao),
-      armazem: sanitizarString(req.body.armazem) || "Principal",
-      prateleira: sanitizarString(req.body.prateleira),
-      numeroLote: sanitizarString(req.body.numeroLote),
-      serie: sanitizarString(req.body.serie),
-      observacoes: sanitizarString(req.body.observacoes),
-      categoria: sanitizarString(req.body.categoria) || "Geral",
-      subcategoria: sanitizarString(req.body.subcategoria),
-      marca: sanitizarString(req.body.marca),
-      modelo: sanitizarString(req.body.modelo),
-      unidadeMedida: req.body.unidadeMedida || "Unidade",
-      metodoCusteio: req.body.metodoCusteio || "FIFO",
-      controlaValidade: req.body.controlaValidade !== false,
-      controlaLote: req.body.controlaLote === true,
+      precoCompra: 0,
+      quantidade: 0,
       criadoPor: req.user?.nome || "Sistema",
       criadoPorId: req.user?.id,
-      dataUltimaEntrada: quantidade > 0 ? new Date() : null,
-      dataUltimaSaida: null,
       createdAt: new Date(),
       updatedAt: new Date()
     };
     
+    if (tipo === 'produto') {
+      const precoCompra = validarNumero(req.body.precoCompra, 0);
+      if (precoCompra <= 0) {
+        return res.status(400).json({ 
+          sucesso: false, 
+          mensagem: "Preço de compra deve ser maior que zero" 
+        });
+      }
+      
+      if (precoVenda < precoCompra) {
+        return res.status(400).json({ 
+          sucesso: false, 
+          mensagem: "Preço de venda não pode ser menor que o preço de compra" 
+        });
+      }
+      
+      const dataValidade = validarData(req.body.dataValidade, true);
+      if (!dataValidade) {
+        return res.status(400).json({ 
+          sucesso: false, 
+          mensagem: "Data de validade inválida" 
+        });
+      }
+      
+      const hoje = new Date();
+      hoje.setHours(0, 0, 0, 0);
+      
+      if (dataValidade <= hoje) {
+        return res.status(400).json({ 
+          sucesso: false, 
+          mensagem: "Data de validade deve ser futura" 
+        });
+      }
+      
+      itemData = {
+        ...itemData,
+        precoCompra,
+        dataValidade,
+        quantidade: validarNumero(req.body.quantidade, 0),
+        quantidadeMinima: validarNumero(req.body.quantidadeMinima, 0, 999999, 5),
+        quantidadeMaxima: validarNumero(req.body.quantidadeMaxima, 0, 999999, 1000),
+        estoqueSeguranca: validarNumero(req.body.estoqueSeguranca, 0),
+        pontoReposicao: validarNumero(req.body.pontoReposicao, 0),
+        armazem: sanitizarString(req.body.armazem) || "Principal",
+        dataUltimaEntrada: (req.body.quantidade || 0) > 0 ? new Date() : null,
+        controlaValidade: req.body.controlaValidade !== false,
+        controlaLote: req.body.controlaLote === true
+      };
+    } else {
+      // Serviço: validações específicas
+      const errosServico = validarServico(req.body);
+      if (errosServico.length > 0) {
+        return res.status(400).json({ 
+          sucesso: false, 
+          mensagem: errosServico.join(', ') 
+        });
+      }
+      
+      itemData = {
+        ...itemData,
+        quantidade: 0,
+        controlaValidade: false,
+        duracaoEstimada: validarNumero(req.body.duracaoEstimada, 0),
+        unidadeTempo: req.body.unidadeTempo || 'horas',
+        precoHora: validarNumero(req.body.precoHora, 0),
+        executadoPor: sanitizarString(req.body.executadoPor),
+        requerAgendamento: req.body.requerAgendamento === true,
+        localExecucao: sanitizarString(req.body.localExecucao),
+        recursosNecessarios: sanitizarString(req.body.recursosNecessarios),
+        instrucoes: sanitizarString(req.body.instrucoes)
+      };
+    }
+    
     // Remover campos undefined
-    Object.keys(produtoData).forEach(key => {
-      if (produtoData[key] === undefined || produtoData[key] === null) {
-        delete produtoData[key];
+    Object.keys(itemData).forEach(key => {
+      if (itemData[key] === undefined || itemData[key] === null) {
+        delete itemData[key];
       }
     });
     
-    const produto = new Stock(produtoData);
-    await produto.save();
+    const item = new Stock(itemData);
+    await item.save();
     
     res.status(201).json({ 
       sucesso: true, 
-      mensagem: "Produto cadastrado com sucesso",
-      dados: produto 
+      mensagem: tipo === 'produto' ? "Produto cadastrado com sucesso" : "Serviço cadastrado com sucesso",
+      dados: item 
     });
     
   } catch (error) {
     console.error('Erro em createStock:', error);
     
     if (error.code === 11000) {
-      const campo = Object.keys(error.keyPattern)[0];
-      const mensagem = campo === 'codigoBarras' 
-        ? 'Código de barras já cadastrado'
-        : campo === 'codigoInterno'
-        ? 'Código interno já cadastrado'
-        : `${campo} já cadastrado`;
-      
       return res.status(400).json({ 
         sucesso: false, 
-        mensagem 
+        mensagem: "Código de barras ou código interno já existe" 
       });
     }
     
     res.status(500).json({ 
       sucesso: false, 
-      mensagem: "Erro interno ao cadastrar produto" 
+      mensagem: "Erro interno ao cadastrar item" 
     });
   }
 };
 
-// PUT - Atualizar produto (BLINDADO)
+// PUT - Atualizar item (produto ou serviço)
 exports.updateStock = async (req, res) => {
   try {
     const { id } = req.params;
@@ -644,7 +692,7 @@ exports.updateStock = async (req, res) => {
     if (!id || !mongoose.Types.ObjectId.isValid(id)) {
       return res.status(400).json({ 
         sucesso: false, 
-        mensagem: "ID do produto inválido" 
+        mensagem: "ID do item inválido" 
       });
     }
     
@@ -655,26 +703,25 @@ exports.updateStock = async (req, res) => {
       });
     }
     
-    const produto = await Stock.findOne({ 
+    const item = await Stock.findOne({ 
       _id: id, 
       empresaId: new mongoose.Types.ObjectId(empresaId) 
     });
     
-    if (!produto) {
+    if (!item) {
       return res.status(404).json({ 
         sucesso: false, 
-        mensagem: "Produto não encontrado" 
+        mensagem: "Item não encontrado" 
       });
     }
     
     // Verificar duplicatas em atualização
-    if (req.body.codigoBarras && req.body.codigoBarras !== produto.codigoBarras) {
+    if (req.body.codigoBarras && req.body.codigoBarras !== item.codigoBarras) {
       const existeCodigoBarras = await Stock.findOne({ 
         _id: { $ne: id },
-        empresaId: produto.empresaId, 
+        empresaId: item.empresaId, 
         codigoBarras: sanitizarString(req.body.codigoBarras) 
       });
-      
       if (existeCodigoBarras) {
         return res.status(400).json({ 
           sucesso: false, 
@@ -683,13 +730,12 @@ exports.updateStock = async (req, res) => {
       }
     }
     
-    if (req.body.codigoInterno && req.body.codigoInterno !== produto.codigoInterno) {
+    if (req.body.codigoInterno && req.body.codigoInterno !== item.codigoInterno) {
       const existeCodigoInterno = await Stock.findOne({ 
         _id: { $ne: id },
-        empresaId: produto.empresaId, 
+        empresaId: item.empresaId, 
         codigoInterno: sanitizarString(req.body.codigoInterno) 
       });
-      
       if (existeCodigoInterno) {
         return res.status(400).json({ 
           sucesso: false, 
@@ -698,60 +744,84 @@ exports.updateStock = async (req, res) => {
       }
     }
     
-    // Validar preços se foram alterados
-    const novoPrecoCompra = req.body.precoCompra ? validarNumero(req.body.precoCompra, 0) : produto.precoCompra;
-    const novoPrecoVenda = req.body.precoVenda ? validarNumero(req.body.precoVenda, 0) : produto.precoVenda;
+    // Atualizar campos comuns
+    item.produto = req.body.produto ? sanitizarString(req.body.produto) : item.produto;
+    item.codigoBarras = req.body.codigoBarras ? sanitizarString(req.body.codigoBarras) : item.codigoBarras;
+    item.codigoInterno = req.body.codigoInterno ? sanitizarString(req.body.codigoInterno) : item.codigoInterno;
+    item.categoria = req.body.categoria || item.categoria;
+    item.marca = req.body.marca || item.marca;
+    item.precoVenda = validarNumero(req.body.precoVenda, 0, Infinity, item.precoVenda);
+    item.taxaIVA = validarNumero(req.body.taxaIVA, 0, 36, item.taxaIVA);
+    item.fornecedor = req.body.fornecedor || item.fornecedor;
+    item.observacoes = req.body.observacoes || item.observacoes;
+    item.atualizadoPor = req.user?.nome || "Sistema";
+    item.updatedAt = new Date();
     
-    if (novoPrecoVenda < novoPrecoCompra) {
-      return res.status(400).json({ 
-        sucesso: false, 
-        mensagem: "Preço de venda não pode ser menor que o preço de compra" 
-      });
-    }
-    
-    // Validar data de validade
-    if (req.body.dataValidade) {
-      const novaDataValidade = validarData(req.body.dataValidade, true);
-      if (!novaDataValidade) {
+    if (item.tipo === 'produto') {
+      const novoPrecoCompra = req.body.precoCompra ? validarNumero(req.body.precoCompra, 0) : item.precoCompra;
+      const novoPrecoVenda = item.precoVenda;
+      
+      if (novoPrecoVenda < novoPrecoCompra) {
         return res.status(400).json({ 
           sucesso: false, 
-          mensagem: "Data de validade inválida" 
+          mensagem: "Preço de venda não pode ser menor que o preço de compra" 
         });
       }
       
-      const hoje = new Date();
-      hoje.setHours(0, 0, 0, 0);
+      item.precoCompra = novoPrecoCompra;
+      item.quantidadeMinima = validarNumero(req.body.quantidadeMinima, 0, 999999, item.quantidadeMinima);
+      item.quantidadeMaxima = validarNumero(req.body.quantidadeMaxima, 0, 999999, item.quantidadeMaxima);
+      item.armazem = sanitizarString(req.body.armazem) || item.armazem;
       
-      if (novaDataValidade <= hoje) {
-        return res.status(400).json({ 
-          sucesso: false, 
-          mensagem: "Data de validade deve ser futura" 
-        });
+      if (req.body.quantidade !== undefined) {
+        const novaQuantidade = validarNumero(req.body.quantidade, 0);
+        if (novaQuantidade !== item.quantidade) {
+          const diff = novaQuantidade - item.quantidade;
+          if (diff > 0) {
+            item.dataUltimaEntrada = new Date();
+          } else if (diff < 0) {
+            item.dataUltimaSaida = new Date();
+          }
+          item.quantidade = novaQuantidade;
+        }
       }
       
-      produto.dataValidade = novaDataValidade;
+      if (req.body.dataValidade) {
+        const novaDataValidade = validarData(req.body.dataValidade, true);
+        if (!novaDataValidade) {
+          return res.status(400).json({ 
+            sucesso: false, 
+            mensagem: "Data de validade inválida" 
+          });
+        }
+        const hoje = new Date();
+        hoje.setHours(0, 0, 0, 0);
+        if (novaDataValidade <= hoje) {
+          return res.status(400).json({ 
+            sucesso: false, 
+            mensagem: "Data de validade deve ser futura" 
+          });
+        }
+        item.dataValidade = novaDataValidade;
+      }
+    } else {
+      // Atualização de serviço
+      item.duracaoEstimada = validarNumero(req.body.duracaoEstimada, 0, Infinity, item.duracaoEstimada);
+      item.unidadeTempo = req.body.unidadeTempo || item.unidadeTempo;
+      item.precoHora = validarNumero(req.body.precoHora, 0, Infinity, item.precoHora);
+      item.executadoPor = sanitizarString(req.body.executadoPor) || item.executadoPor;
+      item.requerAgendamento = req.body.requerAgendamento === true;
+      item.localExecucao = sanitizarString(req.body.localExecucao) || item.localExecucao;
+      item.recursosNecessarios = sanitizarString(req.body.recursosNecessarios) || item.recursosNecessarios;
+      item.instrucoes = sanitizarString(req.body.instrucoes) || item.instrucoes;
     }
     
-    // Atualizar campos
-    Object.assign(produto, {
-      ...req.body,
-      produto: req.body.produto ? sanitizarString(req.body.produto) : produto.produto,
-      codigoBarras: req.body.codigoBarras ? sanitizarString(req.body.codigoBarras) : produto.codigoBarras,
-      codigoInterno: req.body.codigoInterno ? sanitizarString(req.body.codigoInterno) : produto.codigoInterno,
-      precoCompra: novoPrecoCompra,
-      precoVenda: novoPrecoVenda,
-      quantidade: req.body.quantidade !== undefined ? validarNumero(req.body.quantidade, 0) : produto.quantidade,
-      quantidadeMinima: req.body.quantidadeMinima !== undefined ? validarNumero(req.body.quantidadeMinima, 0) : produto.quantidadeMinima,
-      atualizadoPor: req.user?.nome || "Sistema",
-      updatedAt: new Date()
-    });
-    
-    await produto.save();
+    await item.save();
     
     res.json({ 
       sucesso: true, 
-      mensagem: "Produto atualizado com sucesso",
-      dados: produto 
+      mensagem: item.tipo === 'produto' ? "Produto atualizado com sucesso" : "Serviço atualizado com sucesso",
+      dados: item 
     });
     
   } catch (error) {
@@ -766,12 +836,12 @@ exports.updateStock = async (req, res) => {
     
     res.status(500).json({ 
       sucesso: false, 
-      mensagem: "Erro interno ao atualizar produto" 
+      mensagem: "Erro interno ao atualizar item" 
     });
   }
 };
 
-// PATCH - Ajustar estoque (BLINDADO)
+// PATCH - Ajustar estoque (apenas produtos)
 exports.ajustarEstoque = async (req, res) => {
   try {
     const { id } = req.params;
@@ -818,41 +888,27 @@ exports.ajustarEstoque = async (req, res) => {
       });
     }
     
-    const quantidadeAnterior = produto.quantidade;
-    
-    if (tipo === 'entrada') {
-      produto.quantidade += quantidadeNum;
-      produto.dataUltimaEntrada = new Date();
-    } else {
-      if (produto.quantidade < quantidadeNum) {
-        return res.status(400).json({ 
-          sucesso: false, 
-          mensagem: `Estoque insuficiente. Disponível: ${produto.quantidade}` 
-        });
-      }
-      produto.quantidade -= quantidadeNum;
-      produto.dataUltimaSaida = new Date();
+    if (produto.tipo !== 'produto') {
+      return res.status(400).json({ 
+        sucesso: false, 
+        mensagem: "Ajuste de estoque só é permitido para produtos físicos" 
+      });
     }
     
-    // Registrar movimentação
-    const dataHora = new Date().toLocaleString('pt-BR');
-    const movimentacao = `[${dataHora}] ${sanitizarString(motivo) || 'Ajuste de estoque'} - ${tipo.toUpperCase()}: ${quantidadeNum} unidades (Anterior: ${quantidadeAnterior} → Nova: ${produto.quantidade})`;
-    produto.observacoes = produto.observacoes 
-      ? `${movimentacao}\n${produto.observacoes}` 
-      : movimentacao;
-    
-    produto.updatedAt = new Date();
-    await produto.save();
+    await produto.registrarMovimentacao(
+      tipo,
+      quantidadeNum,
+      motivo || 'Ajuste manual de estoque',
+      req.user?.nome || "Sistema",
+      req.user?.id
+    );
     
     res.json({ 
       sucesso: true, 
-      mensagem: `Estoque ajustado: ${tipo} de ${quantidadeNum} unidades`,
+      mensagem: `Estoque ajustado: ${quantidadeNum} unidade(s) em ${tipo}`,
       dados: {
         produto: produto.produto,
-        quantidadeAnterior,
-        quantidadeNova: produto.quantidade,
-        tipo,
-        quantidade: quantidadeNum
+        quantidadeAtual: produto.quantidade
       }
     });
     
@@ -865,11 +921,11 @@ exports.ajustarEstoque = async (req, res) => {
   }
 };
 
-// DELETE - Remover produto (soft delete)
-exports.deleteStock = async (req, res) => {
+// POST - Registrar entrada (apenas produtos)
+exports.registrarEntrada = async (req, res) => {
   try {
     const { id } = req.params;
-    const { empresaId } = req.query;
+    const { empresaId, quantidade, motivo } = req.body;
     
     if (!id || !mongoose.Types.ObjectId.isValid(id)) {
       return res.status(400).json({ 
@@ -885,6 +941,14 @@ exports.deleteStock = async (req, res) => {
       });
     }
     
+    const quantidadeNum = parseInt(quantidade);
+    if (isNaN(quantidadeNum) || quantidadeNum <= 0) {
+      return res.status(400).json({ 
+        sucesso: false, 
+        mensagem: "Quantidade inválida" 
+      });
+    }
+    
     const produto = await Stock.findOne({ 
       _id: id, 
       empresaId: new mongoose.Types.ObjectId(empresaId) 
@@ -897,31 +961,52 @@ exports.deleteStock = async (req, res) => {
       });
     }
     
-    produto.ativo = false;
-    produto.updatedAt = new Date();
-    produto.atualizadoPor = req.user?.nome || "Sistema";
-    await produto.save();
+    if (produto.tipo !== 'produto') {
+      return res.status(400).json({ 
+        sucesso: false, 
+        mensagem: "Registro de entrada só é permitido para produtos físicos" 
+      });
+    }
+    
+    await produto.registrarMovimentacao(
+      'entrada',
+      quantidadeNum,
+      motivo || 'Entrada de estoque',
+      req.user?.nome || "Sistema",
+      req.user?.id
+    );
     
     res.json({ 
       sucesso: true, 
-      mensagem: "Produto removido com sucesso" 
+      mensagem: `${quantidadeNum} unidade(s) adicionada(s) ao estoque`,
+      dados: {
+        produto: produto.produto,
+        quantidadeAnterior: produto.quantidade - quantidadeNum,
+        quantidadeNova: produto.quantidade
+      }
     });
     
   } catch (error) {
-    console.error('Erro em deleteStock:', error);
+    console.error('Erro em registrarEntrada:', error);
     res.status(500).json({ 
       sucesso: false, 
-      mensagem: "Erro interno ao remover produto" 
+      mensagem: "Erro interno ao registrar entrada" 
     });
   }
 };
 
-// Adicione estas funções ao stockController.js
-
-// GET - Produtos vencidos
-exports.getProdutosVencidos = async (req, res) => {
+// POST - Registrar saída (apenas produtos)
+exports.registrarSaida = async (req, res) => {
   try {
-    const { empresaId } = req.query;
+    const { id } = req.params;
+    const { empresaId, quantidade, motivo } = req.body;
+    
+    if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ 
+        sucesso: false, 
+        mensagem: "ID do produto inválido" 
+      });
+    }
     
     if (!empresaId || !mongoose.Types.ObjectId.isValid(empresaId)) {
       return res.status(400).json({ 
@@ -930,31 +1015,119 @@ exports.getProdutosVencidos = async (req, res) => {
       });
     }
     
-    const hoje = new Date();
-    hoje.setHours(0, 0, 0, 0);
+    const quantidadeNum = parseInt(quantidade);
+    if (isNaN(quantidadeNum) || quantidadeNum <= 0) {
+      return res.status(400).json({ 
+        sucesso: false, 
+        mensagem: "Quantidade inválida" 
+      });
+    }
     
-    const produtos = await Stock.find({
-      empresaId: new mongoose.Types.ObjectId(empresaId),
-      ativo: true,
-      dataValidade: { $lt: hoje },
-      quantidade: { $gt: 0 }
-    })
-    .select('-__v')
-    .sort({ dataValidade: 1 })
-    .lean();
+    const produto = await Stock.findOne({ 
+      _id: id, 
+      empresaId: new mongoose.Types.ObjectId(empresaId) 
+    });
     
-    res.json({ sucesso: true, dados: produtos });
+    if (!produto) {
+      return res.status(404).json({ 
+        sucesso: false, 
+        mensagem: "Produto não encontrado" 
+      });
+    }
+    
+    if (produto.tipo !== 'produto') {
+      return res.status(400).json({ 
+        sucesso: false, 
+        mensagem: "Registro de saída só é permitido para produtos físicos" 
+      });
+    }
+    
+    if (produto.quantidade < quantidadeNum) {
+      return res.status(400).json({ 
+        sucesso: false, 
+        mensagem: `Estoque insuficiente. Disponível: ${produto.quantidade}` 
+      });
+    }
+    
+    await produto.registrarMovimentacao(
+      'saida',
+      quantidadeNum,
+      motivo || 'Saída de estoque',
+      req.user?.nome || "Sistema",
+      req.user?.id
+    );
+    
+    res.json({ 
+      sucesso: true, 
+      mensagem: `${quantidadeNum} unidade(s) removida(s) do estoque`,
+      dados: {
+        produto: produto.produto,
+        quantidadeAnterior: produto.quantidade + quantidadeNum,
+        quantidadeNova: produto.quantidade
+      }
+    });
     
   } catch (error) {
-    console.error('Erro em getProdutosVencidos:', error);
+    console.error('Erro em registrarSaida:', error);
     res.status(500).json({ 
       sucesso: false, 
-      mensagem: "Erro interno ao buscar produtos vencidos" 
+      mensagem: "Erro interno ao registrar saída" 
     });
   }
 };
 
-// POST - Devolver produto
+// DELETE - Remover item (soft delete)
+exports.deleteStock = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { empresaId } = req.query;
+    
+    if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ 
+        sucesso: false, 
+        mensagem: "ID do item inválido" 
+      });
+    }
+    
+    if (!empresaId || !mongoose.Types.ObjectId.isValid(empresaId)) {
+      return res.status(400).json({ 
+        sucesso: false, 
+        mensagem: "Empresa inválida" 
+      });
+    }
+    
+    const item = await Stock.findOne({ 
+      _id: id, 
+      empresaId: new mongoose.Types.ObjectId(empresaId) 
+    });
+    
+    if (!item) {
+      return res.status(404).json({ 
+        sucesso: false, 
+        mensagem: "Item não encontrado" 
+      });
+    }
+    
+    item.ativo = false;
+    item.updatedAt = new Date();
+    item.atualizadoPor = req.user?.nome || "Sistema";
+    await item.save();
+    
+    res.json({ 
+      sucesso: true, 
+      mensagem: item.tipo === 'produto' ? "Produto removido com sucesso" : "Serviço removido com sucesso" 
+    });
+    
+  } catch (error) {
+    console.error('Erro em deleteStock:', error);
+    res.status(500).json({ 
+      sucesso: false, 
+      mensagem: "Erro interno ao remover item" 
+    });
+  }
+};
+
+// POST - Devolver produto (apenas produtos)
 exports.devolverProduto = async (req, res) => {
   try {
     const { id } = req.params;
@@ -1002,6 +1175,13 @@ exports.devolverProduto = async (req, res) => {
       });
     }
     
+    if (produto.tipo !== 'produto') {
+      return res.status(400).json({ 
+        sucesso: false, 
+        mensagem: "Devolução só é permitida para produtos físicos" 
+      });
+    }
+    
     if (produto.quantidade < quantidadeNum) {
       return res.status(400).json({ 
         sucesso: false, 
@@ -1036,7 +1216,7 @@ exports.devolverProduto = async (req, res) => {
   }
 };
 
-// POST - Descartar produto
+// POST - Descartar produto (apenas produtos)
 exports.descartarProduto = async (req, res) => {
   try {
     const { id } = req.params;
@@ -1076,6 +1256,13 @@ exports.descartarProduto = async (req, res) => {
       });
     }
     
+    if (produto.tipo !== 'produto') {
+      return res.status(400).json({ 
+        sucesso: false, 
+        mensagem: "Descarte só é permitido para produtos físicos" 
+      });
+    }
+    
     if (produto.quantidade < quantidadeNum) {
       return res.status(400).json({ 
         sucesso: false, 
@@ -1110,148 +1297,7 @@ exports.descartarProduto = async (req, res) => {
   }
 };
 
-// POST - Registrar entrada
-exports.registrarEntrada = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { empresaId, quantidade, motivo } = req.body;
-    
-    if (!id || !mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({ 
-        sucesso: false, 
-        mensagem: "ID do produto inválido" 
-      });
-    }
-    
-    if (!empresaId || !mongoose.Types.ObjectId.isValid(empresaId)) {
-      return res.status(400).json({ 
-        sucesso: false, 
-        mensagem: "Empresa inválida" 
-      });
-    }
-    
-    const quantidadeNum = parseInt(quantidade);
-    if (isNaN(quantidadeNum) || quantidadeNum <= 0) {
-      return res.status(400).json({ 
-        sucesso: false, 
-        mensagem: "Quantidade inválida" 
-      });
-    }
-    
-    const produto = await Stock.findOne({ 
-      _id: id, 
-      empresaId: new mongoose.Types.ObjectId(empresaId) 
-    });
-    
-    if (!produto) {
-      return res.status(404).json({ 
-        sucesso: false, 
-        mensagem: "Produto não encontrado" 
-      });
-    }
-    
-    await produto.registrarMovimentacao(
-      'entrada',
-      quantidadeNum,
-      motivo || 'Entrada de estoque',
-      req.user?.nome || "Sistema",
-      req.user?.id
-    );
-    
-    res.json({ 
-      sucesso: true, 
-      mensagem: `${quantidadeNum} unidade(s) adicionada(s) ao estoque`,
-      dados: {
-        produto: produto.produto,
-        quantidadeAnterior: produto.quantidade - quantidadeNum,
-        quantidadeNova: produto.quantidade
-      }
-    });
-    
-  } catch (error) {
-    console.error('Erro em registrarEntrada:', error);
-    res.status(500).json({ 
-      sucesso: false, 
-      mensagem: "Erro interno ao registrar entrada" 
-    });
-  }
-};
-
-// POST - Registrar saída
-exports.registrarSaida = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { empresaId, quantidade, motivo } = req.body;
-    
-    if (!id || !mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({ 
-        sucesso: false, 
-        mensagem: "ID do produto inválido" 
-      });
-    }
-    
-    if (!empresaId || !mongoose.Types.ObjectId.isValid(empresaId)) {
-      return res.status(400).json({ 
-        sucesso: false, 
-        mensagem: "Empresa inválida" 
-      });
-    }
-    
-    const quantidadeNum = parseInt(quantidade);
-    if (isNaN(quantidadeNum) || quantidadeNum <= 0) {
-      return res.status(400).json({ 
-        sucesso: false, 
-        mensagem: "Quantidade inválida" 
-      });
-    }
-    
-    const produto = await Stock.findOne({ 
-      _id: id, 
-      empresaId: new mongoose.Types.ObjectId(empresaId) 
-    });
-    
-    if (!produto) {
-      return res.status(404).json({ 
-        sucesso: false, 
-        mensagem: "Produto não encontrado" 
-      });
-    }
-    
-    if (produto.quantidade < quantidadeNum) {
-      return res.status(400).json({ 
-        sucesso: false, 
-        mensagem: `Estoque insuficiente. Disponível: ${produto.quantidade}` 
-      });
-    }
-    
-    await produto.registrarMovimentacao(
-      'saida',
-      quantidadeNum,
-      motivo || 'Saída de estoque',
-      req.user?.nome || "Sistema",
-      req.user?.id
-    );
-    
-    res.json({ 
-      sucesso: true, 
-      mensagem: `${quantidadeNum} unidade(s) removida(s) do estoque`,
-      dados: {
-        produto: produto.produto,
-        quantidadeAnterior: produto.quantidade + quantidadeNum,
-        quantidadeNova: produto.quantidade
-      }
-    });
-    
-  } catch (error) {
-    console.error('Erro em registrarSaida:', error);
-    res.status(500).json({ 
-      sucesso: false, 
-      mensagem: "Erro interno ao registrar saída" 
-    });
-  }
-};
-
-// GET - Buscar por lote
+// GET - Buscar por lote (apenas produtos)
 exports.getStockByLote = async (req, res) => {
   try {
     const { lote } = req.params;
@@ -1266,6 +1312,7 @@ exports.getStockByLote = async (req, res) => {
     
     const produtos = await Stock.find({
       empresaId: new mongoose.Types.ObjectId(empresaId),
+      tipo: 'produto',
       numeroLote: lote,
       ativo: true
     })
@@ -1283,7 +1330,7 @@ exports.getStockByLote = async (req, res) => {
   }
 };
 
-// GET - Buscar por armazém
+// GET - Buscar por armazém (apenas produtos)
 exports.getStockByArmazem = async (req, res) => {
   try {
     const { armazem } = req.params;
@@ -1298,6 +1345,7 @@ exports.getStockByArmazem = async (req, res) => {
     
     const produtos = await Stock.find({
       empresaId: new mongoose.Types.ObjectId(empresaId),
+      tipo: 'produto',
       armazem: armazem,
       ativo: true
     })
@@ -1326,7 +1374,7 @@ exports.getStockByArmazem = async (req, res) => {
   }
 };
 
-// GET - Relatório de validade
+// GET - Relatório de validade (apenas produtos)
 exports.relatorioValidade = async (req, res) => {
   try {
     const { empresaId, dias = 30 } = req.query;
@@ -1347,6 +1395,7 @@ exports.relatorioValidade = async (req, res) => {
     
     const produtos = await Stock.find({
       empresaId: new mongoose.Types.ObjectId(empresaId),
+      tipo: 'produto',
       ativo: true,
       dataValidade: { $lte: limite }
     })
@@ -1378,7 +1427,7 @@ exports.relatorioValidade = async (req, res) => {
   }
 };
 
-// GET - Relatório de movimentações
+// GET - Relatório de movimentações (apenas produtos)
 exports.relatorioMovimentacoes = async (req, res) => {
   try {
     const { empresaId, inicio, fim, tipo } = req.query;
@@ -1396,6 +1445,7 @@ exports.relatorioMovimentacoes = async (req, res) => {
     
     const produtos = await Stock.find({
       empresaId: new mongoose.Types.ObjectId(empresaId),
+      tipo: 'produto',
       ativo: true,
       'historicoMovimentacoes.data': { $gte: dataInicio, $lte: dataFim }
     })
@@ -1445,8 +1495,6 @@ exports.relatorioMovimentacoes = async (req, res) => {
   }
 };
 
-
-
 // GET - Dashboard de stock
 exports.getDashboardStock = async (req, res) => {
   try {
@@ -1461,14 +1509,20 @@ exports.getDashboardStock = async (req, res) => {
     
     const empresaIdObj = new mongoose.Types.ObjectId(empresaId);
     
-    const [topProdutos, produtosAlerta, categorias, totais, vencidos, proximosVencer, baixoEstoque, totalProdutos] = await Promise.all([
-      Stock.find({ empresaId: empresaIdObj, ativo: true })
+    const [topProdutos, topServicos, produtosAlerta, categorias, totais, vencidos, proximosVencer, baixoEstoque, totalProdutos, totalServicos] = await Promise.all([
+      Stock.find({ empresaId: empresaIdObj, ativo: true, tipo: 'produto' })
         .sort({ valorTotalVenda: -1 })
         .limit(10)
         .select('produto quantidade precoVenda valorTotalVenda')
         .lean(),
+      Stock.find({ empresaId: empresaIdObj, ativo: true, tipo: 'servico' })
+        .sort({ precoVenda: -1 })
+        .limit(10)
+        .select('produto precoVenda duracaoEstimada unidadeTempo')
+        .lean(),
       Stock.find({
         empresaId: empresaIdObj,
+        tipo: 'produto',
         ativo: true,
         $expr: { $lte: ["$quantidade", "$quantidadeMinima"] },
         quantidade: { $gt: 0 }
@@ -1480,8 +1534,8 @@ exports.getDashboardStock = async (req, res) => {
         { $match: { empresaId: empresaIdObj, ativo: true } },
         { $group: { 
           _id: "$categoria", 
-          total: { $sum: "$quantidade" }, 
-          valor: { $sum: { $multiply: ["$quantidade", "$precoVenda"] } } 
+          total: { $sum: { $cond: [{ $eq: ["$tipo", "produto"] }, "$quantidade", 1] } }, 
+          valor: { $sum: { $multiply: [{ $ifNull: ["$quantidade", 1] }, "$precoVenda"] } } 
         }},
         { $sort: { valor: -1 } },
         { $limit: 10 }
@@ -1490,7 +1544,8 @@ exports.getDashboardStock = async (req, res) => {
       calcularProdutosVencidos(empresaIdObj),
       calcularProdutosProximosVencer(empresaIdObj),
       calcularProdutosEstoqueBaixo(empresaIdObj),
-      Stock.countDocuments({ empresaId: empresaIdObj, ativo: true })
+      Stock.countDocuments({ empresaId: empresaIdObj, ativo: true, tipo: 'produto' }),
+      Stock.countDocuments({ empresaId: empresaIdObj, ativo: true, tipo: 'servico' })
     ]);
     
     res.json({
@@ -1498,15 +1553,19 @@ exports.getDashboardStock = async (req, res) => {
       dados: {
         estatisticas: {
           totalProdutos,
-          totalQuantidade: totais.totalQuantidade || 0,
-          valorTotalCompra: totais.totalValorCompra || 0,
-          valorTotalVenda: totais.totalValorVenda || 0,
+          totalServicos,
+          totalItens: totalProdutos + totalServicos,
+          totalQuantidadeProdutos: totais.totalQuantidade || 0,
+          valorTotalProdutos: totais.totalValorVenda || 0,
+          valorTotalServicos: totais.totalValorCompra || 0,
+          valorTotalGeral: totais.totalValorVenda || 0,
           lucroEstimado: totais.totalLucroEstimado || 0,
           vencidos: vencidos || 0,
           proximosVencer: proximosVencer || 0,
           baixoEstoque: baixoEstoque || 0
         },
         topProdutos: topProdutos || [],
+        topServicos: topServicos || [],
         produtosAlerta: produtosAlerta || [],
         categorias: categorias || []
       }

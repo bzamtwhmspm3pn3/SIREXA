@@ -1,4 +1,4 @@
-// src/pages/Vendas.jsx 
+// src/pages/Vendas.jsx
 import React, { useState, useEffect } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import Layout from "../components/Layout";
@@ -9,7 +9,7 @@ import {
   User, CreditCard, DollarSign, FileText,
   Minus, ChevronLeft, ChevronRight, ShoppingCart, 
   Package, Filter, Barcode, Building2, RefreshCw,
-  Percent
+  Percent, Wrench
 } from "lucide-react";
 import { gerarFacturaProfissional } from "../services/facturaService";
 
@@ -99,7 +99,6 @@ const Vendas = () => {
 
   useEffect(() => {
     if (empresaSelecionada) {
-      console.log("🏢 Carregando dados para empresa ID:", empresaSelecionada);
       carregarVendas();
       carregarClientes();
       carregarProdutos();
@@ -123,7 +122,8 @@ const Vendas = () => {
   useEffect(() => {
     if (!produtos.length) return;
     
-    let filtrados = produtos.filter(p => p.quantidade > 0);
+    // 🔧 CORREÇÃO: Serviços sempre disponíveis (ignorar quantidade)
+    let filtrados = produtos.filter(p => p.tipo === 'servico' || (p.quantidade > 0 && p.tipo === 'produto'));
     
     if (buscaProduto) {
       filtrados = filtrados.filter(p => 
@@ -144,7 +144,6 @@ const Vendas = () => {
   // Para técnico: definir empresa automaticamente
   useEffect(() => {
     if (isTecnico() && userEmpresaId && !empresaSelecionada) {
-      console.log("🔧 Técnico - Definindo empresa automaticamente:", userEmpresaId);
       setEmpresaSelecionada(userEmpresaId);
     }
   }, [isTecnico, userEmpresaId, empresaSelecionada]);
@@ -211,7 +210,6 @@ const Vendas = () => {
           taxaRetencao: config.taxaRetencao || 7
         });
       } else {
-        console.log('Usando configuração fiscal padrão');
         setConfigFiscal({
           incluiIVA: true,
           taxaIVA: 14,
@@ -292,7 +290,7 @@ const Vendas = () => {
     if (!empresaSelecionada) return;
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch(`https://sirexa-api.onrender.com/api/stock?empresaId=${empresaSelecionada}`, {
+      const response = await fetch(`https://sirexa-api.onrender.com/api/stock?empresaId=${empresaSelecionada}&ativo=true`, {
         headers: { "Authorization": `Bearer ${token}` }
       });
       
@@ -305,7 +303,7 @@ const Vendas = () => {
       const data = await response.json();
       const produtosData = Array.isArray(data) ? data : (data.dados || []);
       setProdutos(produtosData);
-      setProdutosFiltrados(produtosData.filter(p => p.quantidade > 0));
+      setProdutosFiltrados(produtosData.filter(p => p.tipo === 'servico' || p.quantidade > 0));
     } catch (error) {
       console.error("Erro ao carregar produtos:", error);
     }
@@ -355,20 +353,21 @@ const Vendas = () => {
       
       if (response.ok) {
         const data = await response.json();
-        const produto = data.dados || data;
-        if (produto.quantidade > 0) {
-          adicionarAoCarrinho(produto);
-          mostrarMensagem(`Produto adicionado: ${produto.produto}`, "sucesso");
+        const item = data.dados || data;
+        // Serviços sempre disponíveis, produtos verificam estoque
+        if (item.tipo === 'servico' || item.quantidade > 0) {
+          adicionarAoCarrinho(item);
+          mostrarMensagem(`${item.tipo === 'servico' ? 'Serviço' : 'Produto'} adicionado: ${item.produto}`, "sucesso");
           setCodigoBarrasInput("");
         } else {
-          mostrarMensagem(`Produto "${produto.produto}" sem estoque disponível`, "erro");
+          mostrarMensagem(`"${item.produto}" sem estoque disponível`, "erro");
         }
       } else {
-        mostrarMensagem("Produto não encontrado", "erro");
+        mostrarMensagem("Item não encontrado", "erro");
       }
     } catch (error) {
       console.error("Erro:", error);
-      mostrarMensagem("Erro ao buscar produto", "erro");
+      mostrarMensagem("Erro ao buscar item", "erro");
     }
   };
 
@@ -393,37 +392,44 @@ const Vendas = () => {
 
   const categorias = [...new Set(produtos.map(p => p.categoria).filter(Boolean))];
 
-  const adicionarAoCarrinho = (produto) => {
-    if (produto.quantidade <= 0) {
-      mostrarMensagem(`Produto "${produto.produto}" sem estoque`, "erro");
-      return;
+  // 🔧 CORREÇÃO: Adicionar ao carrinho com suporte para serviços
+  const adicionarAoCarrinho = (item) => {
+    // Para produtos, verificar estoque
+    if (item.tipo !== 'servico') {
+      if (item.quantidade <= 0) {
+        mostrarMensagem(`Produto "${item.produto}" sem estoque`, "erro");
+        return;
+      }
+
+      const itemExistente = carrinho.find(cartItem => cartItem._id === item._id);
+      const quantidadeAtualNoCarrinho = itemExistente ? itemExistente.quantidade : 0;
+      
+      if (quantidadeAtualNoCarrinho + 1 > item.quantidade) {
+        mostrarMensagem(`Estoque insuficiente para "${item.produto}". Disponível: ${item.quantidade}`, "erro");
+        return;
+      }
     }
 
-    const itemExistente = carrinho.find(item => item._id === produto._id);
-    const quantidadeAtualNoCarrinho = itemExistente ? itemExistente.quantidade : 0;
-    
-    if (quantidadeAtualNoCarrinho + 1 > produto.quantidade) {
-      mostrarMensagem(`Estoque insuficiente para "${produto.produto}". Disponível: ${produto.quantidade}`, "erro");
-      return;
-    }
-
+    // Adicionar ao carrinho
+    const itemExistente = carrinho.find(cartItem => cartItem._id === item._id);
     if (itemExistente) {
-      setCarrinho(carrinho.map(item =>
-        item._id === produto._id ? { 
-          ...item, 
-          quantidade: item.quantidade + 1, 
-          total: item.precoUnitario * (item.quantidade + 1) 
-        } : item
+      setCarrinho(carrinho.map(cartItem =>
+        cartItem._id === item._id ? { 
+          ...cartItem, 
+          quantidade: cartItem.quantidade + 1, 
+          total: cartItem.precoUnitario * (cartItem.quantidade + 1) 
+        } : cartItem
       ));
     } else {
       setCarrinho([...carrinho, { 
-        ...produto, 
+        ...item, 
         quantidade: 1,
-        produtoId: produto._id,
-        produtoOuServico: produto.produto,
-        precoUnitario: produto.precoVenda,
-        total: produto.precoVenda,
-        taxaIVA: produto.taxaIVA || configFiscal.taxaIVA
+        produtoId: item._id,
+        produtoOuServico: item.produto,
+        precoUnitario: item.precoVenda,
+        total: item.precoVenda,
+        taxaIVA: item.taxaIVA || configFiscal.taxaIVA,
+        tipo: item.tipo || 'produto'
       }]);
     }
   };
@@ -432,13 +438,14 @@ const Vendas = () => {
     setCarrinho(carrinho.filter(item => item._id !== id));
   };
 
+  // 🔧 CORREÇÃO: Atualizar quantidade com suporte para serviços
   const atualizarQuantidade = (id, quantidade) => {
-    const produto = produtos.find(p => p._id === id);
+    const itemOriginal = produtos.find(p => p._id === id);
     
     if (quantidade <= 0) {
       removerDoCarrinho(id);
-    } else if (produto && quantidade > produto.quantidade) {
-      mostrarMensagem(`Estoque insuficiente. Disponível: ${produto.quantidade}`, "erro");
+    } else if (itemOriginal && itemOriginal.tipo !== 'servico' && quantidade > itemOriginal.quantidade) {
+      mostrarMensagem(`Estoque insuficiente. Disponível: ${itemOriginal.quantidade}`, "erro");
     } else {
       setCarrinho(carrinho.map(item =>
         item._id === id ? { 
@@ -485,15 +492,13 @@ const Vendas = () => {
   };
 
   const finalizarVenda = async () => {
-    console.log("=== INICIANDO FINALIZAÇÃO DA VENDA ===");
-
     if (!empresaSelecionada) {
       mostrarMensagem("Selecione uma empresa", "erro");
       return;
     }
 
     if (carrinho.length === 0) {
-      mostrarMensagem("Adicione produtos ao carrinho", "erro");
+      mostrarMensagem("Adicione itens ao carrinho", "erro");
       return;
     }
 
@@ -516,18 +521,6 @@ const Vendas = () => {
     const totalRetencao = configFiscal.incluiRetencao ? subtotalComDesconto * (configFiscal.taxaRetencao / 100) : 0;
     const totalFinal = subtotalComDesconto + totalIVA - totalRetencao;
 
-    console.log("Dados da venda:", {
-      subtotal,
-      desconto: descontoNumerico,
-      subtotalComDesconto,
-      taxaIVA: configFiscal.taxaIVA,
-      totalIVA,
-      incluiRetencao: configFiscal.incluiRetencao,
-      taxaRetencao: configFiscal.taxaRetencao,
-      totalRetencao,
-      totalFinal
-    });
-
     let empresaAtual;
     let empresaNifValue;
     
@@ -540,7 +533,6 @@ const Vendas = () => {
         telefone: userEmpresaTelefone,
         endereco: userEmpresaEndereco
       };
-      console.log("🔧 Técnico - Usando empresa:", { nome: userEmpresaNome, nif: userEmpresaNif });
     } else {
       empresaAtual = empresas.find(e => e._id === empresaSelecionada);
       empresaNifValue = empresaAtual?.nif;
@@ -569,7 +561,8 @@ const Vendas = () => {
           quantidade: item.quantidade,
           precoUnitario: item.precoUnitario,
           total: item.total,
-          taxaIVA: configFiscal.taxaIVA
+          taxaIVA: configFiscal.taxaIVA,
+          tipo: item.tipo
         })),
         desconto: descontoNumerico,
         retencao: totalRetencao,
@@ -619,7 +612,7 @@ const Vendas = () => {
         setEmitindo(false);
       }
     } catch (error) {
-      console.error("❌ Erro:", error);
+      console.error("Erro:", error);
       mostrarMensagem("Erro ao conectar ao servidor", "erro");
       setEmitindo(false);
     }
@@ -743,7 +736,7 @@ const Vendas = () => {
                 <input type="text" placeholder="Pesquisar venda por cliente ou número da factura..." className="w-full pl-10 p-3 rounded-xl bg-gray-800 border border-gray-700 text-white focus:border-blue-500" value={busca} onChange={(e) => setBusca(e.target.value)} />
               </div>
               <button onClick={() => { resetFormVenda(); setModalOpen(true); }} className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 px-5 py-3 rounded-xl transition flex items-center gap-2 shadow-lg">
-                <Plus size={18} /> Nova Venda
+                <Plus size={18} /> Nova Venda/Serviço
               </button>
             </div>
 
@@ -795,7 +788,7 @@ const Vendas = () => {
                         <th className="p-4 text-center">Pagamento</th>
                         <th className="p-4 text-center">Status</th>
                         <th className="p-4 text-center">Ações</th>
-                      </tr>
+                       </tr>
                     </thead>
                     <tbody>
                       {vendasFiltradas.map(v => (
@@ -827,13 +820,13 @@ const Vendas = () => {
               </div>
             )}
 
-            {/* Modal de Nova Venda */}
+            {/* Modal de Nova Venda/Serviço */}
             {modalOpen && !redirecting && (
               <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
                 <div className="bg-gray-800 rounded-2xl w-full max-w-6xl max-h-[90vh] overflow-y-auto">
                   <div className="sticky top-0 bg-gradient-to-r from-blue-600/20 to-purple-600/20 px-6 py-4 border-b border-gray-700">
                     <div className="flex justify-between items-center">
-                      <div className="flex items-center gap-3"><div className="bg-green-600 p-2 rounded-lg"><ShoppingCart className="text-white" size={20} /></div><h2 className="text-xl font-bold text-white">Nova Venda</h2></div>
+                      <div className="flex items-center gap-3"><div className="bg-green-600 p-2 rounded-lg"><ShoppingCart className="text-white" size={20} /></div><h2 className="text-xl font-bold text-white">Nova Venda / Serviço</h2></div>
                       <button onClick={() => { setModalOpen(false); resetFormVenda(); }} className="text-gray-400 hover:text-white"><X size={24} /></button>
                     </div>
                   </div>
@@ -920,13 +913,34 @@ const Vendas = () => {
                           <p className="text-xs text-gray-400 mt-2">📦 Use leitor USB ou digite manualmente. Pressione ENTER para buscar.</p>
                         </div>
 
-                        {/* Produtos */}
+                        {/* Produtos e Serviços */}
                         <div className="bg-gray-700/30 rounded-xl p-4">
-                          <div className="flex justify-between items-center mb-4"><h3 className="text-md font-semibold text-blue-400 flex items-center gap-2"><Package className="w-4 h-4" /> Produtos em Stock</h3><button onClick={() => setShowFiltros(!showFiltros)} className="flex items-center gap-1 px-2 py-1 bg-gray-600 rounded-lg text-sm"><Filter size={14} /> Filtros</button></div>
-                          <div className="relative mb-3"><Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} /><input type="text" className="w-full pl-9 p-2 rounded-lg bg-gray-700/50 border border-gray-600 text-white text-sm" placeholder="Buscar produto..." value={buscaProduto} onChange={(e) => setBuscaProduto(e.target.value)} /></div>
+                          <div className="flex justify-between items-center mb-4"><h3 className="text-md font-semibold text-blue-400 flex items-center gap-2"><Package className="w-4 h-4" /> Produtos e Serviços</h3><button onClick={() => setShowFiltros(!showFiltros)} className="flex items-center gap-1 px-2 py-1 bg-gray-600 rounded-lg text-sm"><Filter size={14} /> Filtros</button></div>
+                          <div className="relative mb-3"><Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} /><input type="text" className="w-full pl-9 p-2 rounded-lg bg-gray-700/50 border border-gray-600 text-white text-sm" placeholder="Buscar produto ou serviço..." value={buscaProduto} onChange={(e) => setBuscaProduto(e.target.value)} /></div>
                           {showFiltros && (<div className="mb-3 p-3 bg-gray-700/30 rounded-lg"><select className="w-full p-2 rounded-lg bg-gray-700 border border-gray-600 text-white text-sm" value={filtroCategoria} onChange={(e) => setFiltroCategoria(e.target.value)}><option value="">Todas Categorias</option>{categorias.map(cat => <option key={cat} value={cat}>{cat}</option>)}</select></div>)}
                           <div className="max-h-80 overflow-y-auto space-y-2">
-                            {produtosFiltrados.length === 0 ? <p className="text-gray-400 text-center py-4">Nenhum produto encontrado</p> : produtosFiltrados.map(p => (<div key={p._id} className="bg-gray-700/50 rounded-lg p-3 flex justify-between items-center hover:bg-gray-700 transition"><div className="flex-1"><p className="font-medium text-white">{p.produto}</p><div className="flex gap-3 text-xs"><span className="text-green-400">{p.precoVenda?.toLocaleString()} Kz</span><span className="text-gray-400">Estoque: {p.quantidade}</span>{p.codigoBarras && <span className="text-gray-500 font-mono">📷 {p.codigoBarras}</span>}</div></div><button onClick={() => adicionarAoCarrinho(p)} className="bg-blue-600 hover:bg-blue-700 p-2 rounded-lg transition" disabled={p.quantidade <= 0}><Plus size={16} /></button></div>))}
+                            {produtosFiltrados.length === 0 ? <p className="text-gray-400 text-center py-4">Nenhum item encontrado</p> : produtosFiltrados.map(p => (
+                              <div key={p._id} className="bg-gray-700/50 rounded-lg p-3 flex justify-between items-center hover:bg-gray-700 transition">
+                                <div className="flex-1">
+                                  <p className="font-medium text-white">
+                                    {p.produto}
+                                    {p.tipo === 'servico' && <span className="ml-2 text-xs bg-purple-500/20 text-purple-400 px-1 py-0.5 rounded">Serviço</span>}
+                                  </p>
+                                  <div className="flex gap-3 text-xs">
+                                    <span className="text-green-400">{p.precoVenda?.toLocaleString()} Kz</span>
+                                    {p.tipo !== 'servico' ? (
+                                      <span className="text-gray-400">Estoque: {p.quantidade}</span>
+                                    ) : (
+                                      <span className="text-purple-400">🛠️ Serviço</span>
+                                    )}
+                                    {p.codigoBarras && <span className="text-gray-500 font-mono">📷 {p.codigoBarras}</span>}
+                                  </div>
+                                </div>
+                                <button onClick={() => adicionarAoCarrinho(p)} className="bg-blue-600 hover:bg-blue-700 p-2 rounded-lg transition">
+                                  <Plus size={16} />
+                                </button>
+                              </div>
+                            ))}
                           </div>
                         </div>
 
@@ -934,17 +948,40 @@ const Vendas = () => {
                         <div className="bg-gray-700/30 rounded-xl p-4">
                           <h3 className="text-md font-semibold text-yellow-400 mb-4 flex items-center gap-2"><ShoppingCart className="w-4 h-4" /> Carrinho ({carrinho.length} itens)</h3>
                           <div className="max-h-64 overflow-y-auto space-y-2">
-                            {carrinho.map(item => (<div key={item._id} className="bg-gray-700/50 rounded-lg p-3"><div className="flex justify-between items-start"><div className="flex-1"><p className="font-medium text-white">{item.produtoOuServico}</p><p className="text-xs text-gray-400">{item.precoUnitario?.toLocaleString()} Kz/un</p></div><button onClick={() => removerDoCarrinho(item._id)} className="text-red-400"><Trash2 size={16} /></button></div><div className="flex justify-between items-center mt-2"><div className="flex items-center gap-2"><button onClick={() => atualizarQuantidade(item._id, item.quantidade - 1)} className="p-1 bg-gray-600 rounded"><Minus size={14} /></button><input type="number" min="1" className="w-16 p-1 rounded bg-gray-600 text-white text-center" value={item.quantidade} onChange={(e) => atualizarQuantidade(item._id, parseInt(e.target.value) || 0)} /><button onClick={() => atualizarQuantidade(item._id, item.quantidade + 1)} className="p-1 bg-gray-600 rounded"><Plus size={14} /></button></div><p className="text-white font-medium">{item.total.toLocaleString()} Kz</p></div></div>))}
+                            {carrinho.map(item => (
+                              <div key={item._id} className="bg-gray-700/50 rounded-lg p-3">
+                                <div className="flex justify-between items-start">
+                                  <div className="flex-1">
+                                    <p className="font-medium text-white">
+                                      {item.produtoOuServico}
+                                      {item.tipo === 'servico' && <span className="ml-2 text-xs bg-purple-500/20 text-purple-400 px-1 py-0.5 rounded">Serviço</span>}
+                                    </p>
+                                    <p className="text-xs text-gray-400">{item.precoUnitario?.toLocaleString()} Kz/un</p>
+                                  </div>
+                                  <button onClick={() => removerDoCarrinho(item._id)} className="text-red-400"><Trash2 size={16} /></button>
+                                </div>
+                                <div className="flex justify-between items-center mt-2">
+                                  <div className="flex items-center gap-2">
+                                    <button onClick={() => atualizarQuantidade(item._id, item.quantidade - 1)} className="p-1 bg-gray-600 rounded"><Minus size={14} /></button>
+                                    <input type="number" min="1" className="w-16 p-1 rounded bg-gray-600 text-white text-center" value={item.quantidade} onChange={(e) => atualizarQuantidade(item._id, parseInt(e.target.value) || 0)} />
+                                    <button onClick={() => atualizarQuantidade(item._id, item.quantidade + 1)} className="p-1 bg-gray-600 rounded"><Plus size={14} /></button>
+                                  </div>
+                                  <p className="text-white font-medium">{item.total.toLocaleString()} Kz</p>
+                                </div>
+                              </div>
+                            ))}
                             {carrinho.length === 0 && <p className="text-gray-400 text-center py-4">Carrinho vazio</p>}
                           </div>
 
-                          {carrinho.length > 0 && (<div className="mt-4 pt-4 border-t border-gray-600 space-y-2">
-                            <div className="flex justify-between text-gray-300"><span>Subtotal:</span><span>{formatarMoeda(subtotal)} Kz</span></div>
-                            {configFiscal.incluiIVA && (<div className="flex justify-between text-gray-300"><span>IVA ({configFiscal.taxaIVA}%):</span><span>{formatarMoeda(totalIVA)} Kz</span></div>)}
-                            {configFiscal.incluiRetencao && (<div className="flex justify-between text-red-400"><span>Retenção ({configFiscal.taxaRetencao}%):</span><span>- {formatarMoeda(totalRetencao)} Kz</span></div>)}
-                            {descontoNumerico > 0 && (<div className="flex justify-between text-red-400"><span>Desconto:</span><span>- {formatarMoeda(descontoNumerico)} Kz</span></div>)}
-                            <div className="flex justify-between text-white font-bold text-lg pt-2 border-t border-gray-600"><span>TOTAL:</span><span className="text-green-400">{formatarMoeda(totalFinal)} Kz</span></div>
-                          </div>)}
+                          {carrinho.length > 0 && (
+                            <div className="mt-4 pt-4 border-t border-gray-600 space-y-2">
+                              <div className="flex justify-between text-gray-300"><span>Subtotal:</span><span>{formatarMoeda(subtotal)} Kz</span></div>
+                              {configFiscal.incluiIVA && (<div className="flex justify-between text-gray-300"><span>IVA ({configFiscal.taxaIVA}%):</span><span>{formatarMoeda(totalIVA)} Kz</span></div>)}
+                              {configFiscal.incluiRetencao && (<div className="flex justify-between text-red-400"><span>Retenção ({configFiscal.taxaRetencao}%):</span><span>- {formatarMoeda(totalRetencao)} Kz</span></div>)}
+                              {descontoNumerico > 0 && (<div className="flex justify-between text-red-400"><span>Desconto:</span><span>- {formatarMoeda(descontoNumerico)} Kz</span></div>)}
+                              <div className="flex justify-between text-white font-bold text-lg pt-2 border-t border-gray-600"><span>TOTAL:</span><span className="text-green-400">{formatarMoeda(totalFinal)} Kz</span></div>
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -983,56 +1020,59 @@ const Vendas = () => {
                       </div>
                     </div>
                     <div className="bg-gray-700/30 rounded-xl p-4 mb-6">
-                      <h3 className="text-md font-semibold text-yellow-400 mb-3">Itens da Venda</h3>
-                      <div className="overflow-x-auto">
-                        <table className="w-full">
-                          <thead className="bg-gray-700">
-                            <tr className="text-white">
-                              <th className="p-2 text-left">Produto</th>
-                              <th className="p-2 text-center">Qtd</th>
-                              <th className="p-2 text-right">Preço Unit.</th>
-                              <th className="p-2 text-right">Total</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {vendaSelecionada.itens?.map((item, idx) => (
-                              <tr key={idx} className="border-t border-gray-600">
-                                <td className="p-2 text-white">{item.produtoOuServico}</td>
-                                <td className="p-2 text-center text-gray-300">{item.quantidade}</td>
-                                <td className="p-2 text-right text-gray-300">{item.precoUnitario?.toLocaleString()} Kz</td>
-                                <td className="p-2 text-right text-white">{item.total?.toLocaleString()} Kz</td>
-                              </tr>
-                            ))}
-                          </tbody>
-                          <tfoot className="border-t border-gray-600">
-                            <tr>
-                              <td colSpan="3" className="p-2 text-right text-gray-300">Subtotal:</td>
-                              <td className="p-2 text-right text-white">{vendaSelecionada.subtotal?.toLocaleString()} Kz</td>
-                            </tr>
-                            {vendaSelecionada.desconto > 0 && (
-                              <tr>
-                                <td colSpan="3" className="p-2 text-right text-red-400">Desconto:</td>
-                                <td className="p-2 text-right text-red-400">- {vendaSelecionada.desconto?.toLocaleString()} Kz</td>
-                              </tr>
-                            )}
-                            <tr>
-                              <td colSpan="3" className="p-2 text-right text-gray-300">IVA ({vendaSelecionada.taxaIVA || 14}%):</td>
-                              <td className="p-2 text-right text-white">{vendaSelecionada.totalIva?.toLocaleString()} Kz</td>
-                            </tr>
-                            {vendaSelecionada.totalRetencao > 0 && (
-                              <tr>
-                                <td colSpan="3" className="p-2 text-right text-red-400">Retenção ({vendaSelecionada.taxaRetencao || 0}%):</td>
-                                <td className="p-2 text-right text-red-400">- {vendaSelecionada.totalRetencao?.toLocaleString()} Kz</td>
-                              </tr>
-                            )}
-                            <tr className="border-t-2 border-gray-600">
-                              <td colSpan="3" className="p-2 text-right text-white font-bold">TOTAL:</td>
-                              <td className="p-2 text-right text-green-400 font-bold">{vendaSelecionada.total?.toLocaleString()} Kz</td>
-                            </tr>
-                          </tfoot>
-                        </table>
-                      </div>
-                    </div>
+  <h3 className="text-md font-semibold text-yellow-400 mb-3">Itens da Venda</h3>
+  <div className="overflow-x-auto">
+    <table className="w-full">
+      <thead className="bg-gray-700">
+        <tr className="text-white">
+          <th className="p-2 text-left">Item</th>
+          <th className="p-2 text-center">Qtd</th>
+          <th className="p-2 text-right">Preço Unit.</th>
+          <th className="p-2 text-right">Total</th>
+        </tr>
+      </thead>
+      <tbody>
+        {vendaSelecionada.itens?.map((item, idx) => (
+          <tr key={idx} className="border-t border-gray-600">
+            <td className="p-2 text-white">
+              {item.produtoOuServico}
+              {item.tipo === 'servico' && <span className="ml-2 text-xs bg-purple-500/20 text-purple-400 px-1 py-0.5 rounded">Serviço</span>}
+            </td>
+            <td className="p-2 text-center text-gray-300">{item.quantidade}</td>
+            <td className="p-2 text-right text-gray-300">{item.precoUnitario?.toLocaleString()} Kz</td>
+            <td className="p-2 text-right text-white">{item.total?.toLocaleString()} Kz</td>
+          </tr>
+        ))}
+      </tbody>
+      <tfoot className="border-t border-gray-600">
+        <tr>
+          <td colSpan="3" className="p-2 text-right text-gray-300">Subtotal:</td>
+          <td className="p-2 text-right text-white">{vendaSelecionada.subtotal?.toLocaleString()} Kz</td>
+        </tr>
+        {vendaSelecionada.desconto > 0 && (
+          <tr>
+            <td colSpan="3" className="p-2 text-right text-red-400">Desconto:</td>
+            <td className="p-2 text-right text-red-400">- {vendaSelecionada.desconto?.toLocaleString()} Kz</td>
+          </tr>
+        )}
+        <tr>
+          <td colSpan="3" className="p-2 text-right text-gray-300">IVA ({vendaSelecionada.taxaIVA || 14}%):</td>
+          <td className="p-2 text-right text-white">{vendaSelecionada.totalIva?.toLocaleString()} Kz</td>
+        </tr>
+        {vendaSelecionada.totalRetencao > 0 && (
+          <tr>
+            <td colSpan="3" className="p-2 text-right text-red-400">Retenção ({vendaSelecionada.taxaRetencao || 0}%):</td>
+            <td className="p-2 text-right text-red-400">- {vendaSelecionada.totalRetencao?.toLocaleString()} Kz</td>
+          </tr>
+        )}
+        <tr className="border-t-2 border-gray-600">
+          <td colSpan="3" className="p-2 text-right text-white font-bold">TOTAL:</td>
+          <td className="p-2 text-right text-green-400 font-bold">{vendaSelecionada.total?.toLocaleString()} Kz</td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+</div>
                     <div className="bg-gray-700/30 rounded-xl p-4">
                       <h3 className="text-md font-semibold text-green-400 mb-3">Pagamento</h3>
                       <div className="grid grid-cols-2 gap-3">

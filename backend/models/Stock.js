@@ -8,7 +8,7 @@ const StockSchema = new mongoose.Schema(
     // ============================================
     produto: { 
       type: String, 
-      required: [true, 'Nome do produto é obrigatório'], 
+      required: [true, 'Nome do produto/serviço é obrigatório'], 
       trim: true, 
       index: true 
     },
@@ -16,15 +16,25 @@ const StockSchema = new mongoose.Schema(
       type: String, 
       trim: true, 
       sparse: true, 
-      unique: true, 
+      // 🔧 Removido unique global (será tratado no controller por empresa)
       index: true 
     },
     codigoInterno: { 
       type: String, 
       trim: true, 
-      unique: true, 
       sparse: true,
+      // 🔧 Removido unique global (será tratado no controller por empresa)
       index: true 
+    },
+    
+    // ============================================
+    // TIPO: PRODUTO ou SERVIÇO (NOVO)
+    // ============================================
+    tipo: {
+      type: String,
+      enum: ['produto', 'servico'],
+      default: 'produto',
+      index: true
     },
     
     // ============================================
@@ -60,7 +70,7 @@ const StockSchema = new mongoose.Schema(
     // ============================================
     unidadeMedida: { 
       type: String, 
-      enum: ['Unidade', 'KG', 'Litro', 'Metro', 'Pacote', 'Caixa', 'Palete', 'Outro'],
+      enum: ['Unidade', 'KG', 'Litro', 'Metro', 'Pacote', 'Caixa', 'Palete', 'Hora', 'Dia', 'Mês', 'Serviço', 'Outro'],
       default: 'Unidade'
     },
     
@@ -78,7 +88,7 @@ const StockSchema = new mongoose.Schema(
     // ============================================
     precoCompra: { 
       type: Number, 
-      required: [true, 'Preço de compra é obrigatório'], 
+      required: function() { return this.tipo === 'produto'; }, // Obrigatório só para produtos
       min: 0,
       default: 0
     },
@@ -102,11 +112,11 @@ const StockSchema = new mongoose.Schema(
     taxaImpostoImportacao: { type: Number, default: 0, min: 0 },
     
     // ============================================
-    // ESTOQUE
+    // ESTOQUE (apenas para produtos)
     // ============================================
     quantidade: { 
       type: Number, 
-      required: true, 
+      required: function() { return this.tipo === 'produto'; },
       min: 0, 
       default: 0,
       index: true 
@@ -117,11 +127,11 @@ const StockSchema = new mongoose.Schema(
     pontoReposicao: { type: Number, default: 0, min: 0 },
     
     // ============================================
-    // DATAS
+    // DATAS (validade opcional para serviços)
     // ============================================
     dataValidade: { 
       type: Date, 
-      required: [true, 'Data de validade é obrigatória'],
+      required: function() { return this.tipo === 'produto' && this.controlaValidade === true; },
       index: true 
     },
     dataFabricacao: { type: Date },
@@ -159,6 +169,18 @@ const StockSchema = new mongoose.Schema(
     ativo: { type: Boolean, default: true, index: true },
     controlaValidade: { type: Boolean, default: true },
     controlaLote: { type: Boolean, default: false },
+    
+    // ============================================
+    // CAMPOS ESPECÍFICOS PARA SERVIÇOS (NOVO)
+    // ============================================
+    duracaoEstimada: { type: Number, default: 0 }, // em minutos/horas/dias (ver unidadeTempo)
+    unidadeTempo: { type: String, enum: ['minutos', 'horas', 'dias'], default: 'horas' },
+    precoHora: { type: Number, default: 0 }, // preço base por hora, se aplicável
+    executadoPor: { type: String, trim: true }, // ex: equipe, técnico, departamento
+    requerAgendamento: { type: Boolean, default: false },
+    localExecucao: { type: String, trim: true }, // ex: "Cliente", "Oficina", "Remoto"
+    recursosNecessarios: { type: String, trim: true }, // ferramentas, equipamentos
+    instrucoes: { type: String, trim: true },
     
     // ============================================
     // HISTÓRICO DE MOVIMENTAÇÕES
@@ -214,13 +236,15 @@ const StockSchema = new mongoose.Schema(
 // ÍNDICES COMPOSTOS (Performance)
 // ============================================
 StockSchema.index({ empresaId: 1, produto: 1 });
-StockSchema.index({ empresaId: 1, codigoBarras: 1 });
+StockSchema.index({ empresaId: 1, codigoBarras: 1 }, { unique: true, partialFilterExpression: { codigoBarras: { $exists: true, $ne: null } } });
+StockSchema.index({ empresaId: 1, codigoInterno: 1 }, { unique: true, partialFilterExpression: { codigoInterno: { $exists: true, $ne: null } } });
 StockSchema.index({ empresaId: 1, categoria: 1 });
 StockSchema.index({ empresaId: 1, dataValidade: 1 });
 StockSchema.index({ empresaId: 1, quantidade: 1 });
 StockSchema.index({ empresaId: 1, ativo: 1 });
 StockSchema.index({ empresaId: 1, armazem: 1 });
 StockSchema.index({ dataValidade: 1, quantidade: 1 });
+StockSchema.index({ empresaId: 1, tipo: 1 });
 
 // ============================================
 // VIRTUAIS
@@ -232,23 +256,27 @@ StockSchema.virtual('margemLucro').get(function() {
   return ((this.precoVenda - this.precoCompra) / this.precoCompra) * 100;
 });
 
-// Valor total em stock (preço de venda)
+// Valor total em stock (preço de venda) – para serviços, considera quantidade=1
 StockSchema.virtual('valorTotalVenda').get(function() {
-  return (this.quantidade * this.precoVenda) || 0;
+  const qtd = this.tipo === 'servico' ? 1 : (this.quantidade || 0);
+  return (qtd * this.precoVenda) || 0;
 });
 
 // Valor total em stock (preço de compra)
 StockSchema.virtual('valorTotalCompra').get(function() {
-  return (this.quantidade * this.precoCompra) || 0;
+  const qtd = this.tipo === 'servico' ? 1 : (this.quantidade || 0);
+  return (qtd * this.precoCompra) || 0;
 });
 
 // Lucro total estimado
 StockSchema.virtual('lucroTotalEstimado').get(function() {
-  return (this.quantidade * (this.precoVenda - this.precoCompra)) || 0;
+  const qtd = this.tipo === 'servico' ? 1 : (this.quantidade || 0);
+  return (qtd * (this.precoVenda - this.precoCompra)) || 0;
 });
 
-// Status de validade
+// Status de validade (apenas para produtos)
 StockSchema.virtual('statusValidade').get(function() {
+  if (this.tipo !== 'produto') return 'nao_aplica';
   if (!this.dataValidade) return 'sem_data';
   const hoje = new Date();
   hoje.setHours(0, 0, 0, 0);
@@ -261,21 +289,24 @@ StockSchema.virtual('statusValidade').get(function() {
   return 'valido';
 });
 
-// Status de estoque
+// Status de estoque (apenas para produtos)
 StockSchema.virtual('statusEstoque').get(function() {
+  if (this.tipo !== 'produto') return 'nao_aplica';
   if (this.quantidade === 0) return 'esgotado';
   if (this.quantidade <= this.quantidadeMinima) return 'baixo';
   if (this.quantidade >= this.quantidadeMaxima) return 'excesso';
   return 'normal';
 });
 
-// Necessita reposição?
+// Necessita reposição? (apenas produtos)
 StockSchema.virtual('necessitaReposicao').get(function() {
+  if (this.tipo !== 'produto') return false;
   return this.quantidade <= this.pontoReposicao;
 });
 
-// Dias para vencer
+// Dias para vencer (apenas produtos)
 StockSchema.virtual('diasParaVencer').get(function() {
+  if (this.tipo !== 'produto') return null;
   if (!this.dataValidade) return null;
   const hoje = new Date();
   hoje.setHours(0, 0, 0, 0);
@@ -307,8 +338,12 @@ StockSchema.virtual('valorComIVA').get(function() {
 // MÉTODOS DE INSTÂNCIA
 // ============================================
 
-// Registrar movimentação
+// Registrar movimentação (apenas para produtos)
 StockSchema.methods.registrarMovimentacao = async function(tipo, quantidade, motivo, usuario, usuarioId) {
+  if (this.tipo !== 'produto') {
+    throw new Error('Movimentações de estoque só são permitidas para produtos físicos');
+  }
+  
   const quantidadeAnterior = this.quantidade;
   
   if (tipo === 'entrada') {
@@ -339,8 +374,12 @@ StockSchema.methods.registrarMovimentacao = async function(tipo, quantidade, mot
   return this;
 };
 
-// Registrar devolução
+// Registrar devolução (apenas para produtos)
 StockSchema.methods.registrarDevolucao = async function(quantidade, motivo, observacao, usuario) {
+  if (this.tipo !== 'produto') {
+    throw new Error('Devoluções só são permitidas para produtos físicos');
+  }
+  
   if (this.quantidade < quantidade) {
     throw new Error(`Estoque insuficiente para devolução. Disponível: ${this.quantidade}`);
   }
@@ -372,8 +411,9 @@ StockSchema.methods.registrarDevolucao = async function(quantidade, motivo, obse
   return this;
 };
 
-// Verificar se está vencido
+// Verificar se está vencido (apenas produtos)
 StockSchema.methods.estaVencido = function() {
+  if (this.tipo !== 'produto') return false;
   if (!this.dataValidade) return false;
   const hoje = new Date();
   hoje.setHours(0, 0, 0, 0);
@@ -382,8 +422,9 @@ StockSchema.methods.estaVencido = function() {
   return validade < hoje;
 };
 
-// Verificar se está próximo a vencer
+// Verificar se está próximo a vencer (apenas produtos)
 StockSchema.methods.estaProximoVencer = function(dias = 30) {
+  if (this.tipo !== 'produto') return false;
   if (!this.dataValidade) return false;
   const hoje = new Date();
   hoje.setHours(0, 0, 0, 0);
@@ -398,6 +439,15 @@ StockSchema.methods.estaProximoVencer = function(dias = 30) {
 // ============================================
 StockSchema.pre('save', function(next) {
   this.updatedAt = new Date();
+  
+  // Se for serviço, força quantidade = 0 (não aplicável) e controlaValidade = false
+  if (this.tipo === 'servico') {
+    this.quantidade = 0;
+    this.controlaValidade = false;
+    this.precoCompra = this.precoCompra || 0;
+    // dataValidade pode ser null/undefined
+  }
+  
   next();
 });
 
@@ -405,7 +455,7 @@ StockSchema.pre('save', function(next) {
 // MIDDLEWARE PRE-VALIDATE
 // ============================================
 StockSchema.pre('validate', function(next) {
-  if (this.precoVenda < this.precoCompra) {
+  if (this.precoVenda < this.precoCompra && this.tipo === 'produto') {
     next(new Error('Preço de venda não pode ser menor que o preço de compra'));
   }
   next();

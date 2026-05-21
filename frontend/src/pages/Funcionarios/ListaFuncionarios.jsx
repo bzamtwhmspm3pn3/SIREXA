@@ -368,8 +368,8 @@ const ListaFuncionarios = () => {
       doc.setFontSize(9);
       doc.setFont("helvetica", "italic");
       doc.setTextColor(100, 100, 100);
-      doc.text(`Sistema AnDioGest - Relatório gerado eletronicamente.`, 14, paginaAltura - 10);
-      doc.text(`© ${new Date().getFullYear()} AnDioGest - Gestão Corporativa.`, 14, paginaAltura - 5);
+      doc.text(`Sistema SIREXA - Relatório gerado eletronicamente.`, 14, paginaAltura - 10);
+      doc.text(`© ${new Date().getFullYear()} SIREXA - Gestão Corporativa.`, 14, paginaAltura - 5);
 
       doc.save(`lista_funcionarios_${empresaAtual?.nome?.replace(/\s/g, '_') || 'empresa'}_${numeroRelatorio}.pdf`);
       mostrarMensagem("✅ PDF da lista gerado com sucesso!", "sucesso");
@@ -433,8 +433,8 @@ const ListaFuncionarios = () => {
       doc.setFontSize(9);
       doc.setFont("helvetica", "italic");
       doc.setTextColor(100, 100, 100);
-      doc.text(`Sistema AnDioGest - Documento gerado eletronicamente.`, 14, paginaAltura - 10);
-      doc.text(`© ${new Date().getFullYear()} AnDioGest - Gestão Corporativa.`, 14, paginaAltura - 5);
+      doc.text(`Sistema SIREXA - Documento gerado eletronicamente.`, 14, paginaAltura - 10);
+      doc.text(`© ${new Date().getFullYear()} SIREXA - Gestão Corporativa.`, 14, paginaAltura - 5);
 
       doc.save(`funcionario_${funcionario.nome?.replace(/\s/g, '_')}_${numeroRelatorio}.pdf`);
       mostrarMensagem("✅ PDF do funcionário gerado com sucesso!", "sucesso");

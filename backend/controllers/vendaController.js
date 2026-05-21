@@ -126,7 +126,6 @@ exports.emitirVenda = async (req, res) => {
     console.log('=== INICIANDO EMISSÃO DE VENDA ===');
     console.log('Usuário:', usuario);
     console.log('empresaAtual (validado):', empresaIdParaVenda);
-    console.log('Empresas permitidas:', req.user?.empresasPermitidas);
 
     if (!empresaIdParaVenda) {
       return res.status(400).json({ 
@@ -145,10 +144,8 @@ exports.emitirVenda = async (req, res) => {
     }
 
     console.log('✅ Empresa:', empresa.nome);
-    console.log('🏢 ID:', empresa._id);
 
-
-        // Validações básicas
+    // Validações básicas
     if (!venda || !venda.cliente) {
       return res.status(400).json({ 
         sucesso: false, 
@@ -194,14 +191,17 @@ exports.emitirVenda = async (req, res) => {
     const numeroVenda = await getProximoNumeroVenda(empresa._id);
     console.log(`✅ Números: Factura ${numeroFactura}, Venda ${numeroVenda}`);
 
-    // Processar itens e abater estoque
+    // ============================================
+    // 🔧 PROCESSAR ITENS (com suporte a serviços)
+    // ============================================
     const itensProcessados = [];
     for (let i = 0; i < venda.itens.length; i++) {
       const item = venda.itens[i];
-      console.log(`Processando item ${i + 1}:`, item.produtoOuServico);
+      console.log(`Processando item ${i + 1}:`, item.produtoOuServico, 'Tipo:', item.tipo || 'produto');
       
       let produtoStock = null;
       
+      // Buscar o item no stock (apenas para validação e obter dados)
       if (item.produtoId) {
         produtoStock = await Stock.findOne({ 
           _id: item.produtoId, 
@@ -219,21 +219,29 @@ exports.emitirVenda = async (req, res) => {
       if (!produtoStock) {
         return res.status(404).json({ 
           sucesso: false, 
-          mensagem: `Produto "${item.produtoOuServico}" não encontrado no stock da empresa` 
+          mensagem: `Item "${item.produtoOuServico}" não encontrado no sistema` 
         });
       }
 
-      if (produtoStock.quantidade < item.quantidade) {
-        return res.status(400).json({ 
-          sucesso: false, 
-          mensagem: `Quantidade insuficiente para "${item.produtoOuServico}". Disponível: ${produtoStock.quantidade}` 
-        });
+      // 🔧 VERIFICAÇÃO DE ESTOQUE APENAS PARA PRODUTOS
+      if (produtoStock.tipo === 'produto' || !item.tipo || item.tipo === 'produto') {
+        if (produtoStock.quantidade < item.quantidade) {
+          return res.status(400).json({ 
+            sucesso: false, 
+            mensagem: `Quantidade insuficiente para "${item.produtoOuServico}". Disponível: ${produtoStock.quantidade}` 
+          });
+        }
+        
+        // 🔧 DAR BAIXA NO ESTOQUE APENAS PARA PRODUTOS
+        produtoStock.quantidade -= item.quantidade;
+        await produtoStock.save();
+        console.log(`📦 Estoque atualizado para "${item.produtoOuServico}": ${produtoStock.quantidade} restantes`);
+      } else {
+        // Para serviços, não alterar estoque
+        console.log(`🛠️ Serviço "${item.produtoOuServico}" - sem alteração de estoque`);
       }
-
-      produtoStock.quantidade -= item.quantidade;
-      await produtoStock.save();
       
-      const taxaIVA = item.taxaIVA || 14;
+      const taxaIVA = item.taxaIVA || produtoStock.taxaIVA || 14;
       const ivaItem = item.total * (taxaIVA / 100);
       
       itensProcessados.push({
@@ -246,7 +254,8 @@ exports.emitirVenda = async (req, res) => {
         desconto: item.desconto || 0,
         total: item.total,
         taxaIVA: taxaIVA,
-        iva: ivaItem
+        iva: ivaItem,
+        tipo: produtoStock.tipo === 'servico' ? 'servico' : 'produto'  // 🔧 SALVAR O TIPO
       });
     }
 
@@ -395,9 +404,6 @@ exports.getProximoNumero = async (req, res) => {
     const { empresaNif } = req.params;
     const usuarioEmpresaId = req.user?.empresaId;
     
-    console.log('🔢 Buscando próximo número');
-    console.log('Empresa NIF:', empresaNif);
-    
     const empresa = await Empresa.findOne({ nif: empresaNif });
     if (!empresa) {
       return res.status(404).json({ 
@@ -406,7 +412,6 @@ exports.getProximoNumero = async (req, res) => {
       });
     }
     
-    // 🔒 Verificar se o gestor tem acesso a esta empresa
     if (usuarioEmpresaId && empresa._id.toString() !== usuarioEmpresaId.toString()) {
       console.error(`❌ ACESSO NEGADO: Usuário tentou acessar empresa ${empresa.nome}`);
       return res.status(403).json({ 
@@ -435,12 +440,6 @@ exports.getHistorico = async (req, res) => {
   try {
     const { empresaId } = req.params;
     const usuarioEmpresaId = req.user?.empresaId;
-    const usuarioNome = req.user?.nome;
-    
-    console.log('📊 Buscando histórico de vendas');
-    console.log('👤 Usuário:', usuarioNome);
-    console.log('🏢 Empresa ID solicitado:', empresaId);
-    console.log('🏢 Empresa ID do token:', usuarioEmpresaId);
     
     if (!empresaId) {
       return res.status(400).json({ 
@@ -448,17 +447,6 @@ exports.getHistorico = async (req, res) => {
         mensagem: 'ID da empresa é obrigatório' 
       });
     }
-    
-    // 🔒 VALIDAÇÃO COMENTADA TEMPORARIAMENTE PARA TESTE
-    /*
-    if (usuarioEmpresaId && empresaId.toString() !== usuarioEmpresaId.toString()) {
-      console.error(`❌ ACESSO NEGADO: Usuário ${usuarioNome} tentou acessar vendas da empresa ${empresaId}`);
-      return res.status(403).json({ 
-        sucesso: false, 
-        mensagem: 'Acesso negado. Você não tem permissão para ver vendas desta empresa.' 
-      });
-    }
-    */
     
     const { page = 1, limit = 50, dataInicio, dataFim } = req.query;
     
@@ -471,8 +459,6 @@ exports.getHistorico = async (req, res) => {
       };
     }
     
-    console.log('🔍 Query:', JSON.stringify(query));
-    
     const vendas = await Venda.find(query)
       .sort({ data: -1 })
       .skip((parseInt(page) - 1) * parseInt(limit))
@@ -480,8 +466,6 @@ exports.getHistorico = async (req, res) => {
       .populate('clienteId', 'nome nif telefone email');
 
     const total = await Venda.countDocuments(query);
-    
-    console.log(`✅ Encontradas ${vendas.length} vendas para empresa ${empresaId}`);
     
     res.json({
       sucesso: true,
@@ -523,14 +507,6 @@ exports.getVendaById = async (req, res) => {
       });
     }
     
-    // 🔒 Verificar se o gestor tem acesso a esta venda
-    if (usuarioEmpresaId && venda.empresaId.toString() !== usuarioEmpresaId.toString()) {
-      return res.status(403).json({ 
-        sucesso: false, 
-        mensagem: 'Acesso negado' 
-      });
-    }
-    
     res.json({ 
       sucesso: true, 
       dados: venda 
@@ -566,14 +542,6 @@ exports.cancelarVenda = async (req, res) => {
       });
     }
 
-    // 🔒 Verificar se o gestor tem acesso a esta venda
-    if (usuarioEmpresaId && venda.empresaId.toString() !== usuarioEmpresaId.toString()) {
-      return res.status(403).json({ 
-        sucesso: false, 
-        mensagem: 'Acesso negado' 
-      });
-    }
-
     if (venda.status === 'cancelada') {
       return res.status(400).json({ 
         sucesso: false, 
@@ -581,9 +549,9 @@ exports.cancelarVenda = async (req, res) => {
       });
     }
 
-    // Restaurar estoque
+    // 🔧 RESTAURAR ESTOQUE APENAS PARA PRODUTOS
     for (const item of venda.itens) {
-      if (item.produtoId) {
+      if (item.tipo === 'produto' && item.produtoId) {
         const produtoStock = await Stock.findOne({ 
           _id: item.produtoId,
           empresaId: venda.empresaId 
@@ -591,7 +559,10 @@ exports.cancelarVenda = async (req, res) => {
         if (produtoStock) {
           produtoStock.quantidade += item.quantidade;
           await produtoStock.save();
+          console.log(`📦 Estoque restaurado para "${item.produtoOuServico}": +${item.quantidade}`);
         }
+      } else {
+        console.log(`🛠️ Serviço "${item.produtoOuServico}" - estoque não alterado`);
       }
     }
 
@@ -634,9 +605,6 @@ exports.exportarSAFT = async (req, res) => {
     const { dataInicio, dataFim } = req.query;
     const usuarioEmpresaId = req.user?.empresaId;
     
-    console.log('📄 Exportando SAFT');
-    console.log('Empresa NIF:', empresaNif);
-    
     const empresa = await Empresa.findOne({ nif: empresaNif });
     if (!empresa) {
       return res.status(404).json({ 
@@ -645,7 +613,6 @@ exports.exportarSAFT = async (req, res) => {
       });
     }
     
-    // 🔒 Verificar acesso
     if (usuarioEmpresaId && empresa._id.toString() !== usuarioEmpresaId.toString()) {
       return res.status(403).json({ 
         sucesso: false, 

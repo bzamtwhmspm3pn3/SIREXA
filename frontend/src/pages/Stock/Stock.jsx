@@ -8,7 +8,7 @@ import {
   Plus, Edit, Trash2, Search, Package, AlertTriangle, TrendingUp, 
   X, CheckCircle, AlertCircle, Loader2, 
   Calendar, DollarSign, FileText, Download,
-  Target, Building2, Save, RefreshCw, Clock
+  Target, Building2, Save, RefreshCw, Clock, Wrench, Server
 } from "lucide-react";
 import RelatorioStock from "../../components/RelatorioStock";
 
@@ -16,7 +16,7 @@ const Stock = () => {
   const navigate = useNavigate();
   const [empresas, setEmpresas] = useState([]);
   const [empresaSelecionada, setEmpresaSelecionada] = useState("");
-  const [produtos, setProdutos] = useState([]);
+  const [itens, setItens] = useState([]);
   const [loading, setLoading] = useState(false);
   const [loadingEmpresas, setLoadingEmpresas] = useState(true);
   const [salvando, setSalvando] = useState(false);
@@ -28,6 +28,7 @@ const Stock = () => {
   const [busca, setBusca] = useState("");
   const [filtroCategoria, setFiltroCategoria] = useState("");
   const [filtroStatus, setFiltroStatus] = useState("");
+  const [filtroTipo, setFiltroTipo] = useState("");
   const [recarregar, setRecarregar] = useState(false);
   
   const { user, isGestor, isTecnico, empresaId: userEmpresaId, empresaNome: userEmpresaNome } = useAuth();
@@ -36,10 +37,11 @@ const Stock = () => {
   const unidadesMedida = [
     "Unidade", "KG", "Litro", "Metro", "Pacote", "Caixa", 
     "Palete", "Grama", "Mililitro", "Centímetro", "Par", 
-    "Dúzia", "Cento", "Milheiro", "Rolo", "Fardo"
+    "Dúzia", "Cento", "Milheiro", "Rolo", "Fardo", "Hora", "Dia", "Mês", "Serviço"
   ];
 
   const [formData, setFormData] = useState({
+    tipo: "produto",
     produto: "",
     codigoBarras: "",
     codigoInterno: "",
@@ -54,7 +56,17 @@ const Stock = () => {
     fornecedor: "",
     armazem: "Principal",
     numeroLote: "",
-    observacoes: ""
+    observacoes: "",
+    taxaIVA: 14,
+    // Campos específicos para serviços
+    duracaoEstimada: 0,
+    unidadeTempo: "horas",
+    precoHora: 0,
+    executadoPor: "",
+    requerAgendamento: false,
+    localExecucao: "",
+    recursosNecessarios: "",
+    instrucoes: ""
   });
 
   // Carregar empresas (apenas gestor)
@@ -71,14 +83,12 @@ const Stock = () => {
 
   // Quando empresa for selecionada, carregar stock
   useEffect(() => {
-  if (empresaSelecionada) {
-    carregarStock();
-  } else {
-    // 🔒 Limpar produtos quando não há empresa selecionada
-    setProdutos([]);
-  }
-}, [empresaSelecionada, recarregar]);
-
+    if (empresaSelecionada) {
+      carregarStock();
+    } else {
+      setItens([]);
+    }
+  }, [empresaSelecionada, recarregar]);
 
   const mostrarMensagem = (texto, tipo) => {
     setMensagem({ texto, tipo });
@@ -86,111 +96,115 @@ const Stock = () => {
   };
 
   const carregarEmpresas = async () => {
-  // Se for técnico, não precisa carregar lista de empresas
-  if (isTecnico()) {
-    setLoadingEmpresas(false);
-    return;
-  }
-  
-  try {
-    const token = localStorage.getItem("token");
-    const response = await fetch("https://sirexa-api.onrender.com/api/empresa", {
-      headers: { "Authorization": `Bearer ${token}` }
-    });
-    
-    if (response.status === 403) {
-      setEmpresas([]);
-      mostrarMensagem("Acesso negado", "erro");
+    if (isTecnico()) {
+      setLoadingEmpresas(false);
       return;
     }
     
-    const data = await response.json();
-    const empresasList = Array.isArray(data) ? data : [];
-    setEmpresas(empresasList);
-    
-    const empresaPadrao = empresasList[0]?._id || user?.empresaId;
-    if (empresaPadrao && !empresaSelecionada) {
-      setEmpresaSelecionada(empresaPadrao);
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch("https://sirexa-api.onrender.com/api/empresa", {
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+      
+      if (response.status === 403) {
+        setEmpresas([]);
+        mostrarMensagem("Acesso negado", "erro");
+        return;
+      }
+      
+      const data = await response.json();
+      const empresasList = Array.isArray(data) ? data : [];
+      setEmpresas(empresasList);
+      
+      const empresaPadrao = empresasList[0]?._id || user?.empresaId;
+      if (empresaPadrao && !empresaSelecionada) {
+        setEmpresaSelecionada(empresaPadrao);
+      }
+    } catch (error) {
+      console.error("Erro ao carregar empresas:", error);
+    } finally {
+      setLoadingEmpresas(false);
     }
-  } catch (error) {
-    console.error("Erro ao carregar empresas:", error);
-  } finally {
-    setLoadingEmpresas(false);
-  }
-};
-
+  };
 
   const carregarStock = async () => {
-  if (!empresaSelecionada) {
-    setProdutos([]);
-    return;
-  }
-  
-  setLoading(true);
-  try {
-    const token = localStorage.getItem("token");
-    const response = await fetch(`https://sirexa-api.onrender.com/api/stock?empresaId=${empresaSelecionada}`, {
-      headers: { 
-        "Authorization": `Bearer ${token}`,
-        "Content-Type": "application/json"
-      }
-    });
-    
-    // 🔒 Se for 403 (acesso negado), limpar empresa selecionada
-    if (response.status === 403) {
-      const data = await response.json();
-      mostrarMensagem(data.mensagem || "Acesso negado a esta empresa", "erro");
-      setEmpresaSelecionada("");
-      setProdutos([]);
+    if (!empresaSelecionada) {
+      setItens([]);
       return;
     }
     
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    
-    const data = await response.json();
-    const produtosData = Array.isArray(data) ? data : (data.dados || []);
-    setProdutos(produtosData);
-    
-  } catch (error) {
-    console.error("Erro ao carregar stock:", error);
-    mostrarMensagem("Erro ao carregar produtos", "erro");
-    setProdutos([]);
-  } finally {
-    setLoading(false);
-  }
-};
-
+    setLoading(true);
+    try {
+      const token = localStorage.getItem("token");
+      let url = `https://sirexa-api.onrender.com/api/stock?empresaId=${empresaSelecionada}`;
+      if (filtroTipo) {
+        url += `&tipo=${filtroTipo}`;
+      }
+      
+      const response = await fetch(url, {
+        headers: { 
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json"
+        }
+      });
+      
+      if (response.status === 403) {
+        const data = await response.json();
+        mostrarMensagem(data.mensagem || "Acesso negado a esta empresa", "erro");
+        setEmpresaSelecionada("");
+        setItens([]);
+        return;
+      }
+      
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      
+      const data = await response.json();
+      const itensData = Array.isArray(data) ? data : (data.dados || []);
+      setItens(itensData);
+      
+    } catch (error) {
+      console.error("Erro ao carregar itens:", error);
+      mostrarMensagem("Erro ao carregar itens", "erro");
+      setItens([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleSubmit = async (e) => {
-  e.preventDefault();
-  
-  if (!empresaSelecionada) {
-    mostrarMensagem("Selecione uma empresa", "erro");
-    return;
-  }
-  
-  // 🔒 Verificar acesso antes de salvar
-  const token = localStorage.getItem("token");
-  const verificarResponse = await fetch(`https://sirexa-api.onrender.com/api/empresa/verificar-acesso/${empresaSelecionada}`, {
-    headers: { "Authorization": `Bearer ${token}` }
-  });
-  
-  if (!verificarResponse.ok) {
-    mostrarMensagem("Acesso negado a esta empresa", "erro");
-    setEmpresaSelecionada("");
-    return;
-  }
-  
-  if (!formData.produto) {
-    mostrarMensagem("Nome do produto é obrigatório", "erro");
-    return;
-  }
-  
-  if (!formData.precoVenda || formData.precoVenda <= 0) {
-    mostrarMensagem("Preço de venda é obrigatório", "erro");
-    return;
-  }
+    e.preventDefault();
+    
+    if (!empresaSelecionada) {
+      mostrarMensagem("Selecione uma empresa", "erro");
+      return;
+    }
+    
+    if (!formData.produto) {
+      mostrarMensagem("Nome do item é obrigatório", "erro");
+      return;
+    }
+    
+    if (!formData.precoVenda || formData.precoVenda <= 0) {
+      mostrarMensagem("Preço de venda é obrigatório", "erro");
+      return;
+    }
 
+    // Validações específicas para produto
+    if (formData.tipo === "produto") {
+      if (!formData.precoCompra || formData.precoCompra <= 0) {
+        mostrarMensagem("Preço de compra é obrigatório para produtos", "erro");
+        return;
+      }
+      if (formData.precoVenda < formData.precoCompra) {
+        mostrarMensagem("Preço de venda não pode ser menor que o preço de compra", "erro");
+        return;
+      }
+      if (!formData.dataValidade) {
+        mostrarMensagem("Data de validade é obrigatória para produtos", "erro");
+        return;
+      }
+    }
 
     setSalvando(true);
     
@@ -202,7 +216,7 @@ const Stock = () => {
       const dadosEnvio = { 
         ...formData, 
         empresaId: empresaSelecionada,
-        dataValidade: formData.dataValidade || null
+        dataValidade: formData.dataValidade || (formData.tipo === "produto" ? null : undefined)
       };
 
       const response = await fetch(url, {
@@ -217,14 +231,14 @@ const Stock = () => {
       const result = await response.json();
 
       if (response.ok) {
-        mostrarMensagem(editando ? "✅ Produto atualizado com sucesso!" : "✅ Produto adicionado com sucesso!", "sucesso");
+        const msg = editando 
+          ? (formData.tipo === "produto" ? "✅ Produto atualizado com sucesso!" : "✅ Serviço atualizado com sucesso!")
+          : (formData.tipo === "produto" ? "✅ Produto adicionado com sucesso!" : "✅ Serviço adicionado com sucesso!");
+        mostrarMensagem(msg, "sucesso");
         setModalOpen(false);
         setEditando(null);
         resetForm();
         setRecarregar(!recarregar);
-        setTimeout(() => {
-          window.location.reload();
-        }, 100);
       } else {
         mostrarMensagem(result.mensagem || "Erro ao salvar", "erro");
         setSalvando(false);
@@ -236,43 +250,33 @@ const Stock = () => {
     }
   };
 
-  const excluirProduto = async (id) => {
-  if (!window.confirm("Tem certeza que deseja excluir este produto?")) return;
-  
-  // 🔒 Verificar acesso antes de excluir
-  const token = localStorage.getItem("token");
-  const verificarResponse = await fetch(`https://sirexa-api.onrender.com/api/empresa/verificar-acesso/${empresaSelecionada}`, {
-    headers: { "Authorization": `Bearer ${token}` }
-  });
-  
-  if (!verificarResponse.ok) {
-    mostrarMensagem("Acesso negado a esta empresa", "erro");
-    setEmpresaSelecionada("");
-    return;
-  }
-  
-  try {
-    const response = await fetch(`https://sirexa-api.onrender.com/api/stock/${id}?empresaId=${empresaSelecionada}`, {
-      method: "DELETE",
-      headers: { "Authorization": `Bearer ${token}` }
-    });
+  const excluirItem = async (id) => {
+    if (!window.confirm("Tem certeza que deseja excluir este item?")) return;
     
-    if (response.ok) {
-      mostrarMensagem("✅ Produto excluído!", "sucesso");
-      setRecarregar(!recarregar);
-    } else {
-      const error = await response.json();
-      mostrarMensagem(error.mensagem || "Erro ao excluir", "erro");
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch(`https://sirexa-api.onrender.com/api/stock/${id}?empresaId=${empresaSelecionada}`, {
+        method: "DELETE",
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+      
+      if (response.ok) {
+        mostrarMensagem("✅ Item excluído com sucesso!", "sucesso");
+        setRecarregar(!recarregar);
+      } else {
+        const error = await response.json();
+        mostrarMensagem(error.mensagem || "Erro ao excluir", "erro");
+      }
+    } catch (error) {
+      console.error("Erro ao excluir:", error);
+      mostrarMensagem("Erro ao conectar", "erro");
     }
-  } catch (error) {
-    console.error("Erro ao excluir:", error);
-    mostrarMensagem("Erro ao conectar", "erro");
-  }
-};
+  };
 
   const resetForm = () => {
     setEditando(null);
     setFormData({
+      tipo: "produto",
       produto: "",
       codigoBarras: "",
       codigoInterno: "",
@@ -287,28 +291,74 @@ const Stock = () => {
       fornecedor: "",
       armazem: "Principal",
       numeroLote: "",
-      observacoes: ""
+      observacoes: "",
+      taxaIVA: 14,
+      duracaoEstimada: 0,
+      unidadeTempo: "horas",
+      precoHora: 0,
+      executadoPor: "",
+      requerAgendamento: false,
+      localExecucao: "",
+      recursosNecessarios: "",
+      instrucoes: ""
     });
   };
 
-  const handleEditClick = (produto) => {
-    setEditando(produto._id);
+  const handleTipoChange = (novoTipo) => {
+    // Manter os campos comuns, resetar apenas os específicos
+    setFormData(prev => ({
+      ...prev,
+      tipo: novoTipo,
+      // Resetar campos específicos ao mudar tipo
+      ...(novoTipo === "produto" ? {
+        duracaoEstimada: 0,
+        unidadeTempo: "horas",
+        precoHora: 0,
+        executadoPor: "",
+        requerAgendamento: false,
+        localExecucao: "",
+        recursosNecessarios: "",
+        instrucoes: ""
+      } : {
+        precoCompra: 0,
+        quantidade: 0,
+        quantidadeMinima: 5,
+        dataValidade: "",
+        fornecedor: "",
+        armazem: "Principal",
+        numeroLote: ""
+      })
+    }));
+  };
+
+  const handleEditClick = (item) => {
+    setEditando(item._id);
     setFormData({
-      produto: produto.produto || "",
-      codigoBarras: produto.codigoBarras || "",
-      codigoInterno: produto.codigoInterno || "",
-      categoria: produto.categoria || "Geral",
-      marca: produto.marca || "",
-      unidadeMedida: produto.unidadeMedida || "Unidade",
-      precoCompra: produto.precoCompra || 0,
-      precoVenda: produto.precoVenda || 0,
-      quantidade: produto.quantidade || 0,
-      quantidadeMinima: produto.quantidadeMinima || 5,
-      dataValidade: produto.dataValidade ? produto.dataValidade.split('T')[0] : "",
-      fornecedor: produto.fornecedor || "",
-      armazem: produto.armazem || "Principal",
-      numeroLote: produto.numeroLote || "",
-      observacoes: produto.observacoes || ""
+      tipo: item.tipo || "produto",
+      produto: item.produto || "",
+      codigoBarras: item.codigoBarras || "",
+      codigoInterno: item.codigoInterno || "",
+      categoria: item.categoria || "Geral",
+      marca: item.marca || "",
+      unidadeMedida: item.unidadeMedida || "Unidade",
+      precoCompra: item.precoCompra || 0,
+      precoVenda: item.precoVenda || 0,
+      quantidade: item.quantidade || 0,
+      quantidadeMinima: item.quantidadeMinima || 5,
+      dataValidade: item.dataValidade ? item.dataValidade.split('T')[0] : "",
+      fornecedor: item.fornecedor || "",
+      armazem: item.armazem || "Principal",
+      numeroLote: item.numeroLote || "",
+      observacoes: item.observacoes || "",
+      taxaIVA: item.taxaIVA || 14,
+      duracaoEstimada: item.duracaoEstimada || 0,
+      unidadeTempo: item.unidadeTempo || "horas",
+      precoHora: item.precoHora || 0,
+      executadoPor: item.executadoPor || "",
+      requerAgendamento: item.requerAgendamento || false,
+      localExecucao: item.localExecucao || "",
+      recursosNecessarios: item.recursosNecessarios || "",
+      instrucoes: item.instrucoes || ""
     });
     setModalOpen(true);
   };
@@ -326,46 +376,57 @@ const Stock = () => {
     }
   };
 
-  const produtosFiltrados = produtos.filter(p => {
+  const itensFiltrados = itens.filter(item => {
     const matchBusca = busca === "" || 
-      p.produto?.toLowerCase().includes(busca.toLowerCase()) ||
-      p.codigoBarras?.toLowerCase().includes(busca.toLowerCase()) ||
-      p.categoria?.toLowerCase().includes(busca.toLowerCase());
+      item.produto?.toLowerCase().includes(busca.toLowerCase()) ||
+      item.codigoBarras?.toLowerCase().includes(busca.toLowerCase()) ||
+      item.codigoInterno?.toLowerCase().includes(busca.toLowerCase()) ||
+      item.categoria?.toLowerCase().includes(busca.toLowerCase());
     
-    const matchCategoria = !filtroCategoria || p.categoria === filtroCategoria;
+    const matchCategoria = !filtroCategoria || item.categoria === filtroCategoria;
+    const matchTipo = !filtroTipo || item.tipo === filtroTipo;
     
     let matchStatus = true;
-    if (filtroStatus === "baixo_estoque") matchStatus = (p.quantidade || 0) <= (p.quantidadeMinima || 5);
-    if (filtroStatus === "esgotado") matchStatus = (p.quantidade || 0) === 0;
-    if (filtroStatus === "vencido") {
-      if (!p.dataValidade) matchStatus = false;
-      else matchStatus = new Date(p.dataValidade) < new Date();
+    if (item.tipo === "produto") {
+      if (filtroStatus === "baixo_estoque") matchStatus = (item.quantidade || 0) <= (item.quantidadeMinima || 5);
+      if (filtroStatus === "esgotado") matchStatus = (item.quantidade || 0) === 0;
+      if (filtroStatus === "vencido") {
+        if (!item.dataValidade) matchStatus = false;
+        else matchStatus = new Date(item.dataValidade) < new Date();
+      }
+    } else {
+      if (filtroStatus === "baixo_estoque" || filtroStatus === "esgotado" || filtroStatus === "vencido") {
+        matchStatus = false;
+      }
     }
     
-    return matchBusca && matchCategoria && matchStatus;
+    return matchBusca && matchCategoria && matchTipo && matchStatus;
   });
 
-  const categorias = [...new Set(produtos.map(p => p.categoria).filter(Boolean))];
+  const categorias = [...new Set(itens.map(item => item.categoria).filter(Boolean))];
 
-  // Calcular valor total do stock
-  const valorTotalStock = produtos.reduce((acc, p) => {
+  // Calcular valor total do stock (apenas produtos)
+  const valorTotalStock = itens.filter(item => item.tipo === "produto").reduce((acc, p) => {
     const qtd = p.quantidade || 0;
     const precoVenda = p.precoVenda || 0;
     return acc + (qtd * precoVenda);
   }, 0);
   
-  const produtosBaixoEstoque = produtos.filter(p => (p.quantidade || 0) <= (p.quantidadeMinima || 5)).length;
+  const produtosBaixoEstoque = itens.filter(item => 
+    item.tipo === "produto" && (item.quantidade || 0) <= (item.quantidadeMinima || 5)
+  ).length;
   
-  // Calcular margem média
-  const margemMedia = produtos.length > 0 
-    ? (produtos.reduce((acc, p) => {
+  // Calcular margem média (apenas produtos)
+  const produtosList = itens.filter(item => item.tipo === "produto");
+  const margemMedia = produtosList.length > 0 
+    ? (produtosList.reduce((acc, p) => {
         const compra = p.precoCompra || 0;
         const venda = p.precoVenda || 0;
         if (compra > 0) {
           return acc + ((venda - compra) / compra * 100);
         }
         return acc;
-      }, 0) / produtos.length).toFixed(1)
+      }, 0) / produtosList.length).toFixed(1)
     : 0;
 
   const empresaAtual = isTecnico() 
@@ -402,7 +463,8 @@ const Stock = () => {
       {/* Modal de Relatório */}
       {modalRelatorio && (
         <RelatorioStock
-          produtos={produtos}
+          produtos={itens.filter(i => i.tipo === "produto")}
+          servicos={itens.filter(i => i.tipo === "servico")}
           onClose={() => setModalRelatorio(false)}
           empresaId={empresaSelecionada}
         />
@@ -432,8 +494,12 @@ const Stock = () => {
               <div className="bg-gradient-to-br from-blue-600/20 to-blue-800/20 rounded-2xl p-5 border border-blue-500/30">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-blue-300 text-sm">Total de Produtos</p>
-                    <p className="text-3xl font-bold text-white">{produtos.length}</p>
+                    <p className="text-blue-300 text-sm">Total de Itens</p>
+                    <p className="text-3xl font-bold text-white">{itens.length}</p>
+                    <div className="text-xs text-blue-300 mt-1">
+                      <span className="inline-block mr-2">📦 {itens.filter(i => i.tipo === "produto").length} produtos</span>
+                      <span>🛠️ {itens.filter(i => i.tipo === "servico").length} serviços</span>
+                    </div>
                   </div>
                   <div className="bg-blue-600/30 p-3 rounded-full">
                     <Package className="text-blue-400" size={28} />
@@ -496,6 +562,16 @@ const Stock = () => {
               
               <select
                 className="px-4 py-3 rounded-xl bg-gray-800 border border-gray-700 text-white"
+                value={filtroTipo}
+                onChange={(e) => { setFiltroTipo(e.target.value); carregarStock(); }}
+              >
+                <option value="">Todos os Tipos</option>
+                <option value="produto">📦 Produtos</option>
+                <option value="servico">🛠️ Serviços</option>
+              </select>
+
+              <select
+                className="px-4 py-3 rounded-xl bg-gray-800 border border-gray-700 text-white"
                 value={filtroCategoria}
                 onChange={(e) => setFiltroCategoria(e.target.value)}
               >
@@ -525,25 +601,25 @@ const Stock = () => {
                 onClick={() => { resetForm(); setModalOpen(true); }}
                 className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 px-5 py-3 rounded-xl transition flex items-center gap-2 shadow-lg"
               >
-                <Plus size={18} /> Novo Produto
+                <Plus size={18} /> Novo Item
               </button>
             </div>
 
-            {/* Tabela de Produtos */}
+            {/* Tabela de Itens */}
             {loading ? (
               <div className="text-center py-12">
                 <Loader2 className="animate-spin mx-auto mb-4 text-blue-400" size={40} />
-                <p className="text-gray-400">Carregando produtos...</p>
+                <p className="text-gray-400">Carregando itens...</p>
               </div>
-            ) : produtosFiltrados.length === 0 ? (
+            ) : itensFiltrados.length === 0 ? (
               <div className="bg-gray-800 rounded-2xl p-12 text-center">
                 <Package className="mx-auto mb-4 text-gray-500" size={48} />
-                <p className="text-gray-400 text-lg">Nenhum produto encontrado</p>
+                <p className="text-gray-400 text-lg">Nenhum item encontrado</p>
                 <button
                   onClick={() => { resetForm(); setModalOpen(true); }}
                   className="mt-4 bg-green-600 hover:bg-green-700 px-6 py-2 rounded-lg transition"
                 >
-                  Adicionar Primeiro Produto
+                  Adicionar Primeiro Item
                 </button>
               </div>
             ) : (
@@ -552,8 +628,9 @@ const Stock = () => {
                   <table className="w-full min-w-[800px]">
                     <thead className="bg-gray-700">
                       <tr className="text-gray-300 text-sm">
-                        <th className="p-4 text-left">Produto</th>
+                        <th className="p-4 text-left">Item</th>
                         <th className="p-4 text-left">Código</th>
+                        <th className="p-4 text-center">Tipo</th>
                         <th className="p-4 text-center">Qtd</th>
                         <th className="p-4 text-right">Compra</th>
                         <th className="p-4 text-right">Venda</th>
@@ -564,43 +641,69 @@ const Stock = () => {
                       </tr>
                     </thead>
                     <tbody>
-                      {produtosFiltrados.map(p => {
-                        const margem = p.precoCompra > 0 ? ((p.precoVenda - p.precoCompra) / p.precoCompra * 100).toFixed(1) : 0;
-                        const isBaixoEstoque = (p.quantidade || 0) <= (p.quantidadeMinima || 5);
-                        const isVencido = p.dataValidade && new Date(p.dataValidade) < new Date();
-                        const dataRegisto = p.createdAt || p.createdAt;
+                      {itensFiltrados.map(item => {
+                        const margem = item.tipo === "produto" && item.precoCompra > 0 
+                          ? ((item.precoVenda - item.precoCompra) / item.precoCompra * 100).toFixed(1) 
+                          : 0;
+                        const isBaixoEstoque = item.tipo === "produto" && (item.quantidade || 0) <= (item.quantidadeMinima || 5);
+                        const isVencido = item.tipo === "produto" && item.dataValidade && new Date(item.dataValidade) < new Date();
+                        const dataRegisto = item.createdAt;
                         
                         return (
-                          <tr key={p._id} className="border-t border-gray-700 hover:bg-gray-750 transition">
+                          <tr key={item._id} className="border-t border-gray-700 hover:bg-gray-750 transition">
                             <td className="p-4">
-                              <div className="font-medium text-white">{p.produto}</div>
-                              <div className="text-xs text-gray-400">{p.marca || p.categoria}</div>
+                              <div className="font-medium text-white flex items-center gap-2">
+                                {item.tipo === "servico" ? (
+                                  <Wrench size={16} className="text-purple-400" />
+                                ) : (
+                                  <Package size={16} className="text-blue-400" />
+                                )}
+                                {item.produto}
+                              </div>
+                              <div className="text-xs text-gray-400">{item.marca || item.categoria}</div>
                             </td>
-                            <td className="p-4 text-gray-300 text-sm">{p.codigoBarras || p.codigoInterno || "—"}</td>
+                            <td className="p-4 text-gray-300 text-sm">{item.codigoBarras || item.codigoInterno || "—"}</td>
                             <td className="p-4 text-center">
-                              <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-sm font-medium ${
-                                isBaixoEstoque ? 'bg-yellow-500/20 text-yellow-400' : 
-                                p.quantidade === 0 ? 'bg-red-500/20 text-red-400' : 'bg-green-500/20 text-green-400'
+                              <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs ${
+                                item.tipo === "servico" 
+                                  ? 'bg-purple-500/20 text-purple-400' 
+                                  : 'bg-blue-500/20 text-blue-400'
                               }`}>
-                                {p.quantidade || 0} {p.unidadeMedida === "Unidade" ? "un" : p.unidadeMedida?.substring(0, 3)}
+                                {item.tipo === "servico" ? "Serviço" : "Produto"}
                               </span>
                             </td>
-                            <td className="p-4 text-right text-gray-300">{p.precoCompra?.toLocaleString()} Kz</td>
-                            <td className="p-4 text-right text-white font-medium">{p.precoVenda?.toLocaleString()} Kz</td>
+                            <td className="p-4 text-center">
+                              {item.tipo === "produto" ? (
+                                <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-sm font-medium ${
+                                  isBaixoEstoque ? 'bg-yellow-500/20 text-yellow-400' : 
+                                  item.quantidade === 0 ? 'bg-red-500/20 text-red-400' : 'bg-green-500/20 text-green-400'
+                                }`}>
+                                  {item.quantidade || 0} {item.unidadeMedida === "Unidade" ? "un" : item.unidadeMedida?.substring(0, 3)}
+                                </span>
+                              ) : (
+                                <span className="text-gray-400 text-xs">—</span>
+                              )}
+                            </td>
+                            <td className="p-4 text-right text-gray-300">
+                              {item.tipo === "produto" ? `${item.precoCompra?.toLocaleString()} Kz` : "—"}
+                            </td>
+                            <td className="p-4 text-right text-white font-medium">{item.precoVenda?.toLocaleString()} Kz</td>
                             <td className={`p-4 text-right font-medium ${
-                              margem > 50 ? 'text-green-400' : margem > 25 ? 'text-blue-400' : margem > 10 ? 'text-yellow-400' : 'text-red-400'
+                              item.tipo === "produto" ? (
+                                margem > 50 ? 'text-green-400' : margem > 25 ? 'text-blue-400' : margem > 10 ? 'text-yellow-400' : 'text-red-400'
+                              ) : 'text-gray-500'
                             }`}>
-                              {margem}%
+                              {item.tipo === "produto" ? `${margem}%` : "—"}
                             </td>
                             <td className="p-4 text-center text-gray-400 text-sm">
                               {formatarData(dataRegisto)}
                             </td>
                             <td className="p-4 text-center">
-                              {p.dataValidade ? (
+                              {item.tipo === "produto" && item.dataValidade ? (
                                 <span className={`text-xs px-2 py-1 rounded-full ${
                                   isVencido ? 'bg-red-500/20 text-red-400' : 'bg-green-500/20 text-green-400'
                                 }`}>
-                                  {formatarData(p.dataValidade)}
+                                  {formatarData(item.dataValidade)}
                                 </span>
                               ) : (
                                 <span className="text-xs text-gray-500">—</span>
@@ -609,14 +712,14 @@ const Stock = () => {
                             <td className="p-4">
                               <div className="flex justify-center gap-2">
                                 <button
-                                  onClick={() => handleEditClick(p)}
+                                  onClick={() => handleEditClick(item)}
                                   className="p-2 bg-yellow-600/20 hover:bg-yellow-600/40 rounded-lg transition"
                                   title="Editar"
                                 >
                                   <Edit size={16} className="text-yellow-400" />
                                 </button>
                                 <button
-                                  onClick={() => excluirProduto(p._id)}
+                                  onClick={() => excluirItem(item._id)}
                                   className="p-2 bg-red-600/20 hover:bg-red-600/40 rounded-lg transition"
                                   title="Excluir"
                                 >
@@ -636,7 +739,7 @@ const Stock = () => {
         )}
       </div>
 
-      {/* Modal de Cadastro/Edição */}
+      {/* Modal de Cadastro/Edição (Produtos e Serviços) */}
       {modalOpen && empresaSelecionada && !redirecting && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
           <div className="bg-gray-800 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -644,10 +747,10 @@ const Stock = () => {
               <div className="flex justify-between items-center">
                 <div className="flex items-center gap-3">
                   <div className="bg-blue-600 p-2 rounded-lg">
-                    {editando ? <Edit className="text-white" size={20} /> : <Package className="text-white" size={20} />}
+                    {editando ? <Edit className="text-white" size={20} /> : <Plus className="text-white" size={20} />}
                   </div>
                   <h2 className="text-xl font-bold text-white">
-                    {editando ? "Editar Produto" : "Novo Produto"}
+                    {editando ? (formData.tipo === "produto" ? "Editar Produto" : "Editar Serviço") : (formData.tipo === "produto" ? "Novo Produto" : "Novo Serviço")}
                   </h2>
                 </div>
                 <button onClick={() => { setModalOpen(false); resetForm(); }} className="text-gray-400 hover:text-white">
@@ -662,8 +765,37 @@ const Stock = () => {
                   <p className="text-blue-400 text-sm">Empresa: {empresaAtual?.nome}</p>
                 </div>
 
+                {/* Tipo (Produto ou Serviço) */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">Nome do Produto *</label>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">Tipo</label>
+                  <div className="flex gap-4">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="tipo"
+                        value="produto"
+                        checked={formData.tipo === "produto"}
+                        onChange={(e) => handleTipoChange(e.target.value)}
+                        className="w-4 h-4 text-blue-600"
+                      />
+                      <span className="text-white">📦 Produto Físico</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="tipo"
+                        value="servico"
+                        checked={formData.tipo === "servico"}
+                        onChange={(e) => handleTipoChange(e.target.value)}
+                        className="w-4 h-4 text-purple-600"
+                      />
+                      <span className="text-white">🛠️ Serviço</span>
+                    </label>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">Nome *</label>
                   <input type="text" className="w-full p-3 rounded-xl bg-gray-700/50 border border-gray-600 text-white"
                     value={formData.produto} onChange={(e) => setFormData({...formData, produto: e.target.value})} required />
                 </div>
@@ -694,6 +826,9 @@ const Stock = () => {
                       <option value="Escritório">Escritório</option>
                       <option value="Vestuário">Vestuário</option>
                       <option value="Construção">Construção</option>
+                      <option value="Consultoria">Consultoria</option>
+                      <option value="Manutenção">Manutenção</option>
+                      <option value="Transporte">Transporte</option>
                     </select>
                   </div>
                   <div>
@@ -704,11 +839,6 @@ const Stock = () => {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">Preço Compra (Kz)</label>
-                    <input type="number" className="w-full p-3 rounded-xl bg-gray-700/50 border border-gray-600 text-white"
-                      value={formData.precoCompra} onChange={(e) => setFormData({...formData, precoCompra: parseFloat(e.target.value) || 0})} />
-                  </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-300 mb-2">Preço Venda (Kz) *</label>
                     <input type="number" className="w-full p-3 rounded-xl bg-gray-700/50 border border-gray-600 text-white"
@@ -721,49 +851,130 @@ const Stock = () => {
                       {unidadesMedida.map(um => <option key={um} value={um}>{um}</option>)}
                     </select>
                   </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">Quantidade</label>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">IVA (%)</label>
                     <input type="number" className="w-full p-3 rounded-xl bg-gray-700/50 border border-gray-600 text-white"
-                      value={formData.quantidade} onChange={(e) => setFormData({...formData, quantidade: parseInt(e.target.value) || 0})} />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">Quantidade Mínima</label>
-                    <input type="number" className="w-full p-3 rounded-xl bg-gray-700/50 border border-gray-600 text-white"
-                      value={formData.quantidadeMinima} onChange={(e) => setFormData({...formData, quantidadeMinima: parseInt(e.target.value) || 0})} />
+                      value={formData.taxaIVA || 14} onChange={(e) => setFormData({...formData, taxaIVA: parseFloat(e.target.value) || 0})} />
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">Data de Validade</label>
-                    <input type="date" className="w-full p-3 rounded-xl bg-gray-700/50 border border-gray-600 text-white"
-                      value={formData.dataValidade} onChange={(e) => setFormData({...formData, dataValidade: e.target.value})} />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">Fornecedor</label>
-                    <input type="text" className="w-full p-3 rounded-xl bg-gray-700/50 border border-gray-600 text-white"
-                      value={formData.fornecedor} onChange={(e) => setFormData({...formData, fornecedor: e.target.value})} />
-                  </div>
-                </div>
+                {/* Campos específicos para Produto */}
+                {formData.tipo === "produto" && (
+                  <>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-2">Preço Compra (Kz) *</label>
+                        <input type="number" className="w-full p-3 rounded-xl bg-gray-700/50 border border-gray-600 text-white"
+                          value={formData.precoCompra} onChange={(e) => setFormData({...formData, precoCompra: parseFloat(e.target.value) || 0})} required />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-2">Data de Validade *</label>
+                        <input type="date" className="w-full p-3 rounded-xl bg-gray-700/50 border border-gray-600 text-white"
+                          value={formData.dataValidade} onChange={(e) => setFormData({...formData, dataValidade: e.target.value})} required />
+                      </div>
+                    </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">Armazém</label>
-                    <input type="text" className="w-full p-3 rounded-xl bg-gray-700/50 border border-gray-600 text-white"
-                      value={formData.armazem} onChange={(e) => setFormData({...formData, armazem: e.target.value})} />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">Nº Lote</label>
-                    <input type="text" className="w-full p-3 rounded-xl bg-gray-700/50 border border-gray-600 text-white"
-                      value={formData.numeroLote} onChange={(e) => setFormData({...formData, numeroLote: e.target.value})} />
-                  </div>
-                </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-2">Quantidade</label>
+                        <input type="number" className="w-full p-3 rounded-xl bg-gray-700/50 border border-gray-600 text-white"
+                          value={formData.quantidade} onChange={(e) => setFormData({...formData, quantidade: parseInt(e.target.value) || 0})} />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-2">Quantidade Mínima</label>
+                        <input type="number" className="w-full p-3 rounded-xl bg-gray-700/50 border border-gray-600 text-white"
+                          value={formData.quantidadeMinima} onChange={(e) => setFormData({...formData, quantidadeMinima: parseInt(e.target.value) || 0})} />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-2">Fornecedor</label>
+                        <input type="text" className="w-full p-3 rounded-xl bg-gray-700/50 border border-gray-600 text-white"
+                          value={formData.fornecedor} onChange={(e) => setFormData({...formData, fornecedor: e.target.value})} />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-2">Armazém</label>
+                        <input type="text" className="w-full p-3 rounded-xl bg-gray-700/50 border border-gray-600 text-white"
+                          value={formData.armazem} onChange={(e) => setFormData({...formData, armazem: e.target.value})} />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-2">Nº Lote</label>
+                        <input type="text" className="w-full p-3 rounded-xl bg-gray-700/50 border border-gray-600 text-white"
+                          value={formData.numeroLote} onChange={(e) => setFormData({...formData, numeroLote: e.target.value})} />
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                {/* Campos específicos para Serviço */}
+                {formData.tipo === "servico" && (
+                  <>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-2">Duração Estimada</label>
+                        <div className="flex gap-2">
+                          <input type="number" className="flex-1 p-3 rounded-xl bg-gray-700/50 border border-gray-600 text-white"
+                            value={formData.duracaoEstimada} onChange={(e) => setFormData({...formData, duracaoEstimada: parseInt(e.target.value) || 0})} />
+                          <select className="w-24 p-3 rounded-xl bg-gray-700/50 border border-gray-600 text-white"
+                            value={formData.unidadeTempo} onChange={(e) => setFormData({...formData, unidadeTempo: e.target.value})}>
+                            <option value="minutos">Minutos</option>
+                            <option value="horas">Horas</option>
+                            <option value="dias">Dias</option>
+                          </select>
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-2">Preço / Hora (Kz)</label>
+                        <input type="number" className="w-full p-3 rounded-xl bg-gray-700/50 border border-gray-600 text-white"
+                          value={formData.precoHora} onChange={(e) => setFormData({...formData, precoHora: parseFloat(e.target.value) || 0})} />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-2">Executado Por</label>
+                        <input type="text" className="w-full p-3 rounded-xl bg-gray-700/50 border border-gray-600 text-white"
+                          value={formData.executadoPor} onChange={(e) => setFormData({...formData, executadoPor: e.target.value})} placeholder="Ex: Equipe Técnica, João Silva" />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-2">Local de Execução</label>
+                        <input type="text" className="w-full p-3 rounded-xl bg-gray-700/50 border border-gray-600 text-white"
+                          value={formData.localExecucao} onChange={(e) => setFormData({...formData, localExecucao: e.target.value})} placeholder="Cliente, Oficina, Remoto" />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">Recursos Necessários</label>
+                      <input type="text" className="w-full p-3 rounded-xl bg-gray-700/50 border border-gray-600 text-white"
+                        value={formData.recursosNecessarios} onChange={(e) => setFormData({...formData, recursosNecessarios: e.target.value})} placeholder="Ferramentas, equipamentos necessários" />
+                    </div>
+
+                    <div>
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={formData.requerAgendamento}
+                          onChange={(e) => setFormData({...formData, requerAgendamento: e.target.checked})}
+                          className="w-4 h-4 rounded border-gray-600 text-blue-600 focus:ring-blue-500"
+                        />
+                        <span className="text-sm text-gray-300">Requer agendamento prévio</span>
+                      </label>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">Instruções Especiais</label>
+                      <textarea rows="2" className="w-full p-3 rounded-xl bg-gray-700/50 border border-gray-600 text-white resize-none"
+                        value={formData.instrucoes} onChange={(e) => setFormData({...formData, instrucoes: e.target.value})} placeholder="Instruções adicionais para execução do serviço" />
+                    </div>
+                  </>
+                )}
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">Observações</label>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">Observações Gerais</label>
                   <textarea rows="2" className="w-full p-3 rounded-xl bg-gray-700/50 border border-gray-600 text-white resize-none"
                     value={formData.observacoes} onChange={(e) => setFormData({...formData, observacoes: e.target.value})} />
                 </div>

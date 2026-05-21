@@ -20,7 +20,6 @@ const ImportarFuncionarios = () => {
     carregarEmpresas();
   }, []);
 
-  // Para técnico: definir empresa automaticamente
   useEffect(() => {
     if (isTecnico() && userEmpresaId) {
       setEmpresaSelecionada(userEmpresaId);
@@ -34,16 +33,15 @@ const ImportarFuncionarios = () => {
 
   const carregarEmpresas = async () => {
     if (isTecnico()) return;
-    
     try {
       const token = localStorage.getItem("token");
       const response = await fetch("https://sirexa-api.onrender.com/api/empresa", {
-        headers: { "Authorization": `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${token}` }
       });
       const data = await response.json();
       const empresasList = Array.isArray(data) ? data : [];
       setEmpresas(empresasList);
-      if (empresasList.length > 0) {
+      if (empresasList.length > 0 && !empresaSelecionada) {
         setEmpresaSelecionada(empresasList[0]._id);
       }
     } catch (error) {
@@ -54,10 +52,8 @@ const ImportarFuncionarios = () => {
   const handleFileChange = (e) => {
     const selectedFile = e.target.files[0];
     if (!selectedFile) return;
-
     setFile(selectedFile);
     setResultado(null);
-    
     const reader = new FileReader();
     reader.onload = (evt) => {
       const data = new Uint8Array(evt.target.result);
@@ -72,79 +68,65 @@ const ImportarFuncionarios = () => {
   const downloadModelo = () => {
     const modelo = [
       {
-        "Nome": "João Silva",
-        "NIF": "123456789012",
-        "Email": "joao.silva@empresa.com",
-        "Telefone": "923456789",
-        "Função": "Vendedor",
-        "Departamento": "Vendas",
+        Nome: "João Silva",
+        NIF: "123456789012",
+        Email: "joao.silva@empresa.com",
+        Telefone: "923456789",
+        Função: "Vendedor",
+        Departamento: "Vendas",
         "Salário Base": "150000",
         "Data de Admissão": "2024-01-15",
         "Tipo Contrato": "Efetivo",
-        "Banco": "BAI",
+        Banco: "BAI",
         "Nº Conta": "123456789",
-        "IBAN": "AO06004444444444444444444",
+        IBAN: "AO06004444444444444444444",
         "Titular da Conta": "João Silva",
         "Grupo IRT": "A",
-        "Dependentes": "0",
+        Dependentes: "0",
         "Horas Semanais": "40",
         "Horas Diárias": "8",
         "Contribui INSS": "Sim",
-        "Status": "Ativo"
+        Status: "Ativo"
       },
       {
-        "Nome": "Maria Santos",
-        "NIF": "123456789013",
-        "Email": "maria.santos@empresa.com",
-        "Telefone": "923456788",
-        "Função": "Contabilista",
-        "Departamento": "Financeiro",
+        Nome: "Maria Santos",
+        NIF: "123456789013",
+        Email: "maria.santos@empresa.com",
+        Telefone: "923456788",
+        Função: "Contabilista",
+        Departamento: "Financeiro",
         "Salário Base": "200000",
         "Data de Admissão": "2024-02-01",
         "Tipo Contrato": "Efetivo",
-        "Banco": "BFA",
+        Banco: "BFA",
         "Nº Conta": "987654321",
-        "IBAN": "AO06005555555555555555555",
+        IBAN: "AO06005555555555555555555",
         "Titular da Conta": "Maria Santos",
         "Grupo IRT": "B",
-        "Dependentes": "2",
+        Dependentes: "2",
         "Horas Semanais": "40",
         "Horas Diárias": "8",
         "Contribui INSS": "Sim",
-        "Status": "Ativo"
+        Status: "Ativo"
       }
     ];
-    
     const ws = XLSX.utils.json_to_sheet(modelo);
-    
-    // Ajustar largura das colunas
-    const colWidths = [
-      { wch: 25 }, // Nome
-      { wch: 15 }, // NIF
-      { wch: 30 }, // Email
-      { wch: 15 }, // Telefone
-      { wch: 20 }, // Função
-      { wch: 20 }, // Departamento
-      { wch: 15 }, // Salário Base
-      { wch: 15 }, // Data de Admissão
-      { wch: 15 }, // Tipo Contrato
-      { wch: 15 }, // Banco
-      { wch: 15 }, // Nº Conta
-      { wch: 35 }, // IBAN
-      { wch: 25 }, // Titular da Conta
-      { wch: 12 }, // Grupo IRT
-      { wch: 12 }, // Dependentes
-      { wch: 15 }, // Horas Semanais
-      { wch: 15 }, // Horas Diárias
-      { wch: 18 }, // Contribui INSS
-      { wch: 12 }  // Status
+    ws["!cols"] = [
+      { wch: 25 }, { wch: 15 }, { wch: 30 }, { wch: 15 }, { wch: 20 },
+      { wch: 20 }, { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 15 },
+      { wch: 15 }, { wch: 35 }, { wch: 25 }, { wch: 12 }, { wch: 12 },
+      { wch: 15 }, { wch: 15 }, { wch: 18 }, { wch: 12 }
     ];
-    ws['!cols'] = colWidths;
-    
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Modelo Funcionários");
     XLSX.writeFile(wb, "modelo_importacao_funcionarios.xlsx");
     mostrarMensagem("Modelo baixado com sucesso!", "sucesso");
+  };
+
+  const getEmpresaNome = () => {
+    if (isTecnico()) return user?.empresaNome || "Empresa vinculada";
+    const empresa = empresas.find(e => e._id === empresaSelecionada);
+    return empresa?.nome || "";
   };
 
   const handleImport = async () => {
@@ -152,7 +134,6 @@ const ImportarFuncionarios = () => {
       mostrarMensagem("Selecione um arquivo para importar", "erro");
       return;
     }
-    
     if (!empresaSelecionada && !isTecnico()) {
       mostrarMensagem("Selecione uma empresa", "erro");
       return;
@@ -167,96 +148,114 @@ const ImportarFuncionarios = () => {
         const sheet = workbook.Sheets[workbook.SheetNames[0]];
         const rows = XLSX.utils.sheet_to_json(sheet);
 
-        let sucesso = 0;
-        let erros = 0;
-        const errosLista = [];
+        const funcionariosData = [];
+        const errosValidacao = [];
 
-        for (const row of rows) {
-          try {
-            // Mapear os campos do Excel para o formato esperado pelo backend
-            const funcionarioData = {
-              nome: row.Nome || row.nome || row["Nome Completo"] || "",
-              nif: row.NIF || row.nif || row["Número de Identificação Fiscal"] || "",
-              email: row.Email || row.email || row["E-mail"] || "",
-              telefone: row.Telefone || row.telefone || row.Contacto || "",
-              funcao: row.Função || row.funcao || row.Cargo || row.cargo || "",
-              departamento: row.Departamento || row.departamento || "",
-              salarioBase: parseFloat(String(row["Salário Base"] || row.salarioBase || row.SalarioBase || 0).replace(/[^0-9.-]/g, '')) || 0,
-              dataAdmissao: row["Data de Admissão"] || row.dataAdmissao || row.DataAdmissao || new Date().toISOString().split('T')[0],
-              tipoContrato: row["Tipo Contrato"] || row.tipoContrato || "Efetivo",
-              banco: row.Banco || row.banco || "",
-              numeroConta: row["Nº Conta"] || row.numeroConta || row["Número da Conta"] || "",
-              iban: row.IBAN || row.iban || "",
-              titularConta: row["Titular da Conta"] || row.titularConta || row.Nome || row.nome || "",
-              grupoIRT: row["Grupo IRT"] || row.grupoIRT || "A",
-              dependentes: parseInt(row.Dependentes || row.dependentes || 0),
-              horasSemanais: parseFloat(row["Horas Semanais"] || row.horasSemanais || 40),
-              horasDiarias: parseFloat(row["Horas Diárias"] || row.horasDiarias || 8),
-              status: row.Status || row.status || "Ativo",
-              contribuiINSS: (row["Contribui INSS"] || row.contribuiINSS || "Sim").toLowerCase() === "sim",
-              empresaId: empresaSelecionada
-            };
+        rows.forEach((row, idx) => {
+          const nome = row.Nome || row.nome || row["Nome Completo"] || "";
+          const nif = String(row.NIF || row.nif || row["Número de Identificação Fiscal"] || "").trim();
+          const funcao = row.Função || row.funcao || row.Cargo || row.cargo || "";
+          const salarioBaseRaw = row["Salário Base"] || row.salarioBase || row.SalarioBase || 0;
+          const salarioBase = parseFloat(String(salarioBaseRaw).replace(/[^0-9.-]/g, ""));
 
-            // Validações básicas
-            if (!funcionarioData.nome) {
-              throw new Error("Nome é obrigatório");
-            }
-            if (!funcionarioData.nif) {
-              throw new Error("NIF é obrigatório");
-            }
-            if (!funcionarioData.funcao) {
-              throw new Error("Função é obrigatória");
-            }
-            if (funcionarioData.salarioBase <= 0) {
-              throw new Error("Salário base inválido");
-            }
+          const erros = [];
+          if (!nome) erros.push("Nome é obrigatório");
+          if (!nif) erros.push("NIF é obrigatório");
+          if (!funcao) erros.push("Função é obrigatória");
+          if (isNaN(salarioBase) || salarioBase <= 0) erros.push("Salário base inválido");
 
-            const response = await fetch(`https://sirexa-api.onrender.com/api/funcionarios`, {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                "Authorization": `Bearer ${localStorage.getItem("token")}`
-              },
-              body: JSON.stringify(funcionarioData)
-            });
-
-            const result = await response.json();
-
-            if (response.ok) {
-              sucesso++;
-            } else {
-              erros++;
-              errosLista.push({
-                dados: row,
-                erro: result.mensagem || "Erro ao cadastrar"
-              });
-            }
-          } catch (error) {
-            erros++;
-            errosLista.push({
+          if (erros.length > 0) {
+            errosValidacao.push({
+              linha: idx + 2,
               dados: row,
-              erro: error.message
+              erros
             });
+            return;
           }
+
+          funcionariosData.push({
+            nome,
+            nif,
+            email: row.Email || row.email || row["E-mail"] || "",
+            telefone: row.Telefone || row.telefone || row.Contacto || "",
+            funcao,
+            departamento: row.Departamento || row.departamento || "",
+            salarioBase,
+            dataAdmissao: row["Data de Admissão"] || row.dataAdmissao || new Date().toISOString().split("T")[0],
+            tipoContrato: row["Tipo Contrato"] || row.tipoContrato || "Efetivo",
+            banco: row.Banco || row.banco || "",
+            numeroConta: row["Nº Conta"] || row.numeroConta || row["Número da Conta"] || "",
+            iban: row.IBAN || row.iban || "",
+            titularConta: row["Titular da Conta"] || row.titularConta || nome,
+            grupoIRT: row["Grupo IRT"] || row.grupoIRT || "A",
+            dependentes: parseInt(row.Dependentes || row.dependentes || 0),
+            horasSemanais: parseFloat(row["Horas Semanais"] || row.horasSemanais || 40),
+            horasDiarias: parseFloat(row["Horas Diárias"] || row.horasDiarias || 8),
+            status: row.Status || row.status || "Ativo",
+            contribuiINSS: (row["Contribui INSS"] || row.contribuiINSS || "Sim").toLowerCase() === "sim",
+            empresaId: empresaSelecionada,
+            empresaNome: getEmpresaNome()
+          });
+        });
+
+        if (errosValidacao.length > 0) {
+          setResultado({
+            sucesso: 0,
+            erros: errosValidacao.length,
+            total: rows.length,
+            errosLista: errosValidacao.map(e => ({
+              dados: e.dados,
+              erro: e.erros.join(", ")
+            }))
+          });
+          mostrarMensagem(`${errosValidacao.length} registro(s) com erros de validação.`, "erro");
+          setLoading(false);
+          return;
         }
 
-        setResultado({ sucesso, erros, total: rows.length, errosLista });
-        mostrarMensagem(`Importação concluída: ${sucesso} sucessos, ${erros} erros`, sucesso > 0 ? "sucesso" : "erro");
+        if (funcionariosData.length === 0) {
+          mostrarMensagem("Nenhum registro válido para importar.", "erro");
+          setLoading(false);
+          return;
+        }
+
+        const token = localStorage.getItem("token");
+        const response = await fetch(`https://sirexa-api.onrender.com/api/funcionarios/importar-lote`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            funcionarios: funcionariosData,
+            empresaId: empresaSelecionada
+          })
+        });
+
+        const resultadoImportacao = await response.json();
+        if (response.ok) {
+          setResultado(resultadoImportacao);
+          mostrarMensagem(
+            `Importação concluída: ${resultadoImportacao.sucesso} sucessos, ${resultadoImportacao.erros.length} erros`,
+            resultadoImportacao.sucesso > 0 ? "sucesso" : "erro"
+          );
+        } else {
+          throw new Error(resultadoImportacao.mensagem || "Erro na importação");
+        }
       };
       reader.readAsArrayBuffer(file);
     } catch (error) {
-      mostrarMensagem("Erro ao importar arquivo", "erro");
+      console.error(error);
+      mostrarMensagem(error.message || "Erro ao importar arquivo", "erro");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <Layout title="Importar Funcionários" showBackButton={true} backToRoute="/funcionarios">
+    <Layout title="Importar Funcionários" showBackButton backToRoute="/funcionarios">
       {mensagem.texto && (
-        <div className={`fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg ${
-          mensagem.tipo === "sucesso" ? "bg-green-600" : "bg-red-600"
-        } text-white`}>
+        <div className={`fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg ${mensagem.tipo === "sucesso" ? "bg-green-600" : "bg-red-600"} text-white`}>
           {mensagem.texto}
         </div>
       )}
@@ -267,20 +266,14 @@ const ImportarFuncionarios = () => {
             <h2 className="text-xl font-bold text-white flex items-center gap-2">
               <Upload size={20} /> Importar Funcionários
             </h2>
-            <button
-              onClick={downloadModelo}
-              className="bg-green-600 hover:bg-green-700 px-4 py-2 rounded-lg transition flex items-center gap-2"
-            >
+            <button onClick={downloadModelo} className="bg-green-600 hover:bg-green-700 px-4 py-2 rounded-lg transition flex items-center gap-2">
               <Download size={18} /> Baixar Modelo
             </button>
           </div>
 
-          {/* Seletor de Empresa (apenas para gestores) */}
           {!isTecnico() && empresas.length > 0 && (
             <div className="mb-6 p-4 bg-gray-700/30 rounded-lg">
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                Empresa
-              </label>
+              <label className="block text-sm font-medium text-gray-300 mb-2">Empresa</label>
               <select
                 className="w-full p-3 rounded-xl bg-gray-700 border border-gray-600 text-white"
                 value={empresaSelecionada}
@@ -290,42 +283,26 @@ const ImportarFuncionarios = () => {
                   <option key={emp._id} value={emp._id}>{emp.nome}</option>
                 ))}
               </select>
-              <p className="text-xs text-gray-400 mt-1">
-                Os funcionários serão importados para esta empresa
-              </p>
+              <p className="text-xs text-gray-400 mt-1">Os funcionários serão importados para esta empresa</p>
             </div>
           )}
 
-          {/* Para técnico: mostrar empresa fixa */}
           {isTecnico() && (
             <div className="mb-6 p-4 bg-gray-700/30 rounded-lg">
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                Empresa
-              </label>
+              <label className="block text-sm font-medium text-gray-300 mb-2">Empresa</label>
               <input
                 type="text"
                 className="w-full p-3 rounded-xl bg-gray-700/50 border border-gray-600 text-white cursor-not-allowed"
                 value={user?.empresaNome || "Empresa vinculada"}
                 disabled
               />
-              <p className="text-xs text-gray-400 mt-1">
-                Você está vinculado a esta empresa. Os funcionários serão importados para ela.
-              </p>
+              <p className="text-xs text-gray-400 mt-1">Você está vinculado a esta empresa. Os funcionários serão importados para ela.</p>
             </div>
           )}
 
           <div className="border-2 border-dashed border-gray-600 rounded-lg p-8 text-center">
-            <input
-              type="file"
-              accept=".xlsx, .xls, .csv"
-              onChange={handleFileChange}
-              className="hidden"
-              id="file-input"
-            />
-            <label
-              htmlFor="file-input"
-              className="cursor-pointer flex flex-col items-center gap-2"
-            >
+            <input type="file" accept=".xlsx, .xls, .csv" onChange={handleFileChange} className="hidden" id="file-input" />
+            <label htmlFor="file-input" className="cursor-pointer flex flex-col items-center gap-2">
               <FileText size={48} className="text-gray-400" />
               <p className="text-gray-400">Clique para selecionar um arquivo</p>
               <p className="text-gray-500 text-sm">Formatos aceitos: .xlsx, .xls, .csv</p>
@@ -382,7 +359,7 @@ const ImportarFuncionarios = () => {
                   <span className="text-white">Total: {resultado.total}</span>
                 </div>
               </div>
-              {resultado.errosLista.length > 0 && (
+              {resultado.errosLista && resultado.errosLista.length > 0 && (
                 <details>
                   <summary className="text-yellow-400 cursor-pointer flex items-center gap-2">
                     <AlertCircle size={16} /> Ver detalhes dos erros ({resultado.errosLista.length})
@@ -391,9 +368,7 @@ const ImportarFuncionarios = () => {
                     {resultado.errosLista.map((item, idx) => (
                       <div key={idx} className="p-2 bg-gray-800 rounded text-xs">
                         <p className="text-red-400 font-semibold">Erro: {item.erro}</p>
-                        <pre className="mt-1 text-gray-400 overflow-x-auto">
-                          {JSON.stringify(item.dados, null, 2)}
-                        </pre>
+                        <pre className="mt-1 text-gray-400 overflow-x-auto">{JSON.stringify(item.dados, null, 2)}</pre>
                       </div>
                     ))}
                   </div>
@@ -414,10 +389,7 @@ const ImportarFuncionarios = () => {
                 <><Upload size={18} /> Importar Funcionários</>
               )}
             </button>
-            <button
-              onClick={() => navigate("/funcionarios")}
-              className="bg-gray-600 hover:bg-gray-700 px-6 py-2 rounded-lg transition flex items-center gap-2"
-            >
+            <button onClick={() => navigate("/funcionarios")} className="bg-gray-600 hover:bg-gray-700 px-6 py-2 rounded-lg transition flex items-center gap-2">
               <ArrowLeft size={18} /> Voltar
             </button>
           </div>

@@ -437,4 +437,123 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
+
+// 🔒 IMPORTAR FUNCIONÁRIOS EM LOTE (COM VALIDAÇÃO DE EMPRESA)
+router.post('/importar-lote', validateEmpresaAccess, async (req, res) => {
+  try {
+    const { funcionarios, empresaId } = req.body;
+
+    // Validações básicas
+    if (!funcionarios || !Array.isArray(funcionarios) || funcionarios.length === 0) {
+      return res.status(400).json({ mensagem: 'Envie uma lista de funcionários' });
+    }
+    if (!empresaId) {
+      return res.status(400).json({ mensagem: 'empresaId é obrigatório' });
+    }
+
+    // Garantir que a empresaId do corpo corresponde à do token (segurança extra)
+    if (empresaId !== req.empresaAtual) {
+      return res.status(403).json({ mensagem: 'Empresa não autorizada' });
+    }
+
+    const empresa = await Empresa.findById(empresaId);
+    if (!empresa) {
+      return res.status(404).json({ mensagem: 'Empresa não encontrada' });
+    }
+
+    const resultados = {
+      sucesso: 0,
+      erros: [],
+      total: funcionarios.length
+    };
+
+    // Processar cada funcionário
+    for (const dados of funcionarios) {
+      try {
+        // Validar campos obrigatórios
+        if (!dados.nome || !dados.nome.trim()) throw new Error('Nome é obrigatório');
+        if (!dados.nif || !dados.nif.trim()) throw new Error('NIF é obrigatório');
+        if (!dados.funcao || !dados.funcao.trim()) throw new Error('Função é obrigatória');
+        if (!dados.salarioBase || parseFloat(dados.salarioBase) <= 0) throw new Error('Salário base inválido');
+
+        // Verificar duplicidade dentro da mesma empresa
+        const existente = await Funcionario.findOne({ empresaId, nif: dados.nif.trim() });
+        if (existente) throw new Error('NIF já cadastrado nesta empresa');
+
+        // Criar objeto do funcionário
+        const funcionarioData = {
+          nome: dados.nome.trim(),
+          nif: dados.nif.trim(),
+          email: dados.email || '',
+          telefone: dados.telefone || '',
+          funcao: dados.funcao.trim(),
+          departamento: dados.departamento || '',
+          salarioBase: parseFloat(dados.salarioBase),
+          dataAdmissao: dados.dataAdmissao || new Date(),
+          tipoContrato: dados.tipoContrato || 'Efetivo',
+          banco: dados.banco || '',
+          numeroConta: dados.numeroConta || '',
+          iban: dados.iban || '',
+          titularConta: dados.titularConta || dados.nome,
+          grupoIRT: dados.grupoIRT || 'A',
+          dependentes: parseInt(dados.dependentes) || 0,
+          horasSemanais: parseFloat(dados.horasSemanais) || 40,
+          horasDiarias: parseFloat(dados.horasDiarias) || 8,
+          status: dados.status || 'Ativo',
+          contribuiINSS: dados.contribuiINSS !== undefined ? dados.contribuiINSS : true,
+          empresaId,
+          empresaNome: empresa.nome,
+          isTecnico: dados.isTecnico === true || dados.isTecnico === 'true',
+          ...(dados.foto ? { foto: dados.foto } : {})
+        };
+
+        // Se o funcionário for técnico, criar usuário técnico também (opcional)
+        const funcionario = new Funcionario(funcionarioData);
+        await funcionario.save();
+
+        // Se marcado como técnico, criar entrada na coleção Tecnico
+        if (funcionario.isTecnico && dados.tecnicoSenha) {
+          const modulos = dados.tecnicoModulos || {
+            vendas: true, stock: true, facturacao: true, funcionarios: false,
+            folhaSalarial: false, gestaoFaltas: false, gestaoAbonos: false,
+            avaliacao: false, viaturas: false, abastecimentos: false,
+            manutencoes: false, inventario: false, fornecedores: false,
+            fluxoCaixa: false, contaCorrente: false, controloPagamento: false,
+            custosReceitas: false, orcamentos: false, dre: false,
+            indicadores: false, transferencias: false, reconciliacao: false,
+            relatorios: false, graficos: false, analise: false
+          };
+          const tecnico = new Tecnico({
+            nome: funcionario.nome,
+            email: funcionario.email,
+            senha: dados.tecnicoSenha,
+            telefone: funcionario.telefone || '',
+            funcao: funcionario.funcao,
+            empresaId: funcionario.empresaId,
+            empresaNome: empresa.nome,
+            modulos: typeof modulos === 'string' ? JSON.parse(modulos) : modulos,
+            funcionarioId: funcionario._id
+          });
+          await tecnico.save();
+          funcionario.usuarioId = tecnico._id;
+          await funcionario.save();
+        }
+
+        resultados.sucesso++;
+      } catch (error) {
+        resultados.erros.push({
+          dados,
+          erro: error.message
+        });
+      }
+    }
+
+    res.json(resultados);
+  } catch (error) {
+    console.error('❌ Erro na importação em lote:', error);
+    res.status(500).json({ mensagem: 'Erro interno ao processar importação em lote', erro: error.message });
+  }
+});
+
+
 module.exports = router;
