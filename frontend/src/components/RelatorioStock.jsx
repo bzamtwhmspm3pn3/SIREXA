@@ -3,20 +3,22 @@ import React, { useState, useEffect } from "react";
 import { 
   X, Download, Printer, Package, TrendingUp, AlertTriangle, 
   Calendar, DollarSign, FileText, Loader2, CheckCircle,
-  Building2, User
+  Building2, User, Wrench
 } from "lucide-react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
-const RelatorioStock = ({ produtos = [], onClose, empresaId }) => {
+const RelatorioStock = ({ produtos = [], servicos = [], onClose, empresaId }) => {
   const [exportando, setExportando] = useState(false);
   const [mensagem, setMensagem] = useState({ texto: "", tipo: "" });
   const [empresa, setEmpresa] = useState(null);
   const [usuario, setUsuario] = useState(null);
   const [carregando, setCarregando] = useState(true);
 
-  // Garantir que produtos é um array
+  // Garantir que produtos e serviços são arrays
   const produtosArray = Array.isArray(produtos) ? produtos : [];
+  const servicosArray = Array.isArray(servicos) ? servicos : [];
+  const todosItens = [...produtosArray, ...servicosArray];
 
   useEffect(() => {
     carregarDados();
@@ -31,6 +33,7 @@ const RelatorioStock = ({ produtos = [], onClose, empresaId }) => {
       console.log("=== CARREGANDO DADOS ===");
       console.log("empresaId:", idEmpresa);
       console.log("produtos recebidos:", produtosArray.length);
+      console.log("serviços recebidos:", servicosArray.length);
       
       if (idEmpresa && token) {
         const response = await fetch(`https://sirexa-api.onrender.com/api/empresa/${idEmpresa}`, {
@@ -44,7 +47,6 @@ const RelatorioStock = ({ produtos = [], onClose, empresaId }) => {
           const data = await response.json();
           setEmpresa(data.dados || data);
         } else {
-          // Fallback com dados da empresa que está no localStorage
           const empresaNome = localStorage.getItem("empresaNome");
           if (empresaNome) {
             setEmpresa({ nome: empresaNome });
@@ -112,9 +114,9 @@ const RelatorioStock = ({ produtos = [], onClose, empresaId }) => {
     window.print();
   };
 
-  // Estatísticas com segurança
-  const stats = {
-    totalProdutos: produtosArray.length,
+  // Estatísticas para PRODUTOS
+  const statsProdutos = {
+    total: produtosArray.length,
     totalQuantidade: produtosArray.reduce((acc, p) => acc + (p?.quantidade || 0), 0),
     valorTotalCompra: produtosArray.reduce((acc, p) => acc + ((p?.quantidade || 0) * (p?.precoCompra || 0)), 0),
     valorTotalVenda: produtosArray.reduce((acc, p) => acc + ((p?.quantidade || 0) * (p?.precoVenda || 0)), 0),
@@ -139,25 +141,46 @@ const RelatorioStock = ({ produtos = [], onClose, empresaId }) => {
     }).length
   };
 
-  const margemMedia = stats.totalProdutos > 0 
+  // Estatísticas para SERVIÇOS
+  const statsServicos = {
+    total: servicosArray.length,
+    valorTotalVenda: servicosArray.reduce((acc, s) => acc + (s?.precoVenda || 0), 0),
+    duracaoMedia: servicosArray.length > 0
+      ? servicosArray.reduce((acc, s) => acc + (s?.duracaoEstimada || 0), 0) / servicosArray.length
+      : 0,
+    requerAgendamento: servicosArray.filter(s => s?.requerAgendamento === true).length
+  };
+
+  // Estatísticas GERAIS
+  const statsGerais = {
+    totalItens: todosItens.length,
+    valorTotalVenda: statsProdutos.valorTotalVenda + statsServicos.valorTotalVenda,
+    totalProdutos: statsProdutos.total,
+    totalServicos: statsServicos.total
+  };
+
+  const margemMedia = statsProdutos.total > 0 
     ? (produtosArray.reduce((acc, p) => {
         if (p?.precoCompra > 0) {
           return acc + ((p.precoVenda - p.precoCompra) / p.precoCompra * 100);
         }
         return acc;
-      }, 0) / stats.totalProdutos).toFixed(1)
+      }, 0) / statsProdutos.total).toFixed(1)
     : 0;
 
-  const categorias = [...new Set(produtosArray.map(p => p?.categoria).filter(Boolean))];
+  const categorias = [...new Set(todosItens.map(p => p?.categoria).filter(Boolean))];
   const categoriasCount = categorias.map(cat => ({
     nome: cat,
-    quantidade: produtosArray.filter(p => p?.categoria === cat).length,
-    valor: produtosArray.filter(p => p?.categoria === cat).reduce((acc, p) => acc + ((p?.quantidade || 0) * (p?.precoVenda || 0)), 0)
+    quantidade: todosItens.filter(p => p?.categoria === cat).length,
+    valor: todosItens.filter(p => p?.categoria === cat).reduce((acc, p) => {
+      const qtd = p?.tipo === 'produto' ? (p?.quantidade || 0) : 1;
+      return acc + (qtd * (p?.precoVenda || 0));
+    }, 0)
   })).sort((a, b) => b.valor - a.valor);
 
   const exportarPDFProfissional = async () => {
-    if (produtosArray.length === 0) {
-      mostrarMensagem("Nenhum produto para exportar", "erro");
+    if (todosItens.length === 0) {
+      mostrarMensagem("Nenhum item para exportar", "erro");
       return;
     }
     
@@ -217,13 +240,13 @@ const RelatorioStock = ({ produtos = [], onClose, empresaId }) => {
       doc.setFontSize(18);
       doc.setFont("helvetica", "bold");
       doc.setTextColor(0, 0, 0);
-      doc.text("RELATÓRIO DE STOCK", 14, yPos);
+      doc.text("RELATÓRIO DE STOCK E SERVIÇOS", 14, yPos);
       
       yPos += 8;
       doc.setFontSize(12);
       doc.setFont("helvetica", "normal");
       doc.setTextColor(80, 80, 80);
-      doc.text("Relatório Analítico de Inventário", 14, yPos);
+      doc.text("Relatório Analítico de Inventário e Serviços", 14, yPos);
       
       yPos += 12;
 
@@ -251,10 +274,10 @@ const RelatorioStock = ({ produtos = [], onClose, empresaId }) => {
       const cardWidth = 65;
       const cardHeight = 30;
       const cards = [
-        { label: "Total de Produtos", value: stats.totalProdutos.toString(), color: [37, 99, 235] },
-        { label: "Quantidade Total", value: stats.totalQuantidade.toLocaleString(), color: [34, 197, 94] },
-        { label: "Valor Total (Venda)", value: formatarMoeda(stats.valorTotalVenda), color: [16, 185, 129] },
-        { label: "Margem Média", value: `${margemMedia}%`, color: [245, 158, 11] }
+        { label: "Total de Itens", value: statsGerais.totalItens.toString(), color: [37, 99, 235] },
+        { label: "Produtos", value: statsGerais.totalProdutos.toString(), color: [34, 197, 94] },
+        { label: "Serviços", value: statsGerais.totalServicos.toString(), color: [139, 92, 246] },
+        { label: "Valor Total", value: formatarMoeda(statsGerais.valorTotalVenda), color: [16, 185, 129] }
       ];
       
       cards.forEach((card, idx) => {
@@ -275,61 +298,90 @@ const RelatorioStock = ({ produtos = [], onClose, empresaId }) => {
       yPos += cardHeight + 10;
 
       // LISTA DE PRODUTOS
-      doc.setFontSize(11);
-      doc.setFont("helvetica", "bold");
-      doc.setTextColor(37, 99, 235);
-      doc.text("LISTA COMPLETA DE PRODUTOS", 14, yPos);
-      yPos += 5;
-      
-      const produtosData = produtosArray.map(p => [
-        p?.produto?.substring(0, 25) || "—",
-        p?.codigoBarras || "—",
-        (p?.quantidade || 0).toLocaleString(),
-        formatarMoeda(p?.precoCompra),
-        formatarMoeda(p?.precoVenda),
-        p?.precoCompra > 0 ? `${((p.precoVenda - p.precoCompra) / p.precoCompra * 100).toFixed(1)}%` : "0%",
-        formatarData(p?.dataValidade),
-        p?.categoria?.substring(0, 12) || "Geral"
-      ]);
-      
-      autoTable(doc, {
-        startY: yPos,
-        head: [["Produto", "Código", "Qtd", "Compra", "Venda", "Margem", "Validade", "Categoria"]],
-        body: produtosData,
-        theme: "striped",
-        styles: { fontSize: 7, cellPadding: 3 },
-        headStyles: { fillColor: [37, 99, 235], textColor: [255, 255, 255], fontStyle: "bold" },
-        alternateRowStyles: { fillColor: [240, 248, 255] },
-        margin: { left: 14, right: 14 },
-        columnStyles: {
-          0: { cellWidth: 45 },
-          1: { cellWidth: 25 },
-          2: { cellWidth: 20, halign: "right" },
-          3: { cellWidth: 25, halign: "right" },
-          4: { cellWidth: 25, halign: "right" },
-          5: { cellWidth: 18, halign: "right" },
-          6: { cellWidth: 22, halign: "center" },
-          7: { cellWidth: 22 }
-        },
-        didDrawPage: (data) => {
-          const pageHeight = doc.internal.pageSize.height;
-          doc.setFontSize(7);
-          doc.setFont("helvetica", "italic");
-          doc.setTextColor(100, 100, 100);
-          doc.text(
-            `${nomeEmpresa} - Relatório de Stock | Página ${data.pageNumber}`,
-            14,
-            pageHeight - 10
-          );
-          doc.text(
-            `© ${new Date().getFullYear()} ${nomeEmpresa} - Todos os direitos reservados`,
-            14,
-            pageHeight - 5
-          );
-        }
-      });
-      
-      yPos = doc.lastAutoTable.finalY + 10;
+      if (produtosArray.length > 0) {
+        doc.setFontSize(11);
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(37, 99, 235);
+        doc.text("PRODUTOS", 14, yPos);
+        yPos += 5;
+        
+        const produtosData = produtosArray.map(p => [
+          "📦",
+          p?.produto?.substring(0, 25) || "—",
+          p?.codigoBarras || "—",
+          (p?.quantidade || 0).toLocaleString(),
+          formatarMoeda(p?.precoCompra),
+          formatarMoeda(p?.precoVenda),
+          p?.precoCompra > 0 ? `${((p.precoVenda - p.precoCompra) / p.precoCompra * 100).toFixed(1)}%` : "0%",
+          formatarData(p?.dataValidade),
+          p?.categoria?.substring(0, 12) || "Geral"
+        ]);
+        
+        autoTable(doc, {
+          startY: yPos,
+          head: [["", "Produto", "Código", "Qtd", "Compra", "Venda", "Margem", "Validade", "Categoria"]],
+          body: produtosData,
+          theme: "striped",
+          styles: { fontSize: 7, cellPadding: 3 },
+          headStyles: { fillColor: [37, 99, 235], textColor: [255, 255, 255], fontStyle: "bold" },
+          alternateRowStyles: { fillColor: [240, 248, 255] },
+          margin: { left: 14, right: 14 },
+          columnStyles: {
+            0: { cellWidth: 8, halign: "center" },
+            1: { cellWidth: 42 },
+            2: { cellWidth: 22 },
+            3: { cellWidth: 15, halign: "right" },
+            4: { cellWidth: 22, halign: "right" },
+            5: { cellWidth: 22, halign: "right" },
+            6: { cellWidth: 18, halign: "right" },
+            7: { cellWidth: 22, halign: "center" },
+            8: { cellWidth: 22 }
+          }
+        });
+        yPos = doc.lastAutoTable.finalY + 10;
+      }
+
+      // LISTA DE SERVIÇOS
+      if (servicosArray.length > 0) {
+        doc.setFontSize(11);
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(139, 92, 246);
+        doc.text("SERVIÇOS", 14, yPos);
+        yPos += 5;
+        
+        const servicosData = servicosArray.map(s => [
+          "🛠️",
+          s?.produto?.substring(0, 25) || "—",
+          formatarMoeda(s?.precoVenda),
+          s?.duracaoEstimada ? `${s.duracaoEstimada} ${s.unidadeTempo || 'horas'}` : "—",
+          s?.executadoPor || "—",
+          s?.requerAgendamento ? "Sim" : "Não",
+          s?.localExecucao || "—",
+          s?.categoria?.substring(0, 12) || "Geral"
+        ]);
+        
+        autoTable(doc, {
+          startY: yPos,
+          head: [["", "Serviço", "Preço", "Duração", "Executado Por", "Agendamento", "Local", "Categoria"]],
+          body: servicosData,
+          theme: "striped",
+          styles: { fontSize: 7, cellPadding: 3 },
+          headStyles: { fillColor: [139, 92, 246], textColor: [255, 255, 255], fontStyle: "bold" },
+          alternateRowStyles: { fillColor: [245, 240, 255] },
+          margin: { left: 14, right: 14 },
+          columnStyles: {
+            0: { cellWidth: 8, halign: "center" },
+            1: { cellWidth: 45 },
+            2: { cellWidth: 25, halign: "right" },
+            3: { cellWidth: 25, halign: "center" },
+            4: { cellWidth: 35 },
+            5: { cellWidth: 20, halign: "center" },
+            6: { cellWidth: 30 },
+            7: { cellWidth: 25 }
+          }
+        });
+        yPos = doc.lastAutoTable.finalY + 10;
+      }
 
       // ANÁLISE POR CATEGORIA
       if (categoriasCount.length > 0 && yPos < 180) {
@@ -343,12 +395,12 @@ const RelatorioStock = ({ produtos = [], onClose, empresaId }) => {
           cat.nome,
           cat.quantidade.toString(),
           formatarMoeda(cat.valor),
-          stats.valorTotalVenda > 0 ? `${((cat.valor / stats.valorTotalVenda) * 100).toFixed(1)}%` : "0%"
+          statsGerais.valorTotalVenda > 0 ? `${((cat.valor / statsGerais.valorTotalVenda) * 100).toFixed(1)}%` : "0%"
         ]);
         
         autoTable(doc, {
           startY: yPos,
-          head: [["Categoria", "Produtos", "Valor Total", "% do Stock"]],
+          head: [["Categoria", "Itens", "Valor Total", "% do Total"]],
           body: categoriasData,
           theme: "striped",
           styles: { fontSize: 9, cellPadding: 4 },
@@ -397,9 +449,9 @@ const RelatorioStock = ({ produtos = [], onClose, empresaId }) => {
                 <FileText className="text-white" size={20} />
               </div>
               <div>
-                <h2 className="text-xl font-bold text-white">Relatório de Stock</h2>
+                <h2 className="text-xl font-bold text-white">Relatório de Stock e Serviços</h2>
                 <p className="text-sm text-gray-400">
-                  {produtosArray.length} produtos • {new Date().toLocaleDateString('pt-PT')}
+                  {statsGerais.totalProdutos} produtos • {statsGerais.totalServicos} serviços • {new Date().toLocaleDateString('pt-PT')}
                 </p>
                 <p className="text-xs text-blue-400 mt-1">Empresa: {nomeEmpresa}</p>
               </div>
@@ -426,8 +478,8 @@ const RelatorioStock = ({ produtos = [], onClose, empresaId }) => {
                   <Building2 className="w-10 h-10 text-white" />
                 </div>
                 <div>
-                  <h1 className="text-3xl font-bold">Relatório de Stock</h1>
-                  <p className="text-blue-200">Análise completa do inventário</p>
+                  <h1 className="text-3xl font-bold">Relatório de Stock e Serviços</h1>
+                  <p className="text-blue-200">Análise completa do inventário e serviços</p>
                   <p className="text-sm text-blue-300 mt-2">Empresa: {nomeEmpresa}</p>
                 </div>
               </div>
@@ -435,20 +487,20 @@ const RelatorioStock = ({ produtos = [], onClose, empresaId }) => {
             <div className="p-8">
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
                 <div className="text-center">
-                  <p className="text-gray-500 text-sm">Total de Produtos</p>
-                  <p className="text-2xl font-bold text-gray-800">{stats.totalProdutos}</p>
+                  <p className="text-gray-500 text-sm">Produtos</p>
+                  <p className="text-2xl font-bold text-gray-800">{statsGerais.totalProdutos}</p>
                 </div>
                 <div className="text-center">
-                  <p className="text-gray-500 text-sm">Valor Total (Venda)</p>
-                  <p className="text-2xl font-bold text-green-600">{formatarMoeda(stats.valorTotalVenda)}</p>
+                  <p className="text-gray-500 text-sm">Serviços</p>
+                  <p className="text-2xl font-bold text-purple-600">{statsGerais.totalServicos}</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-gray-500 text-sm">Valor Total</p>
+                  <p className="text-2xl font-bold text-green-600">{formatarMoeda(statsGerais.valorTotalVenda)}</p>
                 </div>
                 <div className="text-center">
                   <p className="text-gray-500 text-sm">Margem Média</p>
                   <p className="text-2xl font-bold text-blue-600">{margemMedia}%</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-gray-500 text-sm">Baixo Estoque</p>
-                  <p className="text-2xl font-bold text-yellow-600">{stats.produtosBaixoEstoque}</p>
                 </div>
               </div>
 
