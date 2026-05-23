@@ -6,7 +6,8 @@ import {
   ArrowLeft, ChevronDown, ShoppingCart, Package, Receipt, ClipboardList, Wallet,
   Calendar, Gift, BarChart3, Car, Fuel, Wrench, Boxes, Truck, TrendingUp,
   PieChart, Eye, ArrowRightLeft, Users, DollarSign, FileText, Home, Building2,
-  Shield, Settings, LogOut, BookOpen, LayoutDashboard, RefreshCw, Calculator
+  Shield, Settings, LogOut, BookOpen, LayoutDashboard, RefreshCw, Calculator,
+  Activity  // <-- ADICIONAR ÍCONE DO MONITORAMENTO
 } from "lucide-react";
 import logo from "../assets/sirexa-logo.ico";
 
@@ -128,6 +129,7 @@ function Layout({ title, children, showBackButton = false, backToRoute = null })
     else if (location.pathname.startsWith("/empresa/visualizar")) navigate("/empresa");
     else if (location.pathname.startsWith("/empresa/editar")) navigate("/empresa");
     else if (location.pathname.startsWith("/contabilidade")) navigate("/menu");
+    else if (location.pathname === "/monitoramento") navigate("/menu");
     else navigate(-1);
   };
 
@@ -217,6 +219,13 @@ function Layout({ title, children, showBackButton = false, backToRoute = null })
                     location.pathname.startsWith("/tecnico") ? "bg-white/20 text-white font-medium" : "text-gray-300 hover:text-white hover:bg-white/10"
                   }`}>
                   <Shield size={18} /><span>Técnicos</span>
+                </Link>
+                {/* NOVO: Monitoramento de Técnicos */}
+                <Link to="/monitoramento" onClick={() => setSidebarAberta(false)}
+                  className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 ${
+                    location.pathname === "/monitoramento" ? "bg-white/20 text-white font-medium" : "text-gray-300 hover:text-white hover:bg-white/10"
+                  }`}>
+                  <Activity size={18} /><span>Monitoramento</span>
                 </Link>
                 <div className="my-3 border-t border-white/10 pt-3">
                   <p className="text-xs text-gray-500 uppercase tracking-wider px-3 mb-2">Módulos</p>

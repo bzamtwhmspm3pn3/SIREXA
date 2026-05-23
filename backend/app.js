@@ -17,6 +17,7 @@ connectDB();
 const { verifyToken } = require('./middlewares/auth');
 const errorHandler = require('./middlewares/errorHandler');
 const { integrarAutomaticamente } = require('./middlewares/contabilidadeAuto');
+const logsRoutes = require('./routes/logs');
 
 // 📁 Rotas Existentes
 const folhaSalarialRoutes = require('./routes/folhaSalarial'); 
@@ -59,6 +60,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
+
 // ============================================
 // 📁 ROTAS PÚBLICAS (sem token)
 // ============================================
@@ -71,6 +73,7 @@ app.use('/api/tecnico', require('./routes/tecnico'));
 // ============================================
 app.use('/api/vendas', integrarAutomaticamente);
 app.use('/api/pagamentos', integrarAutomaticamente);
+app.use('/api/logs', verifyToken, logsRoutes);
 
 // ============================================
 // 📁 ROTAS PROTEGIDAS (com verificação de token)

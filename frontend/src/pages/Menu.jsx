@@ -7,7 +7,7 @@ import {
   Truck, ArrowRightLeft, PieChart, Wallet, UserCog, ClipboardList,
   Calendar, Gift, Package, Fuel, Wrench, Boxes, ShoppingCart,
   Receipt, Sparkles, Rocket, Zap, Crown, Shield, Briefcase, Target, Globe,
-  BookOpen, RefreshCw, Calculator, BookCopy
+  BookOpen, RefreshCw, Calculator, BookCopy,Activity 
 } from "lucide-react";
 
 export default function Menu() {
@@ -100,6 +100,7 @@ export default function Menu() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               <MenuCard to="/empresa" icon={<Building size={28} />} title="Empresas" description="Cadastro e gestão" gradient="from-blue-500 to-cyan-500" />
               <MenuCard to="/tecnico" icon={<Users size={28} />} title="Técnicos" description="Gestão de permissões" gradient="from-green-500 to-emerald-500" />
+              <MenuCard to="/monitoramento" icon={<Activity size={28} />} title="Monitoramento" description="Atividades dos técnicos" gradient="from-indigo-500 to-purple-500" />
               <MenuCard to="/fornecedores" icon={<Truck size={28} />} title="Fornecedores" description="Cadastro de fornecedores" gradient="from-purple-500 to-pink-500" />
             </div>
           </div>

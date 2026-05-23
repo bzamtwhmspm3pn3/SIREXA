@@ -28,7 +28,7 @@ async function generateToken(user) {
       nome: user.nome,
       role: user.role || 'gestor',
       empresaId: user.empresaId || (empresasIds[0] || null),
-      empresasPermitidas: empresasIds  // ← NOME CORRETO para o security.js
+      empresasPermitidas: empresasIds
     }, 
     secret, 
     { expiresIn: '7d' }
@@ -60,11 +60,17 @@ function verifyToken(req, res, next) {
       nome: decoded.nome,
       role: decoded.role,
       empresaId: decoded.empresaId,
-      empresasPermitidas: empresasPermitidas  // ← CAMPO QUE O security.js espera
+      empresasPermitidas: empresasPermitidas
     };
+    
+    // ============================================
+    // 🔥 CORREÇÃO: Adicionar req.usuarioId para compatibilidade com controllers
+    // ============================================
+    req.usuarioId = decoded.id;
     
     console.log('🔐 Token verificado:', {
       id: req.user.id,
+      usuarioId: req.usuarioId,
       nome: req.user.nome,
       role: req.user.role,
       empresaId: req.user.empresaId,

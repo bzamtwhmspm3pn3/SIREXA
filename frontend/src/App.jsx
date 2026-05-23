@@ -20,6 +20,8 @@ import VisualizacaoEmpresa from "./pages/Empresa/VisualizacaoEmpresa";
 import ListaTecnicos from "./pages/Tecnico/ListaTecnicos";
 import CadastroTecnico from "./pages/Tecnico/CadastroTecnico";
 import EditarTecnico from "./pages/Tecnico/EditarTecnico";
+import MonitoramentoTecnicos from "./pages/Tecnico/MonitoramentoTecnicos";
+
 
 // Funcionários
 import ListaFuncionarios from "./pages/Funcionarios/ListaFuncionarios";
@@ -123,6 +125,7 @@ export default function App() {
       <Route path="/tecnico" element={<ProtectedRoute><ListaTecnicos /></ProtectedRoute>} />
       <Route path="/tecnico/cadastro" element={<ProtectedRoute><CadastroTecnico /></ProtectedRoute>} />
       <Route path="/tecnico/editar/:id" element={<ProtectedRoute><EditarTecnico /></ProtectedRoute>} />
+      <Route path="/monitoramento" element={<ProtectedRoute><MonitoramentoTecnicos /></ProtectedRoute>}/>
 
       {/* Funcionários */}
       <Route path="/funcionarios" element={<ProtectedRoute><ListaFuncionarios /></ProtectedRoute>} />
