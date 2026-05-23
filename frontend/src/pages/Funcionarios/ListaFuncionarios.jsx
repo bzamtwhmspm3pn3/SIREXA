@@ -12,7 +12,7 @@ import {
   Download, FileText, Printer, Building2,
   TrendingUp, ShoppingCart, Package, Receipt, UsersIcon,
   Wallet, ClipboardList, Gift, BarChart3, Car, Fuel,
-  Wrench, Boxes, Truck, PieChart, ArrowRightLeft,Upload
+  Wrench, Boxes, Truck, PieChart, ArrowRightLeft,Upload,Lock,BookOpen
 } from "lucide-react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -38,24 +38,64 @@ const ListaFuncionarios = () => {
     recursosHumanos: false,
     gestaoPatrimonial: false,
     financeiro: false,
-    relatorios: false
+    relatorios: false,
+    contabilidade: false
   });
   
+    
   const [promoteData, setPromoteData] = useState({
     senha: "",
     confirmarSenha: "",
     modulos: {
-      vendas: false, stock: false, facturacao: false,
-      funcionarios: false, folhaSalarial: false, gestaoFaltas: false,
-      gestaoAbonos: false, avaliacao: false,
-      viaturas: false, abastecimentos: false, manutencoes: false, inventario: false,
-      fornecedores: false, fluxoCaixa: false, contaCorrente: false,
-      controloPagamento: false, custosReceitas: false, orcamentos: false,
-      dre: false, indicadores: false, transferencias: false, reconciliacao: false,
-      relatorios: false, graficos: false, analise: false
+      // Operacional
+      vendas: false, 
+      stock: false, 
+      facturacao: false,
+      
+      // Recursos Humanos
+      funcionarios: false, 
+      folhaSalarial: false, 
+      gestaoFaltas: false,
+      gestaoAbonos: false, 
+      avaliacao: false,
+      
+      // Gestão Patrimonial
+      viaturas: false, 
+      abastecimentos: false, 
+      manutencoes: false, 
+      inventario: false,
+      
+      // Financeiro
+      fornecedores: false, 
+      fluxoCaixa: false, 
+      contaCorrente: false,
+      controloPagamento: false, 
+      custosReceitas: false, 
+      orcamentos: false,
+      dre: false, 
+      indicadores: false, 
+      transferencias: false, 
+      reconciliacao: false,
+      
+      // Relatórios
+      relatorios: false, 
+      graficos: false, 
+      analise: false,
+      
+      // CONTABILIDADE 
+      contabilidade: false,      
+      planoContas: false,        
+      lancamentos: false,        
+      diarioGeral: false,        
+      razaoGeral: false,         
+      balancete: false,          
+      saldosContas: false,       
+      balancoPatrimonial: false, 
+      periodosFiscais: false,    
+      encerramento: false        
     }
   });
-  
+
   const { user, isTecnico, empresaId: userEmpresaId, empresaNome: userEmpresaNome } = useAuth();
   const navigate = useNavigate();
 
@@ -495,135 +535,252 @@ const ListaFuncionarios = () => {
       )}
 
       {/* Modal de Promoção a Técnico */}
-      {showPromoteModal && selectedFuncionario && !redirecting && !isTecnico() && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in overflow-y-auto">
-          <div className="bg-gray-800 rounded-2xl max-w-2xl w-full shadow-2xl border border-gray-700 animate-scale-in my-8">
-            <div className="bg-gradient-to-r from-purple-600/20 to-pink-600/20 px-6 py-4 border-b border-gray-700 rounded-t-2xl sticky top-0">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="bg-purple-600 p-2 rounded-lg"><Shield className="w-5 h-5 text-white" /></div>
-                  <div><h3 className="text-xl font-bold text-white">Promover a Técnico</h3><p className="text-sm text-gray-400">{selectedFuncionario.nome}</p></div>
+{showPromoteModal && selectedFuncionario && !redirecting && !isTecnico() && (
+  <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in overflow-y-auto">
+    <div className="bg-gray-800 rounded-2xl max-w-2xl w-full shadow-2xl border border-gray-700 animate-scale-in my-8">
+      <div className="bg-gradient-to-r from-purple-600/20 to-pink-600/20 px-6 py-4 border-b border-gray-700 rounded-t-2xl sticky top-0">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="bg-purple-600 p-2 rounded-lg"><Shield className="w-5 h-5 text-white" /></div>
+            <div><h3 className="text-xl font-bold text-white">Promover a Técnico</h3><p className="text-sm text-gray-400">{selectedFuncionario.nome}</p></div>
+          </div>
+          <button onClick={() => setShowPromoteModal(false)} className="p-1 rounded-lg hover:bg-gray-700"><X className="w-6 h-6 text-gray-400" /></button>
+        </div>
+      </div>
+      
+      <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
+        <div className="bg-gray-700/50 rounded-xl p-4">
+          <p className="text-sm text-gray-400">Funcionário</p>
+          <p className="text-white font-medium">{selectedFuncionario.nome}</p>
+          <p className="text-sm text-gray-400">{selectedFuncionario.cargo || selectedFuncionario.funcao || "Sem cargo"}</p>
+        </div>
+        
+        <div className="grid grid-cols-2 gap-4">
+          <div><label className="block text-sm font-medium text-gray-300 mb-2">Senha de Acesso *</label><input type="password" className="w-full p-3 rounded-xl bg-gray-700/50 border border-gray-600 text-white" placeholder="Digite a senha" value={promoteData.senha} onChange={(e) => setPromoteData({...promoteData, senha: e.target.value})} /></div>
+          <div><label className="block text-sm font-medium text-gray-300 mb-2">Confirmar Senha *</label><input type="password" className="w-full p-3 rounded-xl bg-gray-700/50 border border-gray-600 text-white" placeholder="Confirme a senha" value={promoteData.confirmarSenha} onChange={(e) => setPromoteData({...promoteData, confirmarSenha: e.target.value})} /></div>
+        </div>
+        
+        <div>
+          <label className="block text-sm font-medium text-gray-300 mb-3">Módulos de Acesso</label>
+          
+          {/* Operacional */}
+          <div className="bg-gray-700/30 rounded-xl overflow-hidden mb-3">
+            <button type="button" onClick={() => toggleSection('operacional')} className="w-full flex items-center justify-between p-3 bg-gradient-to-r from-green-600/20 to-emerald-600/20 hover:bg-green-600/30 transition">
+              <div className="flex items-center gap-2"><TrendingUp className="text-green-400" size={16} /><span className="font-semibold text-white text-sm">Módulo Operacional</span></div>
+              <span className="text-gray-400 text-sm">{expandedSections.operacional ? '▼' : '▶'}</span>
+            </button>
+            {expandedSections.operacional && (
+              <div className="p-3 space-y-2 border-t border-gray-600">
+                <div className="flex justify-end mb-2"><button type="button" onClick={() => handleSelectAll('operacional', ['vendas', 'stock', 'facturacao'])} className="text-xs text-blue-400 hover:text-blue-300">{promoteData.modulos.vendas && promoteData.modulos.stock && promoteData.modulos.facturacao ? 'Desmarcar Todos' : 'Marcar Todos'}</button></div>
+                <label className="flex items-center justify-between p-2 bg-gray-700/50 rounded-lg cursor-pointer hover:bg-gray-700 transition"><div className="flex items-center gap-2"><ShoppingCart size={14} className="text-green-400" /><span className="text-gray-300 text-sm">Vendas</span></div><input type="checkbox" checked={promoteData.modulos.vendas} onChange={(e) => setPromoteData({...promoteData, modulos: {...promoteData.modulos, vendas: e.target.checked}})} className="w-4 h-4 text-purple-600 rounded" /></label>
+                <label className="flex items-center justify-between p-2 bg-gray-700/50 rounded-lg cursor-pointer hover:bg-gray-700 transition"><div className="flex items-center gap-2"><Package size={14} className="text-yellow-400" /><span className="text-gray-300 text-sm">Stock</span></div><input type="checkbox" checked={promoteData.modulos.stock} onChange={(e) => setPromoteData({...promoteData, modulos: {...promoteData.modulos, stock: e.target.checked}})} className="w-4 h-4 text-purple-600 rounded" /></label>
+                <label className="flex items-center justify-between p-2 bg-gray-700/50 rounded-lg cursor-pointer hover:bg-gray-700 transition"><div className="flex items-center gap-2"><Receipt size={14} className="text-blue-400" /><span className="text-gray-300 text-sm">Facturação</span></div><input type="checkbox" checked={promoteData.modulos.facturacao} onChange={(e) => setPromoteData({...promoteData, modulos: {...promoteData.modulos, facturacao: e.target.checked}})} className="w-4 h-4 text-purple-600 rounded" /></label>
+              </div>
+            )}
+          </div>
+
+          {/* Recursos Humanos */}
+          <div className="bg-gray-700/30 rounded-xl overflow-hidden mb-3">
+            <button type="button" onClick={() => toggleSection('recursosHumanos')} className="w-full flex items-center justify-between p-3 bg-gradient-to-r from-purple-600/20 to-pink-600/20 hover:bg-purple-600/30 transition">
+              <div className="flex items-center gap-2"><UsersIcon className="text-purple-400" size={16} /><span className="font-semibold text-white text-sm">Recursos Humanos</span></div>
+              <span className="text-gray-400 text-sm">{expandedSections.recursosHumanos ? '▼' : '▶'}</span>
+            </button>
+            {expandedSections.recursosHumanos && (
+              <div className="p-3 space-y-2 border-t border-gray-600">
+                <div className="flex justify-end mb-2"><button type="button" onClick={() => handleSelectAll('recursosHumanos', ['funcionarios', 'folhaSalarial', 'gestaoFaltas', 'gestaoAbonos', 'avaliacao'])} className="text-xs text-blue-400 hover:text-blue-300">Marcar Todos</button></div>
+                <label className="flex items-center justify-between p-2 bg-gray-700/50 rounded-lg cursor-pointer hover:bg-gray-700 transition"><div className="flex items-center gap-2"><ClipboardList size={14} className="text-blue-400" /><span className="text-gray-300 text-sm">Funcionários</span></div><input type="checkbox" checked={promoteData.modulos.funcionarios} onChange={(e) => setPromoteData({...promoteData, modulos: {...promoteData.modulos, funcionarios: e.target.checked}})} className="w-4 h-4 text-purple-600 rounded" /></label>
+                <label className="flex items-center justify-between p-2 bg-gray-700/50 rounded-lg cursor-pointer hover:bg-gray-700 transition"><div className="flex items-center gap-2"><Wallet size={14} className="text-green-400" /><span className="text-gray-300 text-sm">Folha Salarial</span></div><input type="checkbox" checked={promoteData.modulos.folhaSalarial} onChange={(e) => setPromoteData({...promoteData, modulos: {...promoteData.modulos, folhaSalarial: e.target.checked}})} className="w-4 h-4 text-purple-600 rounded" /></label>
+                <label className="flex items-center justify-between p-2 bg-gray-700/50 rounded-lg cursor-pointer hover:bg-gray-700 transition"><div className="flex items-center gap-2"><Calendar size={14} className="text-red-400" /><span className="text-gray-300 text-sm">Gestão de Faltas</span></div><input type="checkbox" checked={promoteData.modulos.gestaoFaltas} onChange={(e) => setPromoteData({...promoteData, modulos: {...promoteData.modulos, gestaoFaltas: e.target.checked}})} className="w-4 h-4 text-purple-600 rounded" /></label>
+                <label className="flex items-center justify-between p-2 bg-gray-700/50 rounded-lg cursor-pointer hover:bg-gray-700 transition"><div className="flex items-center gap-2"><Gift size={14} className="text-yellow-400" /><span className="text-gray-300 text-sm">Gestão de Abonos</span></div><input type="checkbox" checked={promoteData.modulos.gestaoAbonos} onChange={(e) => setPromoteData({...promoteData, modulos: {...promoteData.modulos, gestaoAbonos: e.target.checked}})} className="w-4 h-4 text-purple-600 rounded" /></label>
+                <label className="flex items-center justify-between p-2 bg-gray-700/50 rounded-lg cursor-pointer hover:bg-gray-700 transition"><div className="flex items-center gap-2"><BarChart3 size={14} className="text-purple-400" /><span className="text-gray-300 text-sm">Avaliação de Desempenho</span></div><input type="checkbox" checked={promoteData.modulos.avaliacao} onChange={(e) => setPromoteData({...promoteData, modulos: {...promoteData.modulos, avaliacao: e.target.checked}})} className="w-4 h-4 text-purple-600 rounded" /></label>
+              </div>
+            )}
+          </div>
+
+          {/* Gestão Patrimonial */}
+          <div className="bg-gray-700/30 rounded-xl overflow-hidden mb-3">
+            <button type="button" onClick={() => toggleSection('gestaoPatrimonial')} className="w-full flex items-center justify-between p-3 bg-gradient-to-r from-cyan-600/20 to-blue-600/20 hover:bg-cyan-600/30 transition">
+              <div className="flex items-center gap-2"><Car className="text-cyan-400" size={16} /><span className="font-semibold text-white text-sm">Gestão Patrimonial</span></div>
+              <span className="text-gray-400 text-sm">{expandedSections.gestaoPatrimonial ? '▼' : '▶'}</span>
+            </button>
+            {expandedSections.gestaoPatrimonial && (
+              <div className="p-3 space-y-2 border-t border-gray-600">
+                <div className="flex justify-end mb-2"><button type="button" onClick={() => handleSelectAll('gestaoPatrimonial', ['viaturas', 'abastecimentos', 'manutencoes', 'inventario'])} className="text-xs text-blue-400 hover:text-blue-300">Marcar Todos</button></div>
+                <label className="flex items-center justify-between p-2 bg-gray-700/50 rounded-lg cursor-pointer hover:bg-gray-700 transition"><div className="flex items-center gap-2"><Car size={14} className="text-blue-400" /><span className="text-gray-300 text-sm">Viaturas</span></div><input type="checkbox" checked={promoteData.modulos.viaturas} onChange={(e) => setPromoteData({...promoteData, modulos: {...promoteData.modulos, viaturas: e.target.checked}})} className="w-4 h-4 text-purple-600 rounded" /></label>
+                <label className="flex items-center justify-between p-2 bg-gray-700/50 rounded-lg cursor-pointer hover:bg-gray-700 transition"><div className="flex items-center gap-2"><Fuel size={14} className="text-green-400" /><span className="text-gray-300 text-sm">Abastecimentos</span></div><input type="checkbox" checked={promoteData.modulos.abastecimentos} onChange={(e) => setPromoteData({...promoteData, modulos: {...promoteData.modulos, abastecimentos: e.target.checked}})} className="w-4 h-4 text-purple-600 rounded" /></label>
+                <label className="flex items-center justify-between p-2 bg-gray-700/50 rounded-lg cursor-pointer hover:bg-gray-700 transition"><div className="flex items-center gap-2"><Wrench size={14} className="text-red-400" /><span className="text-gray-300 text-sm">Manutenções</span></div><input type="checkbox" checked={promoteData.modulos.manutencoes} onChange={(e) => setPromoteData({...promoteData, modulos: {...promoteData.modulos, manutencoes: e.target.checked}})} className="w-4 h-4 text-purple-600 rounded" /></label>
+                <label className="flex items-center justify-between p-2 bg-gray-700/50 rounded-lg cursor-pointer hover:bg-gray-700 transition"><div className="flex items-center gap-2"><Boxes size={14} className="text-yellow-400" /><span className="text-gray-300 text-sm">Inventário</span></div><input type="checkbox" checked={promoteData.modulos.inventario} onChange={(e) => setPromoteData({...promoteData, modulos: {...promoteData.modulos, inventario: e.target.checked}})} className="w-4 h-4 text-purple-600 rounded" /></label>
+              </div>
+            )}
+          </div>
+
+
+{/* ============================================ */}
+          {/* CONTABILIDADE */}
+          {/* ============================================ */}
+          <div className="bg-gray-700/30 rounded-xl overflow-hidden mb-3">
+            <button type="button" onClick={() => toggleSection('contabilidade')} className="w-full flex items-center justify-between p-3 bg-gradient-to-r from-indigo-600/20 to-purple-600/20 hover:bg-indigo-600/30 transition">
+              <div className="flex items-center gap-2">
+                <BookOpen className="text-indigo-400" size={16} />
+                <span className="font-semibold text-white text-sm">Contabilidade </span>
+              </div>
+              <span className="text-gray-400 text-sm">{expandedSections.contabilidade ? '▼' : '▶'}</span>
+            </button>
+            {expandedSections.contabilidade && (
+              <div className="p-3 space-y-2 border-t border-gray-600">
+                <div className="flex justify-end mb-2">
+                  <button 
+                    type="button" 
+                    onClick={() => handleSelectAll('contabilidade', [
+                      'contabilidade', 'planoContas', 'lancamentos', 'diarioGeral', 
+                      'razaoGeral', 'balancete', 'saldosContas', 'balancoPatrimonial', 
+                      'periodosFiscais', 'encerramento'
+                    ])} 
+                    className="text-xs text-blue-400 hover:text-blue-300"
+                  >
+                    {promoteData.modulos.contabilidade && promoteData.modulos.planoContas && 
+                     promoteData.modulos.lancamentos && promoteData.modulos.diarioGeral &&
+                     promoteData.modulos.razaoGeral && promoteData.modulos.balancete &&
+                     promoteData.modulos.saldosContas && promoteData.modulos.balancoPatrimonial &&
+                     promoteData.modulos.periodosFiscais && promoteData.modulos.encerramento 
+                      ? 'Desmarcar Todos' : 'Marcar Todos'}
+                  </button>
                 </div>
-                <button onClick={() => setShowPromoteModal(false)} className="p-1 rounded-lg hover:bg-gray-700"><X className="w-6 h-6 text-gray-400" /></button>
-              </div>
-            </div>
-            
-            <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
-              <div className="bg-gray-700/50 rounded-xl p-4">
-                <p className="text-sm text-gray-400">Funcionário</p>
-                <p className="text-white font-medium">{selectedFuncionario.nome}</p>
-                <p className="text-sm text-gray-400">{selectedFuncionario.cargo || selectedFuncionario.funcao || "Sem cargo"}</p>
-              </div>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div><label className="block text-sm font-medium text-gray-300 mb-2">Senha de Acesso *</label><input type="password" className="w-full p-3 rounded-xl bg-gray-700/50 border border-gray-600 text-white" placeholder="Digite a senha" value={promoteData.senha} onChange={(e) => setPromoteData({...promoteData, senha: e.target.value})} /></div>
-                <div><label className="block text-sm font-medium text-gray-300 mb-2">Confirmar Senha *</label><input type="password" className="w-full p-3 rounded-xl bg-gray-700/50 border border-gray-600 text-white" placeholder="Confirme a senha" value={promoteData.confirmarSenha} onChange={(e) => setPromoteData({...promoteData, confirmarSenha: e.target.value})} /></div>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-3">Módulos de Acesso</label>
                 
-                {/* Operacional */}
-                <div className="bg-gray-700/30 rounded-xl overflow-hidden mb-3">
-                  <button type="button" onClick={() => toggleSection('operacional')} className="w-full flex items-center justify-between p-3 bg-gradient-to-r from-green-600/20 to-emerald-600/20 hover:bg-green-600/30 transition">
-                    <div className="flex items-center gap-2"><TrendingUp className="text-green-400" size={16} /><span className="font-semibold text-white text-sm">Módulo Operacional</span></div>
-                    <span className="text-gray-400 text-sm">{expandedSections.operacional ? '▼' : '▶'}</span>
-                  </button>
-                  {expandedSections.operacional && (
-                    <div className="p-3 space-y-2 border-t border-gray-600">
-                      <div className="flex justify-end mb-2"><button type="button" onClick={() => handleSelectAll('operacional', ['vendas', 'stock', 'facturacao'])} className="text-xs text-blue-400 hover:text-blue-300">{promoteData.modulos.vendas && promoteData.modulos.stock && promoteData.modulos.facturacao ? 'Desmarcar Todos' : 'Marcar Todos'}</button></div>
-                      <label className="flex items-center justify-between p-2 bg-gray-700/50 rounded-lg cursor-pointer hover:bg-gray-700 transition"><div className="flex items-center gap-2"><ShoppingCart size={14} className="text-green-400" /><span className="text-gray-300 text-sm">Vendas</span></div><input type="checkbox" checked={promoteData.modulos.vendas} onChange={(e) => setPromoteData({...promoteData, modulos: {...promoteData.modulos, vendas: e.target.checked}})} className="w-4 h-4 text-purple-600 rounded" /></label>
-                      <label className="flex items-center justify-between p-2 bg-gray-700/50 rounded-lg cursor-pointer hover:bg-gray-700 transition"><div className="flex items-center gap-2"><Package size={14} className="text-yellow-400" /><span className="text-gray-300 text-sm">Stock</span></div><input type="checkbox" checked={promoteData.modulos.stock} onChange={(e) => setPromoteData({...promoteData, modulos: {...promoteData.modulos, stock: e.target.checked}})} className="w-4 h-4 text-purple-600 rounded" /></label>
-                      <label className="flex items-center justify-between p-2 bg-gray-700/50 rounded-lg cursor-pointer hover:bg-gray-700 transition"><div className="flex items-center gap-2"><Receipt size={14} className="text-blue-400" /><span className="text-gray-300 text-sm">Facturação</span></div><input type="checkbox" checked={promoteData.modulos.facturacao} onChange={(e) => setPromoteData({...promoteData, modulos: {...promoteData.modulos, facturacao: e.target.checked}})} className="w-4 h-4 text-purple-600 rounded" /></label>
-                    </div>
-                  )}
-                </div>
-
-                {/* RH */}
-                <div className="bg-gray-700/30 rounded-xl overflow-hidden mb-3">
-                  <button type="button" onClick={() => toggleSection('recursosHumanos')} className="w-full flex items-center justify-between p-3 bg-gradient-to-r from-purple-600/20 to-pink-600/20 hover:bg-purple-600/30 transition">
-                    <div className="flex items-center gap-2"><UsersIcon className="text-purple-400" size={16} /><span className="font-semibold text-white text-sm">Recursos Humanos</span></div>
-                    <span className="text-gray-400 text-sm">{expandedSections.recursosHumanos ? '▼' : '▶'}</span>
-                  </button>
-                  {expandedSections.recursosHumanos && (
-                    <div className="p-3 space-y-2 border-t border-gray-600">
-                      <div className="flex justify-end mb-2"><button type="button" onClick={() => handleSelectAll('recursosHumanos', ['funcionarios', 'folhaSalarial', 'gestaoFaltas', 'gestaoAbonos', 'avaliacao'])} className="text-xs text-blue-400 hover:text-blue-300">Marcar Todos</button></div>
-                      <label className="flex items-center justify-between p-2 bg-gray-700/50 rounded-lg cursor-pointer hover:bg-gray-700 transition"><div className="flex items-center gap-2"><ClipboardList size={14} className="text-blue-400" /><span className="text-gray-300 text-sm">Funcionários</span></div><input type="checkbox" checked={promoteData.modulos.funcionarios} onChange={(e) => setPromoteData({...promoteData, modulos: {...promoteData.modulos, funcionarios: e.target.checked}})} className="w-4 h-4 text-purple-600 rounded" /></label>
-                      <label className="flex items-center justify-between p-2 bg-gray-700/50 rounded-lg cursor-pointer hover:bg-gray-700 transition"><div className="flex items-center gap-2"><Wallet size={14} className="text-green-400" /><span className="text-gray-300 text-sm">Folha Salarial</span></div><input type="checkbox" checked={promoteData.modulos.folhaSalarial} onChange={(e) => setPromoteData({...promoteData, modulos: {...promoteData.modulos, folhaSalarial: e.target.checked}})} className="w-4 h-4 text-purple-600 rounded" /></label>
-                      <label className="flex items-center justify-between p-2 bg-gray-700/50 rounded-lg cursor-pointer hover:bg-gray-700 transition"><div className="flex items-center gap-2"><Calendar size={14} className="text-red-400" /><span className="text-gray-300 text-sm">Gestão de Faltas</span></div><input type="checkbox" checked={promoteData.modulos.gestaoFaltas} onChange={(e) => setPromoteData({...promoteData, modulos: {...promoteData.modulos, gestaoFaltas: e.target.checked}})} className="w-4 h-4 text-purple-600 rounded" /></label>
-                      <label className="flex items-center justify-between p-2 bg-gray-700/50 rounded-lg cursor-pointer hover:bg-gray-700 transition"><div className="flex items-center gap-2"><Gift size={14} className="text-yellow-400" /><span className="text-gray-300 text-sm">Gestão de Abonos</span></div><input type="checkbox" checked={promoteData.modulos.gestaoAbonos} onChange={(e) => setPromoteData({...promoteData, modulos: {...promoteData.modulos, gestaoAbonos: e.target.checked}})} className="w-4 h-4 text-purple-600 rounded" /></label>
-                      <label className="flex items-center justify-between p-2 bg-gray-700/50 rounded-lg cursor-pointer hover:bg-gray-700 transition"><div className="flex items-center gap-2"><BarChart3 size={14} className="text-purple-400" /><span className="text-gray-300 text-sm">Avaliação de Desempenho</span></div><input type="checkbox" checked={promoteData.modulos.avaliacao} onChange={(e) => setPromoteData({...promoteData, modulos: {...promoteData.modulos, avaliacao: e.target.checked}})} className="w-4 h-4 text-purple-600 rounded" /></label>
-                    </div>
-                  )}
-                </div>
-
-                {/* Gestão Patrimonial */}
-                <div className="bg-gray-700/30 rounded-xl overflow-hidden mb-3">
-                  <button type="button" onClick={() => toggleSection('gestaoPatrimonial')} className="w-full flex items-center justify-between p-3 bg-gradient-to-r from-cyan-600/20 to-blue-600/20 hover:bg-cyan-600/30 transition">
-                    <div className="flex items-center gap-2"><Car className="text-cyan-400" size={16} /><span className="font-semibold text-white text-sm">Gestão Patrimonial</span></div>
-                    <span className="text-gray-400 text-sm">{expandedSections.gestaoPatrimonial ? '▼' : '▶'}</span>
-                  </button>
-                  {expandedSections.gestaoPatrimonial && (
-                    <div className="p-3 space-y-2 border-t border-gray-600">
-                      <div className="flex justify-end mb-2"><button type="button" onClick={() => handleSelectAll('gestaoPatrimonial', ['viaturas', 'abastecimentos', 'manutencoes', 'inventario'])} className="text-xs text-blue-400 hover:text-blue-300">Marcar Todos</button></div>
-                      <label className="flex items-center justify-between p-2 bg-gray-700/50 rounded-lg cursor-pointer hover:bg-gray-700 transition"><div className="flex items-center gap-2"><Car size={14} className="text-blue-400" /><span className="text-gray-300 text-sm">Viaturas</span></div><input type="checkbox" checked={promoteData.modulos.viaturas} onChange={(e) => setPromoteData({...promoteData, modulos: {...promoteData.modulos, viaturas: e.target.checked}})} className="w-4 h-4 text-purple-600 rounded" /></label>
-                      <label className="flex items-center justify-between p-2 bg-gray-700/50 rounded-lg cursor-pointer hover:bg-gray-700 transition"><div className="flex items-center gap-2"><Fuel size={14} className="text-green-400" /><span className="text-gray-300 text-sm">Abastecimentos</span></div><input type="checkbox" checked={promoteData.modulos.abastecimentos} onChange={(e) => setPromoteData({...promoteData, modulos: {...promoteData.modulos, abastecimentos: e.target.checked}})} className="w-4 h-4 text-purple-600 rounded" /></label>
-                      <label className="flex items-center justify-between p-2 bg-gray-700/50 rounded-lg cursor-pointer hover:bg-gray-700 transition"><div className="flex items-center gap-2"><Wrench size={14} className="text-red-400" /><span className="text-gray-300 text-sm">Manutenções</span></div><input type="checkbox" checked={promoteData.modulos.manutencoes} onChange={(e) => setPromoteData({...promoteData, modulos: {...promoteData.modulos, manutencoes: e.target.checked}})} className="w-4 h-4 text-purple-600 rounded" /></label>
-                      <label className="flex items-center justify-between p-2 bg-gray-700/50 rounded-lg cursor-pointer hover:bg-gray-700 transition"><div className="flex items-center gap-2"><Boxes size={14} className="text-yellow-400" /><span className="text-gray-300 text-sm">Inventário</span></div><input type="checkbox" checked={promoteData.modulos.inventario} onChange={(e) => setPromoteData({...promoteData, modulos: {...promoteData.modulos, inventario: e.target.checked}})} className="w-4 h-4 text-purple-600 rounded" /></label>
-                    </div>
-                  )}
-                </div>
-
-                {/* Financeiro */}
-                <div className="bg-gray-700/30 rounded-xl overflow-hidden mb-3">
-                  <button type="button" onClick={() => toggleSection('financeiro')} className="w-full flex items-center justify-between p-3 bg-gradient-to-r from-emerald-600/20 to-teal-600/20 hover:bg-emerald-600/30 transition">
-                    <div className="flex items-center gap-2"><DollarSign className="text-emerald-400" size={16} /><span className="font-semibold text-white text-sm">Financeiro</span></div>
-                    <span className="text-gray-400 text-sm">{expandedSections.financeiro ? '▼' : '▶'}</span>
-                  </button>
-                  {expandedSections.financeiro && (
-                    <div className="p-3 space-y-2 border-t border-gray-600 max-h-48 overflow-y-auto">
-                      <div className="flex justify-end mb-2"><button type="button" onClick={() => handleSelectAll('financeiro', ['fornecedores', 'fluxoCaixa', 'contaCorrente', 'controloPagamento', 'custosReceitas', 'orcamentos', 'dre', 'indicadores', 'transferencias', 'reconciliacao'])} className="text-xs text-blue-400 hover:text-blue-300">Marcar Todos</button></div>
-                      <label className="flex items-center justify-between p-2 bg-gray-700/50 rounded-lg cursor-pointer hover:bg-gray-700 transition"><div className="flex items-center gap-2"><Truck size={14} className="text-purple-400" /><span className="text-gray-300 text-sm">Fornecedores</span></div><input type="checkbox" checked={promoteData.modulos.fornecedores} onChange={(e) => setPromoteData({...promoteData, modulos: {...promoteData.modulos, fornecedores: e.target.checked}})} className="w-4 h-4 text-purple-600 rounded" /></label>
-                      <label className="flex items-center justify-between p-2 bg-gray-700/50 rounded-lg cursor-pointer hover:bg-gray-700 transition"><div className="flex items-center gap-2"><TrendingUp size={14} className="text-green-400" /><span className="text-gray-300 text-sm">Fluxo de Caixa</span></div><input type="checkbox" checked={promoteData.modulos.fluxoCaixa} onChange={(e) => setPromoteData({...promoteData, modulos: {...promoteData.modulos, fluxoCaixa: e.target.checked}})} className="w-4 h-4 text-purple-600 rounded" /></label>
-                      <label className="flex items-center justify-between p-2 bg-gray-700/50 rounded-lg cursor-pointer hover:bg-gray-700 transition"><div className="flex items-center gap-2"><Wallet size={14} className="text-blue-400" /><span className="text-gray-300 text-sm">Conta Corrente</span></div><input type="checkbox" checked={promoteData.modulos.contaCorrente} onChange={(e) => setPromoteData({...promoteData, modulos: {...promoteData.modulos, contaCorrente: e.target.checked}})} className="w-4 h-4 text-purple-600 rounded" /></label>
-                      <label className="flex items-center justify-between p-2 bg-gray-700/50 rounded-lg cursor-pointer hover:bg-gray-700 transition"><div className="flex items-center gap-2"><FileText size={14} className="text-yellow-400" /><span className="text-gray-300 text-sm">Controlo de Pagamento</span></div><input type="checkbox" checked={promoteData.modulos.controloPagamento} onChange={(e) => setPromoteData({...promoteData, modulos: {...promoteData.modulos, controloPagamento: e.target.checked}})} className="w-4 h-4 text-purple-600 rounded" /></label>
-                      <label className="flex items-center justify-between p-2 bg-gray-700/50 rounded-lg cursor-pointer hover:bg-gray-700 transition"><div className="flex items-center gap-2"><PieChart size={14} className="text-purple-400" /><span className="text-gray-300 text-sm">Custos e Receitas</span></div><input type="checkbox" checked={promoteData.modulos.custosReceitas} onChange={(e) => setPromoteData({...promoteData, modulos: {...promoteData.modulos, custosReceitas: e.target.checked}})} className="w-4 h-4 text-purple-600 rounded" /></label>
-                      <label className="flex items-center justify-between p-2 bg-gray-700/50 rounded-lg cursor-pointer hover:bg-gray-700 transition"><div className="flex items-center gap-2"><ClipboardList size={14} className="text-orange-400" /><span className="text-gray-300 text-sm">Orçamentos</span></div><input type="checkbox" checked={promoteData.modulos.orcamentos} onChange={(e) => setPromoteData({...promoteData, modulos: {...promoteData.modulos, orcamentos: e.target.checked}})} className="w-4 h-4 text-purple-600 rounded" /></label>
-                      <label className="flex items-center justify-between p-2 bg-gray-700/50 rounded-lg cursor-pointer hover:bg-gray-700 transition"><div className="flex items-center gap-2"><BarChart3 size={14} className="text-red-400" /><span className="text-gray-300 text-sm">DRE</span></div><input type="checkbox" checked={promoteData.modulos.dre} onChange={(e) => setPromoteData({...promoteData, modulos: {...promoteData.modulos, dre: e.target.checked}})} className="w-4 h-4 text-purple-600 rounded" /></label>
-                      <label className="flex items-center justify-between p-2 bg-gray-700/50 rounded-lg cursor-pointer hover:bg-gray-700 transition"><div className="flex items-center gap-2"><Eye size={14} className="text-cyan-400" /><span className="text-gray-300 text-sm">Indicadores</span></div><input type="checkbox" checked={promoteData.modulos.indicadores} onChange={(e) => setPromoteData({...promoteData, modulos: {...promoteData.modulos, indicadores: e.target.checked}})} className="w-4 h-4 text-purple-600 rounded" /></label>
-                      <label className="flex items-center justify-between p-2 bg-gray-700/50 rounded-lg cursor-pointer hover:bg-gray-700 transition"><div className="flex items-center gap-2"><ArrowRightLeft size={14} className="text-teal-400" /><span className="text-gray-300 text-sm">Transferências</span></div><input type="checkbox" checked={promoteData.modulos.transferencias} onChange={(e) => setPromoteData({...promoteData, modulos: {...promoteData.modulos, transferencias: e.target.checked}})} className="w-4 h-4 text-purple-600 rounded" /></label>
-                      <label className="flex items-center justify-between p-2 bg-gray-700/50 rounded-lg cursor-pointer hover:bg-gray-700 transition"><div className="flex items-center gap-2"><Wallet size={14} className="text-indigo-400" /><span className="text-gray-300 text-sm">Reconciliação Bancária</span></div><input type="checkbox" checked={promoteData.modulos.reconciliacao} onChange={(e) => setPromoteData({...promoteData, modulos: {...promoteData.modulos, reconciliacao: e.target.checked}})} className="w-4 h-4 text-purple-600 rounded" /></label>
-                    </div>
-                  )}
-                </div>
-
-                {/* Relatórios */}
-                <div className="bg-gray-700/30 rounded-xl overflow-hidden mb-3">
-                  <button type="button" onClick={() => toggleSection('relatorios')} className="w-full flex items-center justify-between p-3 bg-gradient-to-r from-rose-600/20 to-pink-600/20 hover:bg-rose-600/30 transition">
-                    <div className="flex items-center gap-2"><FileText className="text-rose-400" size={16} /><span className="font-semibold text-white text-sm">Relatórios e Análises</span></div>
-                    <span className="text-gray-400 text-sm">{expandedSections.relatorios ? '▼' : '▶'}</span>
-                  </button>
-                  {expandedSections.relatorios && (
-                    <div className="p-3 space-y-2 border-t border-gray-600">
-                      <div className="flex justify-end mb-2"><button type="button" onClick={() => handleSelectAll('relatorios', ['relatorios', 'graficos', 'analise'])} className="text-xs text-blue-400 hover:text-blue-300">Marcar Todos</button></div>
-                      <label className="flex items-center justify-between p-2 bg-gray-700/50 rounded-lg cursor-pointer hover:bg-gray-700 transition"><div className="flex items-center gap-2"><FileText size={14} className="text-blue-400" /><span className="text-gray-300 text-sm">Relatórios</span></div><input type="checkbox" checked={promoteData.modulos.relatorios} onChange={(e) => setPromoteData({...promoteData, modulos: {...promoteData.modulos, relatorios: e.target.checked}})} className="w-4 h-4 text-purple-600 rounded" /></label>
-                      <label className="flex items-center justify-between p-2 bg-gray-700/50 rounded-lg cursor-pointer hover:bg-gray-700 transition"><div className="flex items-center gap-2"><BarChart3 size={14} className="text-green-400" /><span className="text-gray-300 text-sm">Gráficos</span></div><input type="checkbox" checked={promoteData.modulos.graficos} onChange={(e) => setPromoteData({...promoteData, modulos: {...promoteData.modulos, graficos: e.target.checked}})} className="w-4 h-4 text-purple-600 rounded" /></label>
-                      <label className="flex items-center justify-between p-2 bg-gray-700/50 rounded-lg cursor-pointer hover:bg-gray-700 transition"><div className="flex items-center gap-2"><PieChart size={14} className="text-purple-400" /><span className="text-gray-300 text-sm">Análise Geral</span></div><input type="checkbox" checked={promoteData.modulos.analise} onChange={(e) => setPromoteData({...promoteData, modulos: {...promoteData.modulos, analise: e.target.checked}})} className="w-4 h-4 text-purple-600 rounded" /></label>
-                    </div>
-                  )}
+                {/* Acesso Geral à Contabilidade */}
+                <label className="flex items-center justify-between p-2 bg-indigo-900/30 rounded-lg cursor-pointer hover:bg-indigo-800/30 transition border border-indigo-500/30">
+                  <div className="flex items-center gap-2">
+                    <BookOpen size={14} className="text-indigo-400" />
+                    <span className="text-gray-300 text-sm font-medium">Acesso Geral à Contabilidade</span>
+                  </div>
+                  <input 
+                    type="checkbox" 
+                    checked={promoteData.modulos.contabilidade} 
+                    onChange={(e) => {
+                      const checked = e.target.checked;
+                      setPromoteData({
+                        ...promoteData,
+                        modulos: {
+                          ...promoteData.modulos,
+                          contabilidade: checked,
+                          planoContas: checked,
+                          lancamentos: checked,
+                          diarioGeral: checked,
+                          razaoGeral: checked,
+                          balancete: checked,
+                          saldosContas: checked,
+                          balancoPatrimonial: checked,
+                          periodosFiscais: checked,
+                          encerramento: checked
+                        }
+                      });
+                    }} 
+                    className="w-4 h-4 text-purple-600 rounded" 
+                  />
+                </label>
+                
+                <div className="pl-4 space-y-2 border-l-2 border-indigo-500/30">
+                  <label className="flex items-center justify-between p-2 bg-gray-700/50 rounded-lg cursor-pointer hover:bg-gray-700 transition">
+                    <div className="flex items-center gap-2"><BookOpen size={14} className="text-blue-400" /><span className="text-gray-300 text-sm">Plano de Contas</span></div>
+                    <input type="checkbox" checked={promoteData.modulos.planoContas} onChange={(e) => setPromoteData({...promoteData, modulos: {...promoteData.modulos, planoContas: e.target.checked}})} className="w-4 h-4 text-purple-600 rounded" />
+                  </label>
+                  
+                  <label className="flex items-center justify-between p-2 bg-gray-700/50 rounded-lg cursor-pointer hover:bg-gray-700 transition">
+                    <div className="flex items-center gap-2"><FileText size={14} className="text-green-400" /><span className="text-gray-300 text-sm">Lançamentos Contabilísticos</span></div>
+                    <input type="checkbox" checked={promoteData.modulos.lancamentos} onChange={(e) => setPromoteData({...promoteData, modulos: {...promoteData.modulos, lancamentos: e.target.checked}})} className="w-4 h-4 text-purple-600 rounded" />
+                  </label>
+                  
+                  <label className="flex items-center justify-between p-2 bg-gray-700/50 rounded-lg cursor-pointer hover:bg-gray-700 transition">
+                    <div className="flex items-center gap-2"><ClipboardList size={14} className="text-teal-400" /><span className="text-gray-300 text-sm">Diário Geral</span></div>
+                    <input type="checkbox" checked={promoteData.modulos.diarioGeral} onChange={(e) => setPromoteData({...promoteData, modulos: {...promoteData.modulos, diarioGeral: e.target.checked}})} className="w-4 h-4 text-purple-600 rounded" />
+                  </label>
+                  
+                  <label className="flex items-center justify-between p-2 bg-gray-700/50 rounded-lg cursor-pointer hover:bg-gray-700 transition">
+                    <div className="flex items-center gap-2"><BookOpen size={14} className="text-cyan-400" /><span className="text-gray-300 text-sm">Razão Geral</span></div>
+                    <input type="checkbox" checked={promoteData.modulos.razaoGeral} onChange={(e) => setPromoteData({...promoteData, modulos: {...promoteData.modulos, razaoGeral: e.target.checked}})} className="w-4 h-4 text-purple-600 rounded" />
+                  </label>
+                  
+                  <label className="flex items-center justify-between p-2 bg-gray-700/50 rounded-lg cursor-pointer hover:bg-gray-700 transition">
+                    <div className="flex items-center gap-2"><TrendingUp size={14} className="text-yellow-400" /><span className="text-gray-300 text-sm">Balancete de Verificação</span></div>
+                    <input type="checkbox" checked={promoteData.modulos.balancete} onChange={(e) => setPromoteData({...promoteData, modulos: {...promoteData.modulos, balancete: e.target.checked}})} className="w-4 h-4 text-purple-600 rounded" />
+                  </label>
+                  
+                  <label className="flex items-center justify-between p-2 bg-gray-700/50 rounded-lg cursor-pointer hover:bg-gray-700 transition">
+                    <div className="flex items-center gap-2"><Wallet size={14} className="text-purple-400" /><span className="text-gray-300 text-sm">Saldos de Contas</span></div>
+                    <input type="checkbox" checked={promoteData.modulos.saldosContas} onChange={(e) => setPromoteData({...promoteData, modulos: {...promoteData.modulos, saldosContas: e.target.checked}})} className="w-4 h-4 text-purple-600 rounded" />
+                  </label>
+                  
+                  <label className="flex items-center justify-between p-2 bg-gray-700/50 rounded-lg cursor-pointer hover:bg-gray-700 transition">
+                    <div className="flex items-center gap-2"><PieChart size={14} className="text-red-400" /><span className="text-gray-300 text-sm">Balanço Patrimonial</span></div>
+                    <input type="checkbox" checked={promoteData.modulos.balancoPatrimonial} onChange={(e) => setPromoteData({...promoteData, modulos: {...promoteData.modulos, balancoPatrimonial: e.target.checked}})} className="w-4 h-4 text-purple-600 rounded" />
+                  </label>
+                  
+                  <label className="flex items-center justify-between p-2 bg-gray-700/50 rounded-lg cursor-pointer hover:bg-gray-700 transition">
+                    <div className="flex items-center gap-2"><Calendar size={14} className="text-orange-400" /><span className="text-gray-300 text-sm">Períodos Fiscais</span></div>
+                    <input type="checkbox" checked={promoteData.modulos.periodosFiscais} onChange={(e) => setPromoteData({...promoteData, modulos: {...promoteData.modulos, periodosFiscais: e.target.checked}})} className="w-4 h-4 text-purple-600 rounded" />
+                  </label>
+                  
+                  <label className="flex items-center justify-between p-2 bg-gray-700/50 rounded-lg cursor-pointer hover:bg-gray-700 transition">
+                    <div className="flex items-center gap-2"><Lock size={14} className="text-red-400" /><span className="text-gray-300 text-sm">Encerramento de Exercício</span></div>
+                    <input type="checkbox" checked={promoteData.modulos.encerramento} onChange={(e) => setPromoteData({...promoteData, modulos: {...promoteData.modulos, encerramento: e.target.checked}})} className="w-4 h-4 text-purple-600 rounded" />
+                  </label>
                 </div>
               </div>
-            </div>
-            
-            <div className="px-6 py-4 border-t border-gray-700 flex justify-end gap-3 sticky bottom-0 bg-gray-800">
-              <button onClick={() => setShowPromoteModal(false)} className="px-4 py-2 rounded-lg bg-gray-700 hover:bg-gray-600 text-white transition-colors">Cancelar</button>
-              <button onClick={promoverTecnico} disabled={promovendo === selectedFuncionario._id} className="px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-700 text-white transition-colors flex items-center gap-2">
-                {promovendo === selectedFuncionario._id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Shield className="w-4 h-4" />} Promover
-              </button>
-            </div>
+            )}
           </div>
         </div>
-      )}
+
+          {/* Financeiro */}
+          <div className="bg-gray-700/30 rounded-xl overflow-hidden mb-3">
+            <button type="button" onClick={() => toggleSection('financeiro')} className="w-full flex items-center justify-between p-3 bg-gradient-to-r from-emerald-600/20 to-teal-600/20 hover:bg-emerald-600/30 transition">
+              <div className="flex items-center gap-2"><DollarSign className="text-emerald-400" size={16} /><span className="font-semibold text-white text-sm">Financeiro</span></div>
+              <span className="text-gray-400 text-sm">{expandedSections.financeiro ? '▼' : '▶'}</span>
+            </button>
+            {expandedSections.financeiro && (
+              <div className="p-3 space-y-2 border-t border-gray-600 max-h-48 overflow-y-auto">
+                <div className="flex justify-end mb-2"><button type="button" onClick={() => handleSelectAll('financeiro', ['fornecedores', 'fluxoCaixa', 'contaCorrente', 'controloPagamento', 'custosReceitas', 'orcamentos', 'dre', 'indicadores', 'transferencias', 'reconciliacao'])} className="text-xs text-blue-400 hover:text-blue-300">Marcar Todos</button></div>
+                <label className="flex items-center justify-between p-2 bg-gray-700/50 rounded-lg cursor-pointer hover:bg-gray-700 transition"><div className="flex items-center gap-2"><Truck size={14} className="text-purple-400" /><span className="text-gray-300 text-sm">Fornecedores</span></div><input type="checkbox" checked={promoteData.modulos.fornecedores} onChange={(e) => setPromoteData({...promoteData, modulos: {...promoteData.modulos, fornecedores: e.target.checked}})} className="w-4 h-4 text-purple-600 rounded" /></label>
+                <label className="flex items-center justify-between p-2 bg-gray-700/50 rounded-lg cursor-pointer hover:bg-gray-700 transition"><div className="flex items-center gap-2"><TrendingUp size={14} className="text-green-400" /><span className="text-gray-300 text-sm">Fluxo de Caixa</span></div><input type="checkbox" checked={promoteData.modulos.fluxoCaixa} onChange={(e) => setPromoteData({...promoteData, modulos: {...promoteData.modulos, fluxoCaixa: e.target.checked}})} className="w-4 h-4 text-purple-600 rounded" /></label>
+                <label className="flex items-center justify-between p-2 bg-gray-700/50 rounded-lg cursor-pointer hover:bg-gray-700 transition"><div className="flex items-center gap-2"><Wallet size={14} className="text-blue-400" /><span className="text-gray-300 text-sm">Conta Corrente</span></div><input type="checkbox" checked={promoteData.modulos.contaCorrente} onChange={(e) => setPromoteData({...promoteData, modulos: {...promoteData.modulos, contaCorrente: e.target.checked}})} className="w-4 h-4 text-purple-600 rounded" /></label>
+                <label className="flex items-center justify-between p-2 bg-gray-700/50 rounded-lg cursor-pointer hover:bg-gray-700 transition"><div className="flex items-center gap-2"><FileText size={14} className="text-yellow-400" /><span className="text-gray-300 text-sm">Controlo de Pagamento</span></div><input type="checkbox" checked={promoteData.modulos.controloPagamento} onChange={(e) => setPromoteData({...promoteData, modulos: {...promoteData.modulos, controloPagamento: e.target.checked}})} className="w-4 h-4 text-purple-600 rounded" /></label>
+                <label className="flex items-center justify-between p-2 bg-gray-700/50 rounded-lg cursor-pointer hover:bg-gray-700 transition"><div className="flex items-center gap-2"><PieChart size={14} className="text-purple-400" /><span className="text-gray-300 text-sm">Custos e Receitas</span></div><input type="checkbox" checked={promoteData.modulos.custosReceitas} onChange={(e) => setPromoteData({...promoteData, modulos: {...promoteData.modulos, custosReceitas: e.target.checked}})} className="w-4 h-4 text-purple-600 rounded" /></label>
+                <label className="flex items-center justify-between p-2 bg-gray-700/50 rounded-lg cursor-pointer hover:bg-gray-700 transition"><div className="flex items-center gap-2"><ClipboardList size={14} className="text-orange-400" /><span className="text-gray-300 text-sm">Orçamentos</span></div><input type="checkbox" checked={promoteData.modulos.orcamentos} onChange={(e) => setPromoteData({...promoteData, modulos: {...promoteData.modulos, orcamentos: e.target.checked}})} className="w-4 h-4 text-purple-600 rounded" /></label>
+                <label className="flex items-center justify-between p-2 bg-gray-700/50 rounded-lg cursor-pointer hover:bg-gray-700 transition"><div className="flex items-center gap-2"><BarChart3 size={14} className="text-red-400" /><span className="text-gray-300 text-sm">DRE</span></div><input type="checkbox" checked={promoteData.modulos.dre} onChange={(e) => setPromoteData({...promoteData, modulos: {...promoteData.modulos, dre: e.target.checked}})} className="w-4 h-4 text-purple-600 rounded" /></label>
+                <label className="flex items-center justify-between p-2 bg-gray-700/50 rounded-lg cursor-pointer hover:bg-gray-700 transition"><div className="flex items-center gap-2"><Eye size={14} className="text-cyan-400" /><span className="text-gray-300 text-sm">Indicadores</span></div><input type="checkbox" checked={promoteData.modulos.indicadores} onChange={(e) => setPromoteData({...promoteData, modulos: {...promoteData.modulos, indicadores: e.target.checked}})} className="w-4 h-4 text-purple-600 rounded" /></label>
+                <label className="flex items-center justify-between p-2 bg-gray-700/50 rounded-lg cursor-pointer hover:bg-gray-700 transition"><div className="flex items-center gap-2"><ArrowRightLeft size={14} className="text-teal-400" /><span className="text-gray-300 text-sm">Transferências</span></div><input type="checkbox" checked={promoteData.modulos.transferencias} onChange={(e) => setPromoteData({...promoteData, modulos: {...promoteData.modulos, transferencias: e.target.checked}})} className="w-4 h-4 text-purple-600 rounded" /></label>
+                <label className="flex items-center justify-between p-2 bg-gray-700/50 rounded-lg cursor-pointer hover:bg-gray-700 transition"><div className="flex items-center gap-2"><RefreshCw size={14} className="text-indigo-400" /><span className="text-gray-300 text-sm">Reconciliação Bancária</span></div><input type="checkbox" checked={promoteData.modulos.reconciliacao} onChange={(e) => setPromoteData({...promoteData, modulos: {...promoteData.modulos, reconciliacao: e.target.checked}})} className="w-4 h-4 text-purple-600 rounded" /></label>
+              </div>
+            )}
+          </div>   
+
+{/* Relatórios */}
+          <div className="bg-gray-700/30 rounded-xl overflow-hidden mb-3">
+            <button type="button" onClick={() => toggleSection('relatorios')} className="w-full flex items-center justify-between p-3 bg-gradient-to-r from-rose-600/20 to-pink-600/20 hover:bg-rose-600/30 transition">
+              <div className="flex items-center gap-2"><FileText className="text-rose-400" size={16} /><span className="font-semibold text-white text-sm">Relatórios e Análises</span></div>
+              <span className="text-gray-400 text-sm">{expandedSections.relatorios ? '▼' : '▶'}</span>
+            </button>
+            {expandedSections.relatorios && (
+              <div className="p-3 space-y-2 border-t border-gray-600">
+                <div className="flex justify-end mb-2"><button type="button" onClick={() => handleSelectAll('relatorios', ['relatorios', 'graficos', 'analise'])} className="text-xs text-blue-400 hover:text-blue-300">Marcar Todos</button></div>
+                <label className="flex items-center justify-between p-2 bg-gray-700/50 rounded-lg cursor-pointer hover:bg-gray-700 transition"><div className="flex items-center gap-2"><FileText size={14} className="text-blue-400" /><span className="text-gray-300 text-sm">Relatórios</span></div><input type="checkbox" checked={promoteData.modulos.relatorios} onChange={(e) => setPromoteData({...promoteData, modulos: {...promoteData.modulos, relatorios: e.target.checked}})} className="w-4 h-4 text-purple-600 rounded" /></label>
+                <label className="flex items-center justify-between p-2 bg-gray-700/50 rounded-lg cursor-pointer hover:bg-gray-700 transition"><div className="flex items-center gap-2"><BarChart3 size={14} className="text-green-400" /><span className="text-gray-300 text-sm">Gráficos</span></div><input type="checkbox" checked={promoteData.modulos.graficos} onChange={(e) => setPromoteData({...promoteData, modulos: {...promoteData.modulos, graficos: e.target.checked}})} className="w-4 h-4 text-purple-600 rounded" /></label>
+                <label className="flex items-center justify-between p-2 bg-gray-700/50 rounded-lg cursor-pointer hover:bg-gray-700 transition"><div className="flex items-center gap-2"><PieChart size={14} className="text-purple-400" /><span className="text-gray-300 text-sm">Análise Geral</span></div><input type="checkbox" checked={promoteData.modulos.analise} onChange={(e) => setPromoteData({...promoteData, modulos: {...promoteData.modulos, analise: e.target.checked}})} className="w-4 h-4 text-purple-600 rounded" /></label>
+              </div>
+            )}
+          </div>
+      </div>
+
+
+      
+      <div className="px-6 py-4 border-t border-gray-700 flex justify-end gap-3 sticky bottom-0 bg-gray-800">
+        <button onClick={() => setShowPromoteModal(false)} className="px-4 py-2 rounded-lg bg-gray-700 hover:bg-gray-600 text-white transition-colors">Cancelar</button>
+        <button onClick={promoverTecnico} disabled={promovendo === selectedFuncionario._id} className="px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-700 text-white transition-colors flex items-center gap-2">
+          {promovendo === selectedFuncionario._id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Shield className="w-4 h-4" />} Promover
+        </button>
+      </div>
+    </div>
+  </div>
+)}
 
       <div className="space-y-6">
         <EmpresaSelector

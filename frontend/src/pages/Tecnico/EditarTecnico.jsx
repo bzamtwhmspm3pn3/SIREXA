@@ -48,9 +48,21 @@ const EditarTecnico = () => {
       reconciliacao: false,
       
       // Relatórios
-      relatorios: false,
-      graficos: false,
-      analise: false
+      relatorios: false, 
+      graficos: false, 
+      analise: false,
+      
+      // CONTABILIDADE 
+      contabilidade: false,      
+      planoContas: false,        
+      lancamentos: false,        
+      diarioGeral: false,        
+      razaoGeral: false,         
+      balancete: false,          
+      saldosContas: false,       
+      balancoPatrimonial: false, 
+      periodosFiscais: false,    
+      encerramento: false        
     }
   });
   
@@ -66,8 +78,10 @@ const EditarTecnico = () => {
     recursosHumanos: false,
     gestaoPatrimonial: false,
     financeiro: false,
-    relatorios: false
+     relatorios: false,
+    contabilidade: false
   });
+
   
   const navigate = useNavigate();
   const { id } = useParams();
@@ -470,6 +484,122 @@ const EditarTecnico = () => {
                 </div>
               )}
             </div>
+
+
+{/* ============================================ */}
+            {/* Módulos - Seção CONTABILIDADE */}
+            {/* ============================================ */}
+            <div className="bg-gray-700/30 rounded-xl overflow-hidden">
+              <button type="button" onClick={() => toggleSection('contabilidade')} className="w-full flex items-center justify-between p-4 bg-gradient-to-r from-indigo-600/20 to-purple-600/20 hover:bg-indigo-600/30 transition">
+                <div className="flex items-center gap-3">
+                  <BookOpen className="text-indigo-400" size={20} />
+                  <span className="font-semibold text-white">Contabilidade </span>
+                </div>
+                <span className="text-gray-400">{expandedSections.contabilidade ? '▼' : '▶'}</span>
+              </button>
+              {expandedSections.contabilidade && (
+                <div className="p-4 space-y-3 border-t border-gray-600">
+                  <div className="flex justify-end mb-2">
+                    <button 
+                      type="button" 
+                      onClick={() => handleSelectAll('contabilidade', [
+                        'contabilidade', 'planoContas', 'lancamentos', 'diarioGeral', 
+                        'razaoGeral', 'balancete', 'saldosContas', 'balancoPatrimonial', 
+                        'periodosFiscais', 'encerramento'
+                      ])} 
+                      className="text-xs text-blue-400 hover:text-blue-300"
+                    >
+                      {formData.modulos.contabilidade && formData.modulos.planoContas && 
+                       formData.modulos.lancamentos && formData.modulos.diarioGeral &&
+                       formData.modulos.razaoGeral && formData.modulos.balancete &&
+                       formData.modulos.saldosContas && formData.modulos.balancoPatrimonial &&
+                       formData.modulos.periodosFiscais && formData.modulos.encerramento 
+                        ? 'Desmarcar Todos' : 'Marcar Todos'}
+                    </button>
+                  </div>
+                  
+                  {/* Acesso Geral à Contabilidade */}
+                  <label className="flex items-center justify-between p-3 bg-indigo-900/30 rounded-lg cursor-pointer hover:bg-indigo-800/30 transition border border-indigo-500/30">
+                    <div className="flex items-center gap-3">
+                      <BookOpen size={18} className="text-indigo-400" />
+                      <span className="text-gray-300 font-medium">Acesso Geral à Contabilidade</span>
+                    </div>
+                    <input 
+                      type="checkbox" 
+                      checked={formData.modulos.contabilidade} 
+                      onChange={(e) => {
+                        const checked = e.target.checked;
+                        setFormData({
+                          ...formData,
+                          modulos: {
+                            ...formData.modulos,
+                            contabilidade: checked,
+                            planoContas: checked,
+                            lancamentos: checked,
+                            diarioGeral: checked,
+                            razaoGeral: checked,
+                            balancete: checked,
+                            saldosContas: checked,
+                            balancoPatrimonial: checked,
+                            periodosFiscais: checked,
+                            encerramento: checked
+                          }
+                        });
+                      }} 
+                      className="w-4 h-4 text-purple-600 rounded" 
+                    />
+                  </label>
+                  
+                  <div className="pl-6 space-y-3 border-l-2 border-indigo-500/30">
+                    <label className="flex items-center justify-between p-3 bg-gray-700/50 rounded-lg cursor-pointer hover:bg-gray-700 transition">
+                      <div className="flex items-center gap-3"><BookOpen size={18} className="text-blue-400" /><span className="text-gray-300">Plano de Contas</span></div>
+                      <input type="checkbox" checked={formData.modulos.planoContas} onChange={(e) => setFormData({...formData, modulos: {...formData.modulos, planoContas: e.target.checked}})} className="w-4 h-4 text-purple-600 rounded" />
+                    </label>
+                    
+                    <label className="flex items-center justify-between p-3 bg-gray-700/50 rounded-lg cursor-pointer hover:bg-gray-700 transition">
+                      <div className="flex items-center gap-3"><FileText size={18} className="text-green-400" /><span className="text-gray-300">Lançamentos Contabilísticos</span></div>
+                      <input type="checkbox" checked={formData.modulos.lancamentos} onChange={(e) => setFormData({...formData, modulos: {...formData.modulos, lancamentos: e.target.checked}})} className="w-4 h-4 text-purple-600 rounded" />
+                    </label>
+                    
+                    <label className="flex items-center justify-between p-3 bg-gray-700/50 rounded-lg cursor-pointer hover:bg-gray-700 transition">
+                      <div className="flex items-center gap-3"><ClipboardList size={18} className="text-teal-400" /><span className="text-gray-300">Diário Geral</span></div>
+                      <input type="checkbox" checked={formData.modulos.diarioGeral} onChange={(e) => setFormData({...formData, modulos: {...formData.modulos, diarioGeral: e.target.checked}})} className="w-4 h-4 text-purple-600 rounded" />
+                    </label>
+                    
+                    <label className="flex items-center justify-between p-3 bg-gray-700/50 rounded-lg cursor-pointer hover:bg-gray-700 transition">
+                      <div className="flex items-center gap-3"><LayoutDashboard size={18} className="text-cyan-400" /><span className="text-gray-300">Razão Geral</span></div>
+                      <input type="checkbox" checked={formData.modulos.razaoGeral} onChange={(e) => setFormData({...formData, modulos: {...formData.modulos, razaoGeral: e.target.checked}})} className="w-4 h-4 text-purple-600 rounded" />
+                    </label>
+                    
+                    <label className="flex items-center justify-between p-3 bg-gray-700/50 rounded-lg cursor-pointer hover:bg-gray-700 transition">
+                      <div className="flex items-center gap-3"><TrendingUp size={18} className="text-yellow-400" /><span className="text-gray-300">Balancete de Verificação</span></div>
+                      <input type="checkbox" checked={formData.modulos.balancete} onChange={(e) => setFormData({...formData, modulos: {...formData.modulos, balancete: e.target.checked}})} className="w-4 h-4 text-purple-600 rounded" />
+                    </label>
+                    
+                    <label className="flex items-center justify-between p-3 bg-gray-700/50 rounded-lg cursor-pointer hover:bg-gray-700 transition">
+                      <div className="flex items-center gap-3"><Wallet size={18} className="text-purple-400" /><span className="text-gray-300">Saldos de Contas</span></div>
+                      <input type="checkbox" checked={formData.modulos.saldosContas} onChange={(e) => setFormData({...formData, modulos: {...formData.modulos, saldosContas: e.target.checked}})} className="w-4 h-4 text-purple-600 rounded" />
+                    </label>
+                    
+                    <label className="flex items-center justify-between p-3 bg-gray-700/50 rounded-lg cursor-pointer hover:bg-gray-700 transition">
+                      <div className="flex items-center gap-3"><PieChart size={18} className="text-red-400" /><span className="text-gray-300">Balanço Patrimonial</span></div>
+                      <input type="checkbox" checked={formData.modulos.balancoPatrimonial} onChange={(e) => setFormData({...formData, modulos: {...formData.modulos, balancoPatrimonial: e.target.checked}})} className="w-4 h-4 text-purple-600 rounded" />
+                    </label>
+                    
+                    <label className="flex items-center justify-between p-3 bg-gray-700/50 rounded-lg cursor-pointer hover:bg-gray-700 transition">
+                      <div className="flex items-center gap-3"><Calendar size={18} className="text-orange-400" /><span className="text-gray-300">Períodos Fiscais</span></div>
+                      <input type="checkbox" checked={formData.modulos.periodosFiscais} onChange={(e) => setFormData({...formData, modulos: {...formData.modulos, periodosFiscais: e.target.checked}})} className="w-4 h-4 text-purple-600 rounded" />
+                    </label>
+                    
+                    <label className="flex items-center justify-between p-3 bg-gray-700/50 rounded-lg cursor-pointer hover:bg-gray-700 transition">
+                      <div className="flex items-center gap-3"><Lock size={18} className="text-red-400" /><span className="text-gray-300">Encerramento de Exercício</span></div>
+                      <input type="checkbox" checked={formData.modulos.encerramento} onChange={(e) => setFormData({...formData, modulos: {...formData.modulos, encerramento: e.target.checked}})} className="w-4 h-4 text-purple-600 rounded" />
+                    </label>
+                  </div>
+                </div>
+              )}
+            </div>
+
 
             {/* Botões */}
             <div className="flex gap-3 pt-4">

@@ -1,4 +1,4 @@
-// src/pages/Sobre.jsx - VERSÃO CORRIGIDA COM ALTO CONTRASTE
+// src/pages/Sobre.jsx - CORRIGIDO COM CLASSES 8 e 9 E COR AZUL
 import { useState } from "react";
 import Layout from "../components/Layout";
 import { useAuth } from "../contexts/AuthContext";
@@ -16,7 +16,8 @@ import {
   Landmark, ChartNoAxesCombined, HandCoins, 
   ReceiptText, ChartColumn, BarChart3, PieChart,
   LineChart, Coins,
-  Banknote, CreditCard, Scale, ClipboardList
+  Banknote, CreditCard, Scale, ClipboardList,
+  BookOpen, LayoutDashboard, BookCopy, Lock
 } from "lucide-react";
 
 const Sobre = () => {
@@ -48,12 +49,30 @@ const Sobre = () => {
     }
   };
 
+  const classesPGCA = [
+    { classe: 1, nome: "MEIOS FIXOS E INVESTIMENTOS", natureza: "Devedora", cor: "bg-blue-500/20 text-blue-300", modulo: "Contabilidade" },
+    { classe: 2, nome: "EXISTÊNCIAS", natureza: "Devedora", cor: "bg-green-500/20 text-green-300", modulo: "Contabilidade" },
+    { classe: 3, nome: "TERCEIROS", natureza: "Mista", cor: "bg-yellow-500/20 text-yellow-300", modulo: "Contabilidade" },
+    { classe: 4, nome: "MEIOS MONETÁRIOS", natureza: "Devedora", cor: "bg-purple-500/20 text-purple-300", modulo: "Contabilidade" },
+    { classe: 5, nome: "CAPITAL E RESERVAS", natureza: "Credora", cor: "bg-pink-500/20 text-pink-300", modulo: "Contabilidade" },
+    { classe: 6, nome: "PROVEITOS E GANHOS", natureza: "Credora", cor: "bg-indigo-500/20 text-indigo-300", modulo: "Contabilidade" },
+    { classe: 7, nome: "CUSTOS E PERDAS", natureza: "Devedora", cor: "bg-red-500/20 text-red-300", modulo: "Contabilidade" },
+    { classe: 8, nome: "RESULTADOS ANALÍTICOS", natureza: "Mista", cor: "bg-orange-500/20 text-orange-300", modulo: "Contabilidade", obs: "Facultativo" },
+    { classe: 9, nome: "CONTAS DE ORDEM", natureza: "Mista", cor: "bg-gray-500/20 text-gray-300", modulo: "Contabilidade", obs: "Facultativo" }
+  ];
+
   const modulosSistema = {
     administracao: {
       nome: "Administração",
       icon: Building,
       cor: "from-[#0A1F44] to-[#003366]",
       modulos: ["Empresas", "Técnicos", "Fornecedores"]
+    },
+    contabilidade: {
+      nome: "Contabilidade",
+      icon: BookOpen,
+      cor: "from-[#003366] to-[#0055A5]",
+      modulos: ["Plano de Contas", "Lançamentos", "Diário Geral", "Razão Geral", "Balancete", "Saldos de Contas", "Balanço Patrimonial", "Períodos Fiscais", "Encerramento"]
     },
     operacional: {
       nome: "Operacional",
@@ -93,18 +112,20 @@ const Sobre = () => {
 
   const integracoesReais = [
     { id: 1, origem: "Vendas", destino: "Estoque", acao: "Baixa automática de stock", descricao: "Quando uma venda é registrada, o sistema automaticamente reduz a quantidade do produto no estoque.", trigger: "Ao finalizar uma venda", tecnologia: "Event Listener / Webhook", cor: "from-[#0A1F44] to-[#003366]" },
-    { id: 2, origem: "Vendas", destino: "Fluxo de Caixa", acao: "Registro de receitas automático", descricao: "Vendas a crédito geram automaticamente registros de contas a receber no fluxo de caixa.", trigger: "Venda com pagamento a prazo", tecnologia: "IntegracaoPagamentos.integrarVenda()", cor: "from-[#003366] to-[#0055A5]" },
-    { id: 3, origem: "Vendas", destino: "Conta Corrente", acao: "Atualização de saldo de clientes", descricao: "Clientes que compram a prazo têm seu saldo atualizado automaticamente na conta corrente.", trigger: "Venda a crédito", tecnologia: "registrarCreditoFatura()", cor: "from-[#004080] to-[#0066CC]" },
-    { id: 4, origem: "Compra de Fornecedor", destino: "Conta Corrente", acao: "Registro de crédito automático", descricao: "Contratos com fornecedores geram automaticamente faturas na conta corrente.", trigger: "Contrato ativo com fornecedor", tecnologia: "gerarCreditosAntecipados()", cor: "from-[#002244] to-[#004488]" },
-    { id: 5, origem: "Pagamentos", destino: "Conta Corrente", acao: "Baixa de débitos automática", descricao: "Quando um pagamento é registrado, o sistema automaticamente baixa o débito correspondente.", trigger: "Registro de pagamento", tecnologia: "registrarDebitoPagamento()", cor: "from-[#006633] to-[#0088CC]" },
-    { id: 6, origem: "Folha Salarial", destino: "Fluxo de Caixa", acao: "Registro de despesa com pessoal", descricao: "A folha de pagamento gera automaticamente despesas de salários no fluxo de caixa.", trigger: "Processamento da folha", tecnologia: "integrarFolhaSalarial()", cor: "from-[#0A1F44] to-[#004080]" },
-    { id: 7, origem: "Abastecimentos", destino: "Fluxo de Caixa", acao: "Registro de despesa operacional", descricao: "Cada abastecimento registrado gera uma despesa operacional no fluxo de caixa.", trigger: "Registro de abastecimento", tecnologia: "integrarAbastecimento()", cor: "from-[#003366] to-[#006633]" },
-    { id: 8, origem: "Manutenções", destino: "Fluxo de Caixa", acao: "Registro de despesa patrimonial", descricao: "Manutenções de viaturas geram automaticamente despesas patrimoniais.", trigger: "Registro de manutenção", tecnologia: "integrarManutencao()", cor: "from-[#0055A5] to-[#0088CC]" },
-    { id: 9, origem: "Orçamentos", destino: "DRE", acao: "Comparativo Real vs Orçado", descricao: "Compara automaticamente resultados reais com valores orçados para análise de variação.", trigger: "Geração do DRE", tecnologia: "Análise de Variação Orçamentária", cor: "from-[#0A1F44] to-[#0088CC]" },
-    { id: 10, origem: "Todos os Módulos", destino: "Relatórios", acao: "Alimentação automática de dashboards", descricao: "Todos os dados do sistema alimentam automaticamente os dashboards e relatórios.", trigger: "Qualquer alteração no sistema", tecnologia: "Aggregation Pipeline / Real-time Sync", cor: "from-[#006633] to-[#0088CC]" },
-    { id: 11, origem: "Fluxo de Caixa", destino: "DRE", acao: "Alimentação da Demonstração de Resultados", descricao: "Todas as receitas e despesas do fluxo de caixa alimentam automaticamente o DRE.", trigger: "Novo lançamento no fluxo de caixa", tecnologia: "Cálculo de Resultados", cor: "from-[#003366] to-[#006633]" },
-    { id: 12, origem: "Transferências", destino: "Reconciliação Bancária", acao: "Sincronização automática de movimentos", descricao: "Transferências entre contas são automaticamente reconciliadas.", trigger: "Registro de transferência", tecnologia: "Conciliação Automática", cor: "from-[#004080] to-[#0088CC]" },
-    { id: 13, origem: "Custos e Receitas", destino: "Indicadores", acao: "Cálculo de KPIs financeiros", descricao: "Os dados de custos e receitas alimentam automaticamente os indicadores de performance.", trigger: "Atualização de custos/receitas", tecnologia: "Cálculo de KPIs", cor: "from-[#0A1F44] to-[#0055A5]" }
+    { id: 2, origem: "Vendas", destino: "Contabilidade", acao: "Geração de lançamento contabilístico", descricao: "Vendas geram automaticamente lançamentos contabilísticos (D: Clientes, C: Vendas).", trigger: "Registo de venda", tecnologia: "IntegracaoContabilistica.integrarVenda()", cor: "from-[#003366] to-[#0055A5]" },
+    { id: 3, origem: "Pagamentos", destino: "Contabilidade", acao: "Registo de custos automático", descricao: "Pagamentos geram lançamentos contabilísticos (D: Custos, C: Caixa/Banco).", trigger: "Registo de pagamento", tecnologia: "IntegracaoContabilistica.integrarPagamento()", cor: "from-[#003366] to-[#0055A5]" },
+    { id: 4, origem: "Contabilidade", destino: "DRE", acao: "Alimentação da Demonstração de Resultados", descricao: "Proveitos (Classe 6) e Custos (Classe 7) alimentam automaticamente o DRE.", trigger: "Lançamentos contabilísticos", tecnologia: "Cálculo de Resultados (Classe 6 - Classe 7)", cor: "from-[#003366] to-[#0055A5]" },
+    { id: 5, origem: "Contabilidade", destino: "Balancete", acao: "Atualização automática de saldos", descricao: "Todos os lançamentos atualizam automaticamente o balancete de verificação.", trigger: "Novo lançamento contabilístico", tecnologia: "Partidas Dobradas (Débito = Crédito)", cor: "from-[#003366] to-[#0055A5]" },
+    { id: 6, origem: "Contabilidade", destino: "Balanço Patrimonial", acao: "Estruturação de Ativo/Passivo/PL", descricao: "Saldos das contas alimentam automaticamente o Balanço Patrimonial.", trigger: "Fim do período", tecnologia: "Classificação por Classe (1-5)", cor: "from-[#003366] to-[#0055A5]" },
+    { id: 7, origem: "Vendas", destino: "Fluxo de Caixa", acao: "Registro de receitas automático", descricao: "Vendas a crédito geram automaticamente registros de contas a receber no fluxo de caixa.", trigger: "Venda com pagamento a prazo", tecnologia: "IntegracaoPagamentos.integrarVenda()", cor: "from-[#003366] to-[#0055A5]" },
+    { id: 8, origem: "Vendas", destino: "Conta Corrente", acao: "Atualização de saldo de clientes", descricao: "Clientes que compram a prazo têm seu saldo atualizado automaticamente na conta corrente.", trigger: "Venda a crédito", tecnologia: "registrarCreditoFatura()", cor: "from-[#004080] to-[#0066CC]" },
+    { id: 9, origem: "Compra de Fornecedor", destino: "Conta Corrente", acao: "Registro de crédito automático", descricao: "Contratos com fornecedores geram automaticamente faturas na conta corrente.", trigger: "Contrato ativo com fornecedor", tecnologia: "gerarCreditosAntecipados()", cor: "from-[#002244] to-[#004488]" },
+    { id: 10, origem: "Pagamentos", destino: "Conta Corrente", acao: "Baixa de débitos automática", descricao: "Quando um pagamento é registrado, o sistema automaticamente baixa o débito correspondente.", trigger: "Registro de pagamento", tecnologia: "registrarDebitoPagamento()", cor: "from-[#006633] to-[#0088CC]" },
+    { id: 11, origem: "Folha Salarial", destino: "Fluxo de Caixa", acao: "Registro de despesa com pessoal", descricao: "A folha de pagamento gera automaticamente despesas de salários no fluxo de caixa.", trigger: "Processamento da folha", tecnologia: "integrarFolhaSalarial()", cor: "from-[#0A1F44] to-[#004080]" },
+    { id: 12, origem: "Abastecimentos", destino: "Fluxo de Caixa", acao: "Registro de despesa operacional", descricao: "Cada abastecimento registrado gera uma despesa operacional no fluxo de caixa.", trigger: "Registro de abastecimento", tecnologia: "integrarAbastecimento()", cor: "from-[#003366] to-[#006633]" },
+    { id: 13, origem: "Manutenções", destino: "Fluxo de Caixa", acao: "Registro de despesa patrimonial", descricao: "Manutenções de viaturas geram automaticamente despesas patrimoniais.", trigger: "Registro de manutenção", tecnologia: "integrarManutencao()", cor: "from-[#0055A5] to-[#0088CC]" },
+    { id: 14, origem: "Orçamentos", destino: "DRE", acao: "Comparativo Real vs Orçado", descricao: "Compara automaticamente resultados reais com valores orçados para análise de variação.", trigger: "Geração do DRE", tecnologia: "Análise de Variação Orçamentária", cor: "from-[#0A1F44] to-[#0088CC]" },
+    { id: 15, origem: "Todos os Módulos", destino: "Relatórios", acao: "Alimentação automática de dashboards", descricao: "Todos os dados do sistema alimentam automaticamente os dashboards e relatórios.", trigger: "Qualquer alteração no sistema", tecnologia: "Aggregation Pipeline / Real-time Sync", cor: "from-[#006633] to-[#0088CC]" }
   ];
 
   const copiarTexto = (texto) => {
@@ -137,7 +158,35 @@ const Sobre = () => {
             <span className="bg-white/25 backdrop-blur-sm px-4 py-1.5 rounded-full text-sm text-white font-medium">Versão 2.0.0</span>
             <span className="bg-white/25 backdrop-blur-sm px-4 py-1.5 rounded-full text-sm text-white font-medium">Integração Total</span>
             <span className="bg-white/25 backdrop-blur-sm px-4 py-1.5 rounded-full text-sm text-white font-medium">Dados em Tempo Real</span>
-            <span className="bg-[#00A86B]/40 backdrop-blur-sm px-4 py-1.5 rounded-full text-sm text-green-100 font-medium">🔗 13+ Integrações</span>
+            <span className="bg-[#00A86B]/40 backdrop-blur-sm px-4 py-1.5 rounded-full text-sm text-green-100 font-medium">🔗 15+ Integrações</span>
+            <span className="bg-[#0055A5]/40 backdrop-blur-sm px-4 py-1.5 rounded-full text-sm text-blue-100 font-medium">📊 PGCA Angola (9 Classes)</span>
+          </div>
+        </div>
+
+        {/* CLASSES DO PGCA */}
+        <div className="bg-[#0A1F44]/60 backdrop-blur-md rounded-2xl p-6 border border-white/10 shadow-xl">
+          <h2 className="text-xl font-bold text-white mb-6 text-center flex items-center justify-center gap-2 drop-shadow-md">
+            <BookOpen className="text-blue-400" size={24} />
+            Classes do Plano de Contas Geral (PGCA Angola)
+            <Sparkles className="text-[#00A86B]" size={20} />
+          </h2>
+          
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+            {classesPGCA.map((classe) => (
+              <div 
+                key={classe.classe} 
+                className={`${classe.cor} rounded-xl p-3 text-center border border-white/10 shadow-md`}
+              >
+                <div className="text-2xl font-bold text-white">{classe.classe}</div>
+                <div className="text-xs font-medium mt-1">{classe.nome.substring(0, 20)}</div>
+                <div className="text-[10px] mt-1 opacity-75">{classe.natureza}</div>
+                {classe.obs && <div className="text-[9px] mt-1 text-yellow-300">{classe.obs}</div>}
+              </div>
+            ))}
+          </div>
+          
+          <div className="mt-4 text-center text-xs text-gray-400">
+            Classes 1 a 7 são obrigatórias | Classes 8 e 9 são facultativas (uso conforme necessidade)
           </div>
         </div>
 
@@ -212,6 +261,39 @@ const Sobre = () => {
           </div>
         </div>
 
+        {/* PRINCÍPIO DAS PARTIDAS DOBRADAS */}
+        <div className="bg-gradient-to-r from-[#003366] to-[#0055A5] rounded-2xl p-6 border border-white/10 shadow-xl">
+          <h2 className="text-xl font-bold text-white mb-4 text-center flex items-center justify-center gap-2 drop-shadow-md">
+            <Scale className="text-[#00C0F9]" size={24} />
+            Princípio das Partidas Dobradas (PGCA Angola)
+          </h2>
+          <div className="bg-white/10 backdrop-blur-sm rounded-xl p-5 border border-white/10">
+            <p className="text-center text-blue-100 text-sm mb-4">
+              Todo lançamento contabilístico no sistema respeita a igualdade fundamental:
+            </p>
+            <div className="text-center text-2xl font-bold text-white mb-4">
+              <span className="text-green-400">Débito</span> = <span className="text-red-400">Crédito</span>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-4">
+              <div className="bg-[#0A1F44]/50 rounded-lg p-3 text-center">
+                <p className="text-blue-200 text-xs font-medium">Classes 1,2,3,4,7</p>
+                <p className="text-white text-sm font-bold">NATUREZA DEVEDORA</p>
+                <p className="text-blue-300 text-[10px] mt-1">Ativo, Existências, Terceiros, Custos</p>
+              </div>
+              <div className="bg-[#003366]/50 rounded-lg p-3 text-center">
+                <p className="text-blue-200 text-xs font-medium">Classes 5,6</p>
+                <p className="text-white text-sm font-bold">NATUREZA CREDORA</p>
+                <p className="text-blue-300 text-[10px] mt-1">Capital, Proveitos</p>
+              </div>
+              <div className="bg-[#0055A5]/50 rounded-lg p-3 text-center">
+                <p className="text-blue-200 text-xs font-medium">Classes 3,8,9</p>
+                <p className="text-white text-sm font-bold">NATUREZA MISTA</p>
+                <p className="text-blue-300 text-[10px] mt-1">Terceiros, Resultados Analíticos, Ordem</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* EXEMPLO PRÁTICO */}
         <div className="bg-gradient-to-r from-[#0A1F44] to-[#003366] rounded-2xl p-6 border border-white/10 shadow-xl">
           <h2 className="text-xl font-bold text-white mb-4 text-center flex items-center justify-center gap-2 drop-shadow-md">
@@ -222,13 +304,13 @@ const Sobre = () => {
             <div className="flex flex-wrap items-center justify-center gap-2 text-sm mb-4">
               <span className="bg-[#0A1F44] px-3 py-1.5 rounded-full text-white font-medium shadow-md">1. Venda Realizada</span>
               <span className="text-white font-bold">→</span>
-              <span className="bg-[#003366] px-3 py-1.5 rounded-full text-white font-medium shadow-md">2. Baixa no Estoque</span>
+              <span className="bg-[#003366] px-3 py-1.5 rounded-full text-white font-medium shadow-md">2. Lançamento Contabilístico</span>
               <span className="text-white font-bold">→</span>
-              <span className="bg-[#006633] px-3 py-1.5 rounded-full text-white font-medium shadow-md">3. Fluxo de Caixa</span>
+              <span className="bg-[#0055A5] px-3 py-1.5 rounded-full text-white font-medium shadow-md">3. Baixa no Estoque</span>
               <span className="text-white font-bold">→</span>
-              <span className="bg-[#0055A5] px-3 py-1.5 rounded-full text-white font-medium shadow-md">4. Conta Corrente</span>
+              <span className="bg-[#006633] px-3 py-1.5 rounded-full text-white font-medium shadow-md">4. Fluxo de Caixa</span>
               <span className="text-white font-bold">→</span>
-              <span className="bg-[#0088CC] px-3 py-1.5 rounded-full text-white font-medium shadow-md">5. Relatórios</span>
+              <span className="bg-[#004488] px-3 py-1.5 rounded-full text-white font-medium shadow-md">5. Balancete/DRE</span>
             </div>
             
             <div className="mt-4 p-4 bg-[#0A1F44]/50 rounded-lg border border-white/10">
@@ -236,9 +318,11 @@ const Sobre = () => {
                 🤖 Tudo isso acontece automaticamente, em tempo real, sem intervenção manual!
               </p>
               <p className="text-center text-blue-200 text-xs mt-2">
-                Baseado no serviço{" "}
-                <code className="bg-white/20 px-1.5 py-0.5 rounded text-blue-100 font-mono">integracaoPagamentos.js</code>
-                {" "}com 13+ integrações automáticas
+                Baseado nos serviços{" "}
+                <code className="bg-white/20 px-1.5 py-0.5 rounded text-blue-100 font-mono">IntegracaoContabilistica.js</code>
+                {" "}e{" "}
+                <code className="bg-white/20 px-1.5 py-0.5 rounded text-blue-100 font-mono">codificadorPGCA.js</code>
+                {" "}com 15+ integrações automáticas
               </p>
             </div>
           </div>
@@ -274,7 +358,7 @@ const Sobre = () => {
             Camada de Integração — Tecnologias Utilizadas
           </h2>
           <div className="flex flex-wrap justify-center gap-3">
-            {["Node.js Services", "MongoDB Aggregation", "Webhooks", "Event Listeners", "Real-time Sync", "Trigger-based Actions", "IntegracaoPagamentos Service"].map((tech, i) => (
+            {["Node.js Services", "MongoDB Aggregation", "Webhooks", "Event Listeners", "Real-time Sync", "Trigger-based Actions", "IntegracaoContabilistica Service", "Codificador PGCA", "Partidas Dobradas"].map((tech, i) => (
               <span key={i} className="bg-[#003366] px-4 py-2 rounded-full text-sm text-white font-medium border border-white/10 shadow-md">
                 {tech}
               </span>
@@ -355,13 +439,13 @@ const Sobre = () => {
             <span className="font-bold text-white text-base">SIREXA</span> — Plataforma Integrada
           </p>
           <p className="text-blue-200 text-xs mt-1 max-w-2xl mx-auto">
-            Sistema de Gestão Empresarial com Integração Inteligente e Automática
+            Sistema de Gestão Empresarial com Integração Inteligente e Automática — Conforme PGCA Angola (Classes 1 a 9)
           </p>
           <div className="mt-4 pt-4 border-t border-white/15">
             <p className="text-blue-200 text-xs font-medium">
               © {anoAtual} SIREXA — Todos os direitos reservados.
             </p>
-                      </div>
+          </div>
         </div>
 
       </div>

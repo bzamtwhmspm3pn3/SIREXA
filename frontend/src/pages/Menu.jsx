@@ -1,4 +1,4 @@
-// src/pages/Menu.jsx
+// src/pages/Menu.jsx (CORRIGIDO - SEM DASHBOARD DA CONTABILIDADE)
 import { Link } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import Layout from "../components/Layout";
@@ -6,7 +6,8 @@ import {
   Building, Users, TrendingUp, Car, DollarSign, FileText, BarChart3,
   Truck, ArrowRightLeft, PieChart, Wallet, UserCog, ClipboardList,
   Calendar, Gift, Package, Fuel, Wrench, Boxes, ShoppingCart,
-  Receipt, Sparkles, Rocket, Zap, Crown, Shield, Briefcase, Target, Globe
+  Receipt, Sparkles, Rocket, Zap, Crown, Shield, Briefcase, Target, Globe,
+  BookOpen, RefreshCw, Calculator, BookCopy
 } from "lucide-react";
 
 export default function Menu() {
@@ -46,7 +47,7 @@ export default function Menu() {
               </div>
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-6">
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mt-6">
               <div className="bg-white/5 backdrop-blur-sm rounded-xl p-3 border border-white/10">
                 <div className="flex items-center gap-2 text-blue-400 mb-1">
                   <Shield size={16} />
@@ -66,7 +67,7 @@ export default function Menu() {
                   <Target size={16} />
                   <span className="text-xs">Módulos</span>
                 </div>
-                <p className="text-white font-semibold">12 Ativos</p>
+                <p className="text-white font-semibold"> Todos Ativos</p>
               </div>
               <div className="bg-white/5 backdrop-blur-sm rounded-xl p-3 border border-white/10">
                 <div className="flex items-center gap-2 text-purple-400 mb-1">
@@ -74,6 +75,13 @@ export default function Menu() {
                   <span className="text-xs">Ambiente</span>
                 </div>
                 <p className="text-white font-semibold">Corporativo</p>
+              </div>
+              <div className="bg-white/5 backdrop-blur-sm rounded-xl p-3 border border-white/10">
+                <div className="flex items-center gap-2 text-indigo-400 mb-1">
+                  <Calculator size={16} />
+                  <span className="text-xs">Norma</span>
+                </div>
+                <p className="text-white font-semibold">PGC</p>
               </div>
             </div>
           </div>
@@ -90,9 +98,31 @@ export default function Menu() {
               </h2>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              <MenuCard to="/empresa" icon={<Building size={28} />} title="Empresas" description="Cadastro e gestão de empresas" gradient="from-blue-500 to-cyan-500" />
-              <MenuCard to="/tecnico" icon={<Users size={28} />} title="Técnicos" description="Gestão de técnicos e permissões" gradient="from-green-500 to-emerald-500" />
+              <MenuCard to="/empresa" icon={<Building size={28} />} title="Empresas" description="Cadastro e gestão" gradient="from-blue-500 to-cyan-500" />
+              <MenuCard to="/tecnico" icon={<Users size={28} />} title="Técnicos" description="Gestão de permissões" gradient="from-green-500 to-emerald-500" />
               <MenuCard to="/fornecedores" icon={<Truck size={28} />} title="Fornecedores" description="Cadastro de fornecedores" gradient="from-purple-500 to-pink-500" />
+            </div>
+          </div>
+
+          {/* CONTABILIDADE - SEM DASHBOARD (apenas registos oficiais) */}
+          <div>
+            <div className="flex items-center gap-3 mb-4">
+              <div className="h-8 w-1 bg-gradient-to-b from-indigo-500 to-purple-500 rounded-full"></div>
+              <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+                <BookOpen className="text-indigo-400" size={24} />
+                Contabilidade
+              </h2>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <MenuCard to="/contabilidade/plano-contas" icon={<BookOpen size={28} />} title="Plano de Contas" description="Estrutura completa do PGC" gradient="from-blue-500 to-cyan-500" />
+              <MenuCard to="/contabilidade/lancamentos" icon={<FileText size={28} />} title="Lançamentos" description="Partidas dobradas" gradient="from-green-500 to-emerald-500" />
+              <MenuCard to="/contabilidade/diario-geral" icon={<BookCopy size={28} />} title="Diário Geral" description="Registo cronológico" gradient="from-teal-500 to-green-500" />
+              <MenuCard to="/contabilidade/razao-geral" icon={<ClipboardList size={28} />} title="Razão Geral" description="Movimentos por conta" gradient="from-cyan-500 to-blue-500" />
+              <MenuCard to="/contabilidade/balancete" icon={<TrendingUp size={28} />} title="Balancete" description="Verificação de saldos" gradient="from-yellow-500 to-orange-500" />
+              <MenuCard to="/contabilidade/saldos" icon={<Wallet size={28} />} title="Saldos de Contas" description="Posição dos saldos" gradient="from-purple-500 to-pink-500" />
+              <MenuCard to="/contabilidade/balanco-patrimonial" icon={<PieChart size={28} />} title="Balanço Patrimonial" description="Ativo e Passivo" gradient="from-red-500 to-rose-500" />
+              <MenuCard to="/contabilidade/periodos-fiscais" icon={<Calendar size={28} />} title="Períodos Fiscais" description="Exercícios contabilísticos" gradient="from-indigo-500 to-purple-500" />
+              <MenuCard to="/contabilidade/encerramento" icon={<Lock size={28} />} title="Encerramento" description="Fecho do exercício" gradient="from-red-500 to-orange-500" />
             </div>
           </div>
 
@@ -106,9 +136,9 @@ export default function Menu() {
               </h2>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              <MenuCard to="/vendas" icon={<ShoppingCart size={28} />} title="Vendas" description="Registro de vendas e emissão de facturas" gradient="from-green-500 to-emerald-500" />
-              <MenuCard to="/stock" icon={<Package size={28} />} title="Stock" description="Gestão de inventário e produtos" gradient="from-yellow-500 to-orange-500" />
-              <MenuCard to="/facturacao" icon={<Receipt size={28} />} title="Facturação" description="Histórico e gestão de facturas" gradient="from-blue-500 to-cyan-500" />
+              <MenuCard to="/vendas" icon={<ShoppingCart size={28} />} title="Vendas" description="Registo e facturação" gradient="from-green-500 to-emerald-500" />
+              <MenuCard to="/stock" icon={<Package size={28} />} title="Stock" description="Gestão de inventário" gradient="from-yellow-500 to-orange-500" />
+              <MenuCard to="/facturacao" icon={<Receipt size={28} />} title="Facturação" description="Histórico de facturas" gradient="from-blue-500 to-cyan-500" />
             </div>
           </div>
 
@@ -123,10 +153,10 @@ export default function Menu() {
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               <MenuCard to="/funcionarios" icon={<ClipboardList size={28} />} title="Funcionários" description="Cadastro de colaboradores" gradient="from-blue-500 to-cyan-500" />
-              <MenuCard to="/folha-salarial" icon={<Wallet size={28} />} title="Folha Salarial" description="Cálculo de salários e encargos" gradient="from-green-500 to-emerald-500" />
-              <MenuCard to="/gestao-faltas" icon={<Calendar size={28} />} title="Gestão de Faltas" description="Registro de ausências" gradient="from-red-500 to-orange-500" />
-              <MenuCard to="/gestao-abonos" icon={<Gift size={28} />} title="Gestão de Súbsidios Abonos" description="Bónus e complementos" gradient="from-yellow-500 to-amber-500" />
-              <MenuCard to="/avaliacao-desempenho" icon={<BarChart3 size={28} />} title="Avaliação" description="Avaliação de desempenho" gradient="from-purple-500 to-pink-500" />
+              <MenuCard to="/folha-salarial" icon={<Wallet size={28} />} title="Folha Salarial" description="Cálculo de salários" gradient="from-green-500 to-emerald-500" />
+              <MenuCard to="/gestao-faltas" icon={<Calendar size={28} />} title="Gestão de Faltas" description="Registo de ausências" gradient="from-red-500 to-orange-500" />
+              <MenuCard to="/gestao-abonos" icon={<Gift size={28} />} title="Gestão de Abonos" description="Bónus e complementos" gradient="from-yellow-500 to-amber-500" />
+              <MenuCard to="/avaliacao-desempenho" icon={<BarChart3 size={28} />} title="Avaliação" description="Desempenho dos colaboradores" gradient="from-purple-500 to-pink-500" />
             </div>
           </div>
 
@@ -140,14 +170,14 @@ export default function Menu() {
               </h2>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              <MenuCard to="/cadastro-viaturas" icon={<Car size={28} />} title="Viaturas" description="Cadastro e gestão de viaturas" gradient="from-blue-500 to-cyan-500" />
-              <MenuCard to="/abastecimentos" icon={<Fuel size={28} />} title="Abastecimentos" description="Controle de combustível" gradient="from-green-500 to-emerald-500" />
-              <MenuCard to="/manutencoes" icon={<Wrench size={28} />} title="Manutenções" description="Histórico de manutenções" gradient="from-red-500 to-orange-500" />
-              <MenuCard to="/inventario" icon={<Boxes size={28} />} title="Inventário" description="Gestão de patrimônio e ativos" gradient="from-yellow-500 to-amber-500" />
+              <MenuCard to="/cadastro-viaturas" icon={<Car size={28} />} title="Viaturas" description="Cadastro de veículos" gradient="from-blue-500 to-cyan-500" />
+              <MenuCard to="/abastecimentos" icon={<Fuel size={28} />} title="Abastecimentos" description="Controlo de combustível" gradient="from-green-500 to-emerald-500" />
+              <MenuCard to="/manutencoes" icon={<Wrench size={28} />} title="Manutenções" description="Histórico de reparos" gradient="from-red-500 to-orange-500" />
+              <MenuCard to="/inventario" icon={<Boxes size={28} />} title="Inventário" description="Gestão de ativos" gradient="from-yellow-500 to-amber-500" />
             </div>
           </div>
 
-          {/* Financeiro */}
+          {/* FINANCEIRO - Com DRE e Reconciliação Bancária */}
           <div>
             <div className="flex items-center gap-3 mb-4">
               <div className="h-8 w-1 bg-gradient-to-b from-emerald-500 to-teal-500 rounded-full"></div>
@@ -157,15 +187,15 @@ export default function Menu() {
               </h2>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              <MenuCard to="/fluxo-caixa" icon={<TrendingUp size={28} />} title="Fluxo de Caixa" description="Entradas e saídas financeiras" gradient="from-green-500 to-emerald-500" />
+              <MenuCard to="/fluxo-caixa" icon={<TrendingUp size={28} />} title="Fluxo de Caixa" description="Entradas e saídas" gradient="from-green-500 to-emerald-500" />
+              <MenuCard to="/dre" icon={<BarChart3 size={28} />} title="Demonstração Resultados" description="DRE - Lucros e perdas" gradient="from-red-500 to-rose-500" />
+              <MenuCard to="/folha-banco" icon={<RefreshCw size={28} />} title="Reconciliação Bancária" description="Conciliação com extratos" gradient="from-indigo-500 to-purple-500" />
               <MenuCard to="/conta-corrente" icon={<Wallet size={28} />} title="Conta Corrente" description="Movimentações por fornecedor" gradient="from-blue-500 to-cyan-500" />
-              <MenuCard to="/controlo-pagamento" icon={<FileText size={28} />} title="Controlo de Pagamento" description="Gestão de pagamentos" gradient="from-yellow-500 to-orange-500" />
-              <MenuCard to="/custos-receitas" icon={<PieChart size={28} />} title="Custos e Receitas" description="Análise de custos e receitas" gradient="from-purple-500 to-pink-500" />
-              <MenuCard to="/orcamento" icon={<ClipboardList size={28} />} title="Orçamentos" description="Planejamento orçamentário" gradient="from-orange-500 to-red-500" />
-              <MenuCard to="/dre" icon={<BarChart3 size={28} />} title="DRE" description="Demonstração de Resultados" gradient="from-red-500 to-rose-500" />
-              <MenuCard to="/indicadores" icon={<TrendingUp size={28} />} title="Indicadores" description="KPIs e métricas financeiras" gradient="from-cyan-500 to-blue-500" />
-              <MenuCard to="/transferencia-diaria" icon={<ArrowRightLeft size={28} />} title="Transferências" description="Transferências entre contas" gradient="from-teal-500 to-green-500" />
-              <MenuCard to="/folha-banco" icon={<Wallet size={28} />} title="Reconciliação Bancária" description="Extrato e reconciliação bancária" gradient="from-indigo-500 to-purple-500" />
+              <MenuCard to="/controlo-pagamento" icon={<FileText size={28} />} title="Controlo de Pagamentos" description="Gestão de pagamentos" gradient="from-yellow-500 to-orange-500" />
+              <MenuCard to="/custos-receitas" icon={<PieChart size={28} />} title="Custos e Receitas" description="Análise financeira" gradient="from-purple-500 to-pink-500" />
+              <MenuCard to="/orcamento" icon={<ClipboardList size={28} />} title="Orçamentos" description="Planeamento financeiro" gradient="from-orange-500 to-red-500" />
+              <MenuCard to="/indicadores" icon={<TrendingUp size={28} />} title="Indicadores" description="KPIs e métricas" gradient="from-cyan-500 to-blue-500" />
+              <MenuCard to="/transferencia-diaria" icon={<ArrowRightLeft size={28} />} title="Transferências" description="Entre contas" gradient="from-teal-500 to-green-500" />
             </div>
           </div>
 
@@ -179,9 +209,9 @@ export default function Menu() {
               </h2>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              <MenuCard to="/relatorios" icon={<FileText size={28} />} title="Relatórios" description="Geração de relatórios personalizados" gradient="from-blue-500 to-cyan-500" />
-              <MenuCard to="/graficos" icon={<BarChart3 size={28} />} title="Gráficos" description="Visualização gráfica de dados" gradient="from-green-500 to-emerald-500" />
-              <MenuCard to="/analise" icon={<PieChart size={28} />} title="Análise Geral" description="Dashboard com análise de IA" gradient="from-purple-500 to-pink-500" />
+              <MenuCard to="/relatorios" icon={<FileText size={28} />} title="Relatórios" description="Personalizados" gradient="from-blue-500 to-cyan-500" />
+              <MenuCard to="/graficos" icon={<BarChart3 size={28} />} title="Gráficos" description="Visualização de dados" gradient="from-green-500 to-emerald-500" />
+              <MenuCard to="/analise" icon={<PieChart size={28} />} title="Análise Geral" description="Dashboard com IA" gradient="from-purple-500 to-pink-500" />
             </div>
           </div>
         </div>
@@ -202,6 +232,9 @@ export default function Menu() {
                           modulos.custosReceitas || modulos.orcamentos || modulos.dre || modulos.indicadores || 
                           modulos.transferencias || modulos.reconciliacao;
     const temRelatorios = modulos.relatorios || modulos.graficos || modulos.analise;
+    const temContabilidade = modulos.contabilidade || modulos.planoContas || modulos.lancamentos || modulos.balancete ||
+                             modulos.balancoPatrimonial || modulos.razaoGeral || modulos.diarioGeral || 
+                             modulos.saldosContas || modulos.periodosFiscais || modulos.encerramento;
 
     return (
       <Layout title={titulo} showBackButton={false}>
@@ -223,14 +256,13 @@ export default function Menu() {
               </div>
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-6">
               <div className="bg-white/5 backdrop-blur-sm rounded-xl p-3 border border-white/10">
                 <div className="flex items-center gap-2 text-blue-400 mb-1">
                   <Building size={16} />
-                  <span className="text-xs">Empresa Designada</span>
+                  <span className="text-xs">Empresa</span>
                 </div>
-                <p className="text-white font-semibold">{empresaNome || user?.empresaNome || "—"}</p>
-                <p className="text-gray-400 text-xs mt-1">ID: {empresaId || user?.empresaId || "—"}</p>
+                <p className="text-white font-semibold text-sm">{empresaNome || user?.empresaNome || "—"}</p>
               </div>
               <div className="bg-white/5 backdrop-blur-sm rounded-xl p-3 border border-white/10">
                 <div className="flex items-center gap-2 text-green-400 mb-1">
@@ -242,25 +274,71 @@ export default function Menu() {
               <div className="bg-white/5 backdrop-blur-sm rounded-xl p-3 border border-white/10">
                 <div className="flex items-center gap-2 text-yellow-400 mb-1">
                   <Zap size={16} />
-                  <span className="text-xs">Módulos Liberados</span>
+                  <span className="text-xs">Módulos</span>
                 </div>
-                <p className="text-white font-semibold">
-                  {Object.values(modulos).filter(v => v).length} ativos
-                </p>
+                <p className="text-white font-semibold">{Object.values(modulos).filter(v => v).length} ativos</p>
+              </div>
+              <div className="bg-white/5 backdrop-blur-sm rounded-xl p-3 border border-white/10">
+                <div className="flex items-center gap-2 text-indigo-400 mb-1">
+                  <Calculator size={16} />
+                  <span className="text-xs">Norma</span>
+                </div>
+                <p className="text-white font-semibold">PGC</p>
               </div>
             </div>
             
             <div className="mt-4 bg-blue-500/10 rounded-lg p-2 border border-blue-500/30">
-              <p className="text-blue-300 text-xs text-center flex items-center justify-center gap-2">
-                <Building size={14} />
-                Você está operando exclusivamente na empresa: <strong>{empresaNome || user?.empresaNome || "Empresa Designada"}</strong>
+              <p className="text-blue-300 text-xs text-center">
+                Operando na empresa: <strong>{empresaNome || user?.empresaNome || "Designada"}</strong>
               </p>
             </div>
           </div>
         </div>
 
         <div className="space-y-8">
-          {/* Operacional - mostra se pelo menos um módulo estiver ativo */}
+          {/* CONTABILIDADE - Para Técnico (sem Dashboard) */}
+          {temContabilidade && (
+            <div>
+              <div className="flex items-center gap-3 mb-4">
+                <div className="h-8 w-1 bg-gradient-to-b from-indigo-500 to-purple-500 rounded-full"></div>
+                <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+                  <BookOpen className="text-indigo-400" size={24} />
+                  Contabilidade
+                </h2>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {(modulos.contabilidade || modulos.planoContas) && (
+                  <MenuCard to="/contabilidade/plano-contas" icon={<BookOpen size={28} />} title="Plano de Contas" description="PGC completo" gradient="from-blue-500 to-cyan-500" />
+                )}
+                {(modulos.contabilidade || modulos.lancamentos) && (
+                  <MenuCard to="/contabilidade/lancamentos" icon={<FileText size={28} />} title="Lançamentos" description="Partidas dobradas" gradient="from-green-500 to-emerald-500" />
+                )}
+                {(modulos.contabilidade || modulos.diarioGeral) && (
+                  <MenuCard to="/contabilidade/diario-geral" icon={<BookCopy size={28} />} title="Diário Geral" description="Registo cronológico" gradient="from-teal-500 to-green-500" />
+                )}
+                {(modulos.contabilidade || modulos.razaoGeral) && (
+                  <MenuCard to="/contabilidade/razao-geral" icon={<ClipboardList size={28} />} title="Razão Geral" description="Movimentos por conta" gradient="from-cyan-500 to-blue-500" />
+                )}
+                {(modulos.contabilidade || modulos.balancete) && (
+                  <MenuCard to="/contabilidade/balancete" icon={<TrendingUp size={28} />} title="Balancete" description="Verificação de saldos" gradient="from-yellow-500 to-orange-500" />
+                )}
+                {(modulos.contabilidade || modulos.saldosContas) && (
+                  <MenuCard to="/contabilidade/saldos" icon={<Wallet size={28} />} title="Saldos de Contas" description="Posição dos saldos" gradient="from-purple-500 to-pink-500" />
+                )}
+                {(modulos.contabilidade || modulos.balancoPatrimonial) && (
+                  <MenuCard to="/contabilidade/balanco-patrimonial" icon={<PieChart size={28} />} title="Balanço Patrimonial" description="Ativo e Passivo" gradient="from-red-500 to-rose-500" />
+                )}
+                {(modulos.contabilidade || modulos.periodosFiscais) && (
+                  <MenuCard to="/contabilidade/periodos-fiscais" icon={<Calendar size={28} />} title="Períodos Fiscais" description="Exercícios" gradient="from-indigo-500 to-purple-500" />
+                )}
+                {(modulos.contabilidade || modulos.encerramento) && (
+                  <MenuCard to="/contabilidade/encerramento" icon={<Lock size={28} />} title="Encerramento" description="Fecho do exercício" gradient="from-red-500 to-orange-500" />
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Operacional */}
           {temOperacional && (
             <div>
               <div className="flex items-center gap-3 mb-4">
@@ -271,7 +349,7 @@ export default function Menu() {
                 </h2>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {modulos.vendas && <MenuCard to="/vendas" icon={<ShoppingCart size={28} />} title="Vendas" description="Registro de vendas" gradient="from-green-500 to-emerald-500" />}
+                {modulos.vendas && <MenuCard to="/vendas" icon={<ShoppingCart size={28} />} title="Vendas" description="Registo de vendas" gradient="from-green-500 to-emerald-500" />}
                 {modulos.stock && <MenuCard to="/stock" icon={<Package size={28} />} title="Stock" description="Gestão de inventário" gradient="from-yellow-500 to-orange-500" />}
                 {modulos.facturacao && <MenuCard to="/facturacao" icon={<Receipt size={28} />} title="Facturação" description="Emissão de facturas" gradient="from-blue-500 to-cyan-500" />}
               </div>
@@ -289,11 +367,11 @@ export default function Menu() {
                 </h2>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {modulos.funcionarios && <MenuCard to="/funcionarios" icon={<ClipboardList size={28} />} title="Funcionários" description="Cadastro de colaboradores" gradient="from-blue-500 to-cyan-500" />}
+                {modulos.funcionarios && <MenuCard to="/funcionarios" icon={<ClipboardList size={28} />} title="Funcionários" description="Cadastro" gradient="from-blue-500 to-cyan-500" />}
                 {modulos.folhaSalarial && <MenuCard to="/folha-salarial" icon={<Wallet size={28} />} title="Folha Salarial" description="Cálculo de salários" gradient="from-green-500 to-emerald-500" />}
-                {modulos.gestaoFaltas && <MenuCard to="/gestao-faltas" icon={<Calendar size={28} />} title="Gestão de Faltas" description="Registro de ausências" gradient="from-red-500 to-orange-500" />}
-                {modulos.gestaoAbonos && <MenuCard to="/gestao-abonos" icon={<Gift size={28} />} title="Gestão de Súbsidios & Abonos" description="Subsídios, Bónus e complementos" gradient="from-yellow-500 to-amber-500" />}
-                {modulos.avaliacao && <MenuCard to="/avaliacao-desempenho" icon={<BarChart3 size={28} />} title="Avaliação" description="Avaliação de desempenho" gradient="from-purple-500 to-pink-500" />}
+                {modulos.gestaoFaltas && <MenuCard to="/gestao-faltas" icon={<Calendar size={28} />} title="Gestão de Faltas" description="Registo de ausências" gradient="from-red-500 to-orange-500" />}
+                {modulos.gestaoAbonos && <MenuCard to="/gestao-abonos" icon={<Gift size={28} />} title="Gestão de Abonos" description="Bónus" gradient="from-yellow-500 to-amber-500" />}
+                {modulos.avaliacao && <MenuCard to="/avaliacao-desempenho" icon={<BarChart3 size={28} />} title="Avaliação" description="Desempenho" gradient="from-purple-500 to-pink-500" />}
               </div>
             </div>
           )}
@@ -309,15 +387,15 @@ export default function Menu() {
                 </h2>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {modulos.viaturas && <MenuCard to="/cadastro-viaturas" icon={<Car size={28} />} title="Viaturas" description="Cadastro de viaturas" gradient="from-blue-500 to-cyan-500" />}
-                {modulos.abastecimentos && <MenuCard to="/abastecimentos" icon={<Fuel size={28} />} title="Abastecimentos" description="Controle de combustível" gradient="from-green-500 to-emerald-500" />}
-                {modulos.manutencoes && <MenuCard to="/manutencoes" icon={<Wrench size={28} />} title="Manutenções" description="Histórico de manutenções" gradient="from-red-500 to-orange-500" />}
-                {modulos.inventario && <MenuCard to="/inventario" icon={<Boxes size={28} />} title="Inventário" description="Gestão patrimonial" gradient="from-yellow-500 to-amber-500" />}
+                {modulos.viaturas && <MenuCard to="/cadastro-viaturas" icon={<Car size={28} />} title="Viaturas" description="Cadastro" gradient="from-blue-500 to-cyan-500" />}
+                {modulos.abastecimentos && <MenuCard to="/abastecimentos" icon={<Fuel size={28} />} title="Abastecimentos" description="Combustível" gradient="from-green-500 to-emerald-500" />}
+                {modulos.manutencoes && <MenuCard to="/manutencoes" icon={<Wrench size={28} />} title="Manutenções" description="Histórico" gradient="from-red-500 to-orange-500" />}
+                {modulos.inventario && <MenuCard to="/inventario" icon={<Boxes size={28} />} title="Inventário" description="Ativos" gradient="from-yellow-500 to-amber-500" />}
               </div>
             </div>
           )}
 
-          {/* Financeiro - TODOS OS MÓDULOS INDIVIDUALMENTE */}
+          {/* FINANCEIRO - Com DRE e Reconciliação Bancária */}
           {temFinanceiro && (
             <div>
               <div className="flex items-center gap-3 mb-4">
@@ -328,16 +406,16 @@ export default function Menu() {
                 </h2>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {modulos.fornecedores && <MenuCard to="/fornecedores" icon={<Truck size={28} />} title="Fornecedores" description="Cadastro de fornecedores" gradient="from-purple-500 to-pink-500" />}
+                {modulos.fornecedores && <MenuCard to="/fornecedores" icon={<Truck size={28} />} title="Fornecedores" description="Cadastro" gradient="from-purple-500 to-pink-500" />}
                 {modulos.fluxoCaixa && <MenuCard to="/fluxo-caixa" icon={<TrendingUp size={28} />} title="Fluxo de Caixa" description="Entradas e saídas" gradient="from-green-500 to-emerald-500" />}
-                {modulos.contaCorrente && <MenuCard to="/conta-corrente" icon={<Wallet size={28} />} title="Conta Corrente" description="Movimentações financeiras" gradient="from-blue-500 to-cyan-500" />}
-                {modulos.controloPagamento && <MenuCard to="/controlo-pagamento" icon={<FileText size={28} />} title="Controlo Pagamento" description="Gestão de pagamentos" gradient="from-yellow-500 to-orange-500" />}
-                {modulos.custosReceitas && <MenuCard to="/custos-receitas" icon={<PieChart size={28} />} title="Custos e Receitas" description="Análise de custos" gradient="from-purple-500 to-pink-500" />}
-                {modulos.orcamentos && <MenuCard to="/orcamento" icon={<ClipboardList size={28} />} title="Orçamentos" description="Planejamento financeiro" gradient="from-orange-500 to-red-500" />}
-                {modulos.dre && <MenuCard to="/dre" icon={<BarChart3 size={28} />} title="DRE" description="Demonstração de Resultados" gradient="from-red-500 to-rose-500" />}
-                {modulos.indicadores && <MenuCard to="/indicadores" icon={<TrendingUp size={28} />} title="Indicadores" description="KPIs financeiros" gradient="from-cyan-500 to-blue-500" />}
-                {modulos.transferencias && <MenuCard to="/transferencia-diaria" icon={<ArrowRightLeft size={28} />} title="Transferências" description="Transferências entre contas" gradient="from-teal-500 to-green-500" />}
-                {modulos.reconciliacao && <MenuCard to="/folha-banco" icon={<Wallet size={28} />} title="Reconciliação" description="Reconciliação bancária" gradient="from-indigo-500 to-purple-500" />}
+                {modulos.dre && <MenuCard to="/dre" icon={<BarChart3 size={28} />} title="Demonstração Resultados" description="DRE - Lucros" gradient="from-red-500 to-rose-500" />}
+                {modulos.reconciliacao && <MenuCard to="/folha-banco" icon={<RefreshCw size={28} />} title="Reconciliação Bancária" description="Conciliação" gradient="from-indigo-500 to-purple-500" />}
+                {modulos.contaCorrente && <MenuCard to="/conta-corrente" icon={<Wallet size={28} />} title="Conta Corrente" description="Movimentações" gradient="from-blue-500 to-cyan-500" />}
+                {modulos.controloPagamento && <MenuCard to="/controlo-pagamento" icon={<FileText size={28} />} title="Controlo Pagamentos" description="Gestão" gradient="from-yellow-500 to-orange-500" />}
+                {modulos.custosReceitas && <MenuCard to="/custos-receitas" icon={<PieChart size={28} />} title="Custos e Receitas" description="Análise" gradient="from-purple-500 to-pink-500" />}
+                {modulos.orcamentos && <MenuCard to="/orcamento" icon={<ClipboardList size={28} />} title="Orçamentos" description="Planeamento" gradient="from-orange-500 to-red-500" />}
+                {modulos.indicadores && <MenuCard to="/indicadores" icon={<TrendingUp size={28} />} title="Indicadores" description="KPIs" gradient="from-cyan-500 to-blue-500" />}
+                {modulos.transferencias && <MenuCard to="/transferencia-diaria" icon={<ArrowRightLeft size={28} />} title="Transferências" description="Entre contas" gradient="from-teal-500 to-green-500" />}
               </div>
             </div>
           )}
@@ -353,9 +431,9 @@ export default function Menu() {
                 </h2>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {modulos.relatorios && <MenuCard to="/relatorios" icon={<FileText size={28} />} title="Relatórios" description="Geração de relatórios" gradient="from-blue-500 to-cyan-500" />}
-                {modulos.graficos && <MenuCard to="/graficos" icon={<BarChart3 size={28} />} title="Gráficos" description="Visualização de dados" gradient="from-green-500 to-emerald-500" />}
-                {modulos.analise && <MenuCard to="/analise" icon={<PieChart size={28} />} title="Análise Geral" description="Dashboard com IA" gradient="from-purple-500 to-pink-500" />}
+                {modulos.relatorios && <MenuCard to="/relatorios" icon={<FileText size={28} />} title="Relatórios" description="Personalizados" gradient="from-blue-500 to-cyan-500" />}
+                {modulos.graficos && <MenuCard to="/graficos" icon={<BarChart3 size={28} />} title="Gráficos" description="Dados" gradient="from-green-500 to-emerald-500" />}
+                {modulos.analise && <MenuCard to="/analise" icon={<PieChart size={28} />} title="Análise Geral" description="Dashboard IA" gradient="from-purple-500 to-pink-500" />}
               </div>
             </div>
           )}
@@ -364,8 +442,8 @@ export default function Menu() {
             <div className="bg-gradient-to-r from-yellow-900/50 to-red-900/50 rounded-2xl p-8 text-center border border-yellow-500/30">
               <Zap className="mx-auto mb-4 text-yellow-400" size={48} />
               <p className="text-yellow-300 text-lg">⚠️ Acesso Restrito</p>
-              <p className="text-gray-400 mt-2">Você não tem permissão para acessar nenhum módulo.</p>
-              <p className="text-gray-500 text-sm mt-1">Entre em contato com o gestor para configurar seus acessos.</p>
+              <p className="text-gray-400 mt-2">Sem módulos atribuídos.</p>
+              <p className="text-gray-500 text-sm mt-1">Contacte o gestor para configurar acessos.</p>
             </div>
           )}
         </div>
@@ -391,10 +469,18 @@ const MenuCard = ({ to, icon, title, description, gradient }) => {
         <h3 className="text-lg font-bold text-white mb-2">{title}</h3>
         <p className="text-gray-400 text-sm">{description}</p>
         <div className="mt-4 flex items-center gap-1 text-blue-400 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-          <span className="text-sm">Acessar</span>
+          <span className="text-sm">Aceder</span>
           <Sparkles size={14} />
         </div>
       </div>
     </Link>
   );
 };
+
+// Ícone Lock para Encerramento
+const Lock = ({ size = 24, className = "" }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+    <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+  </svg>
+);

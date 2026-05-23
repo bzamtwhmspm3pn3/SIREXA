@@ -10,7 +10,7 @@ import {
   TrendingUp, ShoppingCart, Package, Receipt, UsersIcon,
   Wallet, ClipboardList, Gift, BarChart3, Car, Fuel,
   Wrench, Boxes, Truck, PieChart, ArrowRightLeft, Eye,
-  FileText, UserCheck
+  FileText, UserCheck,BookOpen,Lock 
 } from "lucide-react";
 
 const CadastroFuncionario = () => {
@@ -28,48 +28,63 @@ const CadastroFuncionario = () => {
     recursosHumanos: false,
     gestaoPatrimonial: false,
     financeiro: false,
-    relatorios: false
+    relatorios: false,
+    contabilidade: false
   });
   
   // Campos para técnico - ESTRUTURA COMPLETA DE MÓDULOS
   const [tecnicoSenha, setTecnicoSenha] = useState("");
   const [tecnicoConfirmarSenha, setTecnicoConfirmarSenha] = useState("");
   const [tecnicoModulos, setTecnicoModulos] = useState({
-    // Operacional
-    vendas: false,
-    stock: false,
-    facturacao: false,
-    
-    // Recursos Humanos
-    funcionarios: false,
-    folhaSalarial: false,
-    gestaoFaltas: false,
-    gestaoAbonos: false,
-    avaliacao: false,
-    
-    // Gestão Patrimonial
-    viaturas: false,
-    abastecimentos: false,
-    manutencoes: false,
-    inventario: false,
-    
-    // Financeiro
-    fornecedores: false,
-    fluxoCaixa: false,
-    contaCorrente: false,
-    controloPagamento: false,
-    custosReceitas: false,
-    orcamentos: false,
-    dre: false,
-    indicadores: false,
-    transferencias: false,
-    reconciliacao: false,
-    
-    // Relatórios
-    relatorios: false,
-    graficos: false,
-    analise: false
-  });
+  // Operacional
+  vendas: false,
+  stock: false,
+  facturacao: false,
+  
+  // Recursos Humanos
+  funcionarios: false,
+  folhaSalarial: false,
+  gestaoFaltas: false,
+  gestaoAbonos: false,
+  avaliacao: false,
+  
+  // Gestão Patrimonial
+  viaturas: false,
+  abastecimentos: false,
+  manutencoes: false,
+  inventario: false,
+  
+  // Financeiro
+  fornecedores: false,
+  fluxoCaixa: false,
+  contaCorrente: false,
+  controloPagamento: false,
+  custosReceitas: false,
+  orcamentos: false,
+  dre: false,
+  indicadores: false,
+  transferencias: false,
+  reconciliacao: false,
+  
+  // Relatórios
+  relatorios: false,
+  graficos: false,
+  analise: false,
+  
+  // ============================================
+  // CONTABILIDADE (PGCA Angola) - ADICIONAR ESTES
+  // ============================================
+  contabilidade: false,           // Acesso geral à contabilidade
+  planoContas: false,            // Plano de Contas
+  lancamentos: false,            // Lançamentos Contabilísticos
+  diarioGeral: false,            // Diário Geral
+  razaoGeral: false,             // Razão Geral
+  balancete: false,              // Balancete de Verificação
+  saldosContas: false,           // Saldos de Contas
+  balancoPatrimonial: false,     // Balanço Patrimonial
+  periodosFiscais: false,        // Períodos Fiscais
+  encerramento: false            // Encerramento de Exercício
+});
   
   const [formData, setFormData] = useState({
     nome: "",
@@ -826,6 +841,121 @@ const CadastroFuncionario = () => {
                           </div>
                         )}
                       </div>
+
+
+
+
+{/* Seção de Contabilidade */}
+<div className="bg-gray-700/30 rounded-xl overflow-hidden mb-3">
+  <button 
+    type="button" 
+    onClick={() => toggleSection('contabilidade')} 
+    className="w-full flex items-center justify-between p-3 bg-gradient-to-r from-indigo-600/20 to-purple-600/20 hover:bg-indigo-600/30 transition"
+  >
+    <div className="flex items-center gap-2">
+      <BookOpen className="text-indigo-400" size={16} />
+      <span className="font-semibold text-white text-sm">Contabilidade </span>
+    </div>
+    <span className="text-gray-400 text-sm">{expandedSections.contabilidade ? '▼' : '▶'}</span>
+  </button>
+  {expandedSections.contabilidade && (
+    <div className="p-3 space-y-2 border-t border-gray-600 max-h-64 overflow-y-auto">
+      <div className="flex justify-end mb-2">
+        <button 
+          type="button" 
+          onClick={() => handleSelectAll('contabilidade', [
+            'contabilidade', 'planoContas', 'lancamentos', 'diarioGeral', 
+            'razaoGeral', 'balancete', 'saldosContas', 'balancoPatrimonial', 
+            'periodosFiscais', 'encerramento'
+          ])} 
+          className="text-xs text-blue-400 hover:text-blue-300"
+        >
+          {tecnicoModulos.contabilidade && tecnicoModulos.planoContas && tecnicoModulos.lancamentos && 
+           tecnicoModulos.diarioGeral && tecnicoModulos.razaoGeral && tecnicoModulos.balancete &&
+           tecnicoModulos.saldosContas && tecnicoModulos.balancoPatrimonial && tecnicoModulos.periodosFiscais &&
+           tecnicoModulos.encerramento ? 'Desmarcar Todos' : 'Marcar Todos'}
+        </button>
+      </div>
+      
+      {/* Acesso Geral à Contabilidade */}
+      <label className="flex items-center justify-between p-2 bg-indigo-900/30 rounded-lg cursor-pointer hover:bg-indigo-800/30 transition border border-indigo-500/30">
+        <div className="flex items-center gap-2">
+          <BookOpen size={14} className="text-indigo-400" />
+          <span className="text-gray-300 text-sm font-medium">Acesso Geral à Contabilidade</span>
+        </div>
+        <input 
+          type="checkbox" 
+          checked={tecnicoModulos.contabilidade} 
+          onChange={(e) => {
+            const checked = e.target.checked;
+            setTecnicoModulos(prev => ({
+              ...prev,
+              contabilidade: checked,
+              // Se marcar acesso geral, marcar todos os submódulos
+              planoContas: checked,
+              lancamentos: checked,
+              diarioGeral: checked,
+              razaoGeral: checked,
+              balancete: checked,
+              saldosContas: checked,
+              balancoPatrimonial: checked,
+              periodosFiscais: checked,
+              encerramento: checked
+            }));
+          }} 
+          className="w-4 h-4 text-purple-600 rounded" 
+        />
+      </label>
+      
+      <div className="pl-4 space-y-2 border-l-2 border-indigo-500/30">
+        <label className="flex items-center justify-between p-2 bg-gray-700/50 rounded-lg cursor-pointer hover:bg-gray-700 transition">
+          <div className="flex items-center gap-2"><BookOpen size={14} className="text-blue-400" /><span className="text-gray-300 text-sm">Plano de Contas</span></div>
+          <input type="checkbox" checked={tecnicoModulos.planoContas} onChange={(e) => setTecnicoModulos({...tecnicoModulos, planoContas: e.target.checked})} className="w-4 h-4 text-purple-600 rounded" />
+        </label>
+        
+        <label className="flex items-center justify-between p-2 bg-gray-700/50 rounded-lg cursor-pointer hover:bg-gray-700 transition">
+          <div className="flex items-center gap-2"><FileText size={14} className="text-green-400" /><span className="text-gray-300 text-sm">Lançamentos Contabilísticos</span></div>
+          <input type="checkbox" checked={tecnicoModulos.lancamentos} onChange={(e) => setTecnicoModulos({...tecnicoModulos, lancamentos: e.target.checked})} className="w-4 h-4 text-purple-600 rounded" />
+        </label>
+        
+        <label className="flex items-center justify-between p-2 bg-gray-700/50 rounded-lg cursor-pointer hover:bg-gray-700 transition">
+          <div className="flex items-center gap-2"><ClipboardList size={14} className="text-teal-400" /><span className="text-gray-300 text-sm">Diário Geral</span></div>
+          <input type="checkbox" checked={tecnicoModulos.diarioGeral} onChange={(e) => setTecnicoModulos({...tecnicoModulos, diarioGeral: e.target.checked})} className="w-4 h-4 text-purple-600 rounded" />
+        </label>
+        
+        <label className="flex items-center justify-between p-2 bg-gray-700/50 rounded-lg cursor-pointer hover:bg-gray-700 transition">
+          <div className="flex items-center gap-2"><BookOpen size={14} className="text-cyan-400" /><span className="text-gray-300 text-sm">Razão Geral</span></div>
+          <input type="checkbox" checked={tecnicoModulos.razaoGeral} onChange={(e) => setTecnicoModulos({...tecnicoModulos, razaoGeral: e.target.checked})} className="w-4 h-4 text-purple-600 rounded" />
+        </label>
+        
+        <label className="flex items-center justify-between p-2 bg-gray-700/50 rounded-lg cursor-pointer hover:bg-gray-700 transition">
+          <div className="flex items-center gap-2"><TrendingUp size={14} className="text-yellow-400" /><span className="text-gray-300 text-sm">Balancete de Verificação</span></div>
+          <input type="checkbox" checked={tecnicoModulos.balancete} onChange={(e) => setTecnicoModulos({...tecnicoModulos, balancete: e.target.checked})} className="w-4 h-4 text-purple-600 rounded" />
+        </label>
+        
+        <label className="flex items-center justify-between p-2 bg-gray-700/50 rounded-lg cursor-pointer hover:bg-gray-700 transition">
+          <div className="flex items-center gap-2"><Wallet size={14} className="text-purple-400" /><span className="text-gray-300 text-sm">Saldos de Contas</span></div>
+          <input type="checkbox" checked={tecnicoModulos.saldosContas} onChange={(e) => setTecnicoModulos({...tecnicoModulos, saldosContas: e.target.checked})} className="w-4 h-4 text-purple-600 rounded" />
+        </label>
+        
+        <label className="flex items-center justify-between p-2 bg-gray-700/50 rounded-lg cursor-pointer hover:bg-gray-700 transition">
+          <div className="flex items-center gap-2"><PieChart size={14} className="text-red-400" /><span className="text-gray-300 text-sm">Balanço Patrimonial</span></div>
+          <input type="checkbox" checked={tecnicoModulos.balancoPatrimonial} onChange={(e) => setTecnicoModulos({...tecnicoModulos, balancoPatrimonial: e.target.checked})} className="w-4 h-4 text-purple-600 rounded" />
+        </label>
+        
+        <label className="flex items-center justify-between p-2 bg-gray-700/50 rounded-lg cursor-pointer hover:bg-gray-700 transition">
+          <div className="flex items-center gap-2"><Calendar size={14} className="text-orange-400" /><span className="text-gray-300 text-sm">Períodos Fiscais</span></div>
+          <input type="checkbox" checked={tecnicoModulos.periodosFiscais} onChange={(e) => setTecnicoModulos({...tecnicoModulos, periodosFiscais: e.target.checked})} className="w-4 h-4 text-purple-600 rounded" />
+        </label>
+        
+        <label className="flex items-center justify-between p-2 bg-gray-700/50 rounded-lg cursor-pointer hover:bg-gray-700 transition">
+          <div className="flex items-center gap-2"><Lock size={14} className="text-red-400" /><span className="text-gray-300 text-sm">Encerramento de Exercício</span></div>
+          <input type="checkbox" checked={tecnicoModulos.encerramento} onChange={(e) => setTecnicoModulos({...tecnicoModulos, encerramento: e.target.checked})} className="w-4 h-4 text-purple-600 rounded" />
+        </label>
+      </div>
+    </div>
+  )}
+</div>
 
                       {/* Seção Financeiro */}
                       <div className="bg-gray-700/30 rounded-xl overflow-hidden mb-3">

@@ -6,7 +6,7 @@ import {
   ArrowLeft, ChevronDown, ShoppingCart, Package, Receipt, ClipboardList, Wallet,
   Calendar, Gift, BarChart3, Car, Fuel, Wrench, Boxes, Truck, TrendingUp,
   PieChart, Eye, ArrowRightLeft, Users, DollarSign, FileText, Home, Building2,
-  Shield, Settings, LogOut
+  Shield, Settings, LogOut, BookOpen, LayoutDashboard, RefreshCw, Calculator
 } from "lucide-react";
 import logo from "../assets/sirexa-logo.ico";
 
@@ -38,6 +38,20 @@ const ESTRUTURA_MODULOS = {
       inventario: { label: "Inventário", icon: Boxes, rota: "/inventario" }
     }
   },
+  "Contabilidade": {
+    icon: BookOpen,
+    modulos: {
+      planoContas: { label: "Plano de Contas", icon: BookOpen, rota: "/contabilidade/plano-contas" },
+      lancamentos: { label: "Lançamentos", icon: FileText, rota: "/contabilidade/lancamentos" },
+      diarioGeral: { label: "Diário Geral", icon: ClipboardList, rota: "/contabilidade/diario-geral" },
+      razaoGeral: { label: "Razão Geral", icon: LayoutDashboard, rota: "/contabilidade/razao-geral" },
+      balancete: { label: "Balancete", icon: TrendingUp, rota: "/contabilidade/balancete" },
+      saldosContas: { label: "Saldos de Contas", icon: Wallet, rota: "/contabilidade/saldos" },
+      balancoPatrimonial: { label: "Balanço Patrimonial", icon: PieChart, rota: "/contabilidade/balanco-patrimonial" },
+      periodosFiscais: { label: "Períodos Fiscais", icon: Calendar, rota: "/contabilidade/periodos-fiscais" },
+      encerramento: { label: "Encerramento", icon: RefreshCw, rota: "/contabilidade/encerramento" }
+    }
+  },
   "Financeiro": {
     icon: DollarSign,
     modulos: {
@@ -50,7 +64,7 @@ const ESTRUTURA_MODULOS = {
       dre: { label: "DRE", icon: BarChart3, rota: "/dre" },
       indicadores: { label: "Indicadores", icon: Eye, rota: "/indicadores" },
       transferencias: { label: "Transferências", icon: ArrowRightLeft, rota: "/transferencia-diaria" },
-      reconciliacao: { label: "Reconciliação Bancária", icon: Wallet, rota: "/folha-banco" }
+      reconciliacao: { label: "Reconciliação Bancária", icon: RefreshCw, rota: "/folha-banco" }
     }
   },
   "Relatórios": {
@@ -113,6 +127,7 @@ function Layout({ title, children, showBackButton = false, backToRoute = null })
     else if (location.pathname === "/empresa/cadastrar") navigate("/empresa");
     else if (location.pathname.startsWith("/empresa/visualizar")) navigate("/empresa");
     else if (location.pathname.startsWith("/empresa/editar")) navigate("/empresa");
+    else if (location.pathname.startsWith("/contabilidade")) navigate("/menu");
     else navigate(-1);
   };
 
@@ -222,17 +237,17 @@ function Layout({ title, children, showBackButton = false, backToRoute = null })
                       ativa ? "bg-white/20 text-white font-medium" : expandido ? "text-gray-200 bg-white/5" : "text-gray-400 hover:text-white hover:bg-white/10"
                     }`}>
                     <div className="flex items-center gap-3">
-                      <IconeSecao size={18} className={ativa ? "text-blue-400" : "text-gray-400"} />
+                      <IconeSecao size={18} className={ativa ? "text-indigo-400" : "text-gray-400"} />
                       <span className="text-sm font-medium">{secao}</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      {ativa && <span className="w-2 h-2 rounded-full bg-blue-400 animate-pulse"></span>}
+                      {ativa && <span className="w-2 h-2 rounded-full bg-indigo-400 animate-pulse"></span>}
                       <ChevronDown size={16} className={`transition-transform duration-200 ${expandido ? 'rotate-180' : ''}`} />
                     </div>
                   </button>
 
                   {expandido && (
-                    <div className="ml-4 mt-1 space-y-0.5 border-l-2 border-blue-500/30 pl-3 animate-fadeIn">
+                    <div className="ml-4 mt-1 space-y-0.5 border-l-2 border-indigo-500/30 pl-3 animate-fadeIn">
                       {Object.entries(dados.modulos).map(([id, modulo]) => {
                         if (!podeAcessarModulo(id)) return null;
                         const IconeModulo = modulo.icon;
@@ -240,9 +255,9 @@ function Layout({ title, children, showBackButton = false, backToRoute = null })
                         return (
                           <Link key={id} to={modulo.rota} onClick={() => setSidebarAberta(false)}
                             className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all duration-200 ${
-                              ativo ? "bg-blue-500/20 text-white font-medium border-l-2 border-blue-400 -ml-[15px] pl-[19px]" : "text-gray-400 hover:text-white hover:bg-white/5"
+                              ativo ? "bg-indigo-500/20 text-white font-medium border-l-2 border-indigo-400 -ml-[15px] pl-[19px]" : "text-gray-400 hover:text-white hover:bg-white/5"
                             }`}>
-                            <IconeModulo size={16} className={ativo ? "text-blue-400" : "text-gray-500"} />
+                            <IconeModulo size={16} className={ativo ? "text-indigo-400" : "text-gray-500"} />
                             <span>{modulo.label}</span>
                           </Link>
                         );

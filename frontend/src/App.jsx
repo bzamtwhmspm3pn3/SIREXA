@@ -28,7 +28,6 @@ import EditarFuncionario from "./pages/Funcionarios/EditarFuncionario";
 import VisualizarFuncionario from "./pages/Funcionarios/VisualizarFuncionario";
 import ImportarFuncionarios from "./pages/Funcionarios/ImportarFuncionarios";
 
-
 // Finanças
 import FolhaBanco from "./pages/FolhaBanco";
 import FluxoCaixa from "./pages/FluxoCaixa";
@@ -39,8 +38,6 @@ import ControloPagamento from "./pages/ControloPagamento";
 import CustosReceitas from "./pages/CustosReceitas";
 import Orcamento from "./pages/Orcamento";
 import AnaliseGeral from "./pages/AnaliseGeral";
-
-
 
 // Fornecedores
 import ListaFornecedores from "./pages/Fornecedores/ListaFornecedores";
@@ -71,6 +68,25 @@ import Abastecimentos from "./pages/Abastecimentos";
 import Manutencoes from "./pages/Manutencoes";
 import Inventario from "./pages/Inventario";
 
+// ============================================
+// MÓDULO DE CONTABILIDADE (PGC Angola)
+// ============================================
+import DashboardContabilidade from "./pages/Contabilidade/DashboardContabilidade";
+import PlanoContas from "./pages/Contabilidade/PlanoContas";
+import LancamentosContabeis from "./pages/Contabilidade/LancamentosContabeis";
+import NovoLancamento from "./pages/Contabilidade/NovoLancamento";
+import Balancete from "./pages/Contabilidade/Balancete";
+import RazaoGeral from "./pages/Contabilidade/RazaoGeral";
+import DiarioGeral from "./pages/Contabilidade/DiarioGeral";
+import BalancoPatrimonial from "./pages/Contabilidade/BalancoPatrimonial";
+import DemonstracaoResultados from "./pages/Contabilidade/DemonstracaoResultados";
+import FluxoCaixaContabil from "./pages/Contabilidade/FluxoCaixaContabil";
+import EncerramentoExercicio from "./pages/Contabilidade/EncerramentoExercicio";
+import ReconciliacaoBancaria from "./pages/Contabilidade/ReconciliacaoBancaria";
+import LivroRazao from "./pages/Contabilidade/LivroRazao";
+import SaldosContas from "./pages/Contabilidade/SaldosContas";
+import PeriodosFiscais from "./pages/Contabilidade/PeriodosFiscais";
+
 export default function App() {
   const [stock, setStock] = useState([]);
   const [facturas, setFacturas] = useState([]);
@@ -97,11 +113,11 @@ export default function App() {
       } />
 
       {/* Empresa */}
-<Route path="/empresa" element={<ProtectedRoute><Empresa /></ProtectedRoute>} />
-<Route path="/empresa/cadastrar" element={<ProtectedRoute><CadastroEmpresa /></ProtectedRoute>} />
-<Route path="/empresa/editar/:id" element={<ProtectedRoute><EditarEmpresa /></ProtectedRoute>} />
-<Route path="/empresa/visualizar/:id" element={<ProtectedRoute><VisualizacaoEmpresa /></ProtectedRoute>} />
-<Route path="/empresa/relatorio/:id" element={<ProtectedRoute><RelatorioEmpresa /></ProtectedRoute>} />
+      <Route path="/empresa" element={<ProtectedRoute><Empresa /></ProtectedRoute>} />
+      <Route path="/empresa/cadastrar" element={<ProtectedRoute><CadastroEmpresa /></ProtectedRoute>} />
+      <Route path="/empresa/editar/:id" element={<ProtectedRoute><EditarEmpresa /></ProtectedRoute>} />
+      <Route path="/empresa/visualizar/:id" element={<ProtectedRoute><VisualizacaoEmpresa /></ProtectedRoute>} />
+      <Route path="/empresa/relatorio/:id" element={<ProtectedRoute><RelatorioEmpresa /></ProtectedRoute>} />
 
       {/* Técnico */}
       <Route path="/tecnico" element={<ProtectedRoute><ListaTecnicos /></ProtectedRoute>} />
@@ -150,11 +166,101 @@ export default function App() {
       <Route path="/fornecedores/visualizar/:id" element={<ProtectedRoute><VisualizarFornecedor /></ProtectedRoute>} />
       <Route path="/fornecedores/relatorio/:id" element={<ProtectedRoute><RelatorioFornecedor /></ProtectedRoute>} />
 
-
       {/* Outros módulos */}
       <Route path="/transferencia-diaria" element={<ProtectedRoute><Transferencias /></ProtectedRoute>} />
       <Route path="/relatorios" element={<ProtectedRoute><Relatorios /></ProtectedRoute>} />
       <Route path="/graficos" element={<ProtectedRoute><Graficos /></ProtectedRoute>} />
+
+      {/* ============================================ */}
+      {/* MÓDULO DE CONTABILIDADE */}
+      {/* ============================================ */}
+      
+      {/* Dashboard Principal */}
+      <Route path="/contabilidade" element={
+        <ProtectedRoute>
+          <DashboardContabilidade />
+        </ProtectedRoute>
+      } />
+      
+      {/* Plano de Contas */}
+      <Route path="/contabilidade/plano-contas" element={
+        <ProtectedRoute>
+          <PlanoContas />
+        </ProtectedRoute>
+      } />
+      
+      {/* Lançamentos Contabilísticos */}
+      <Route path="/contabilidade/lancamentos" element={
+        <ProtectedRoute>
+          <LancamentosContabeis />
+        </ProtectedRoute>
+      } />
+      <Route path="/contabilidade/lancamentos/novo" element={
+        <ProtectedRoute>
+          <NovoLancamento />
+        </ProtectedRoute>
+      } />
+      
+      {/* Relatórios Contabilísticos */}
+      <Route path="/contabilidade/balancete" element={
+        <ProtectedRoute>
+          <Balancete />
+        </ProtectedRoute>
+      } />
+      <Route path="/contabilidade/razao-geral" element={
+        <ProtectedRoute>
+          <RazaoGeral />
+        </ProtectedRoute>
+      } />
+      <Route path="/contabilidade/diario-geral" element={
+        <ProtectedRoute>
+          <DiarioGeral />
+        </ProtectedRoute>
+      } />
+      <Route path="/contabilidade/livro-razao" element={
+        <ProtectedRoute>
+          <LivroRazao />
+        </ProtectedRoute>
+      } />
+      <Route path="/contabilidade/saldos" element={
+        <ProtectedRoute>
+          <SaldosContas />
+        </ProtectedRoute>
+      } />
+      
+      {/* Demonstrações Financeiras */}
+      <Route path="/contabilidade/balanco-patrimonial" element={
+        <ProtectedRoute>
+          <BalancoPatrimonial />
+        </ProtectedRoute>
+      } />
+      <Route path="/contabilidade/demonstracao-resultados" element={
+        <ProtectedRoute>
+          <DemonstracaoResultados />
+        </ProtectedRoute>
+      } />
+      <Route path="/contabilidade/fluxo-caixa-contabil" element={
+        <ProtectedRoute>
+          <FluxoCaixaContabil />
+        </ProtectedRoute>
+      } />
+      
+      {/* Processos Especiais */}
+      <Route path="/contabilidade/reconciliacao-bancaria" element={
+        <ProtectedRoute>
+          <ReconciliacaoBancaria />
+        </ProtectedRoute>
+      } />
+      <Route path="/contabilidade/periodos-fiscais" element={
+        <ProtectedRoute>
+          <PeriodosFiscais />
+        </ProtectedRoute>
+      } />
+      <Route path="/contabilidade/encerramento" element={
+        <ProtectedRoute>
+          <EncerramentoExercicio />
+        </ProtectedRoute>
+      } />
     </Routes>
   );
 }

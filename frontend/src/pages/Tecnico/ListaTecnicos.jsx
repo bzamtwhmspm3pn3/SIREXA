@@ -5,7 +5,7 @@ import Layout from "../../components/Layout";
 import { 
   Plus, Edit, Trash2, Search, Users, UserCog, Shield, 
   CheckCircle, AlertCircle, Building2, Key, RefreshCw, 
-  XCircle, Phone, PowerOff, Eye, EyeOff
+  XCircle, Phone, PowerOff, Eye, EyeOff, BookOpen, LayoutDashboard, Lock
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
@@ -54,7 +54,20 @@ const ListaTecnicos = () => {
     // Relatórios
     relatorios: false,
     graficos: false,
-    analise: false
+    analise: false,
+    // ============================================
+    // CONTABILIDADE (PGCA Angola)
+    // ============================================
+    contabilidade: false,
+    planoContas: false,
+    lancamentos: false,
+    diarioGeral: false,
+    razaoGeral: false,
+    balancete: false,
+    saldosContas: false,
+    balancoPatrimonial: false,
+    periodosFiscais: false,
+    encerramento: false
   });
 
   const navigate = useNavigate();
@@ -138,6 +151,26 @@ const ListaTecnicos = () => {
       relatorios: novoValor,
       graficos: novoValor,
       analise: novoValor
+    }));
+  };
+
+  const toggleGrupoContabilidade = () => {
+    const novoValor = !(modulosTemp.contabilidade && modulosTemp.planoContas && modulosTemp.lancamentos &&
+                        modulosTemp.diarioGeral && modulosTemp.razaoGeral && modulosTemp.balancete &&
+                        modulosTemp.saldosContas && modulosTemp.balancoPatrimonial && 
+                        modulosTemp.periodosFiscais && modulosTemp.encerramento);
+    setModulosTemp(prev => ({
+      ...prev,
+      contabilidade: novoValor,
+      planoContas: novoValor,
+      lancamentos: novoValor,
+      diarioGeral: novoValor,
+      razaoGeral: novoValor,
+      balancete: novoValor,
+      saldosContas: novoValor,
+      balancoPatrimonial: novoValor,
+      periodosFiscais: novoValor,
+      encerramento: novoValor
     }));
   };
 
@@ -277,7 +310,17 @@ const ListaTecnicos = () => {
       reconciliacao: false,
       relatorios: false,
       graficos: false,
-      analise: false
+      analise: false,
+      contabilidade: false,
+      planoContas: false,
+      lancamentos: false,
+      diarioGeral: false,
+      razaoGeral: false,
+      balancete: false,
+      saldosContas: false,
+      balancoPatrimonial: false,
+      periodosFiscais: false,
+      encerramento: false
     });
   };
 
@@ -456,7 +499,7 @@ const ListaTecnicos = () => {
                 />
               </div>
               
-              {/* Módulos de Acesso - Versão Completa */}
+              {/* Módulos de Acesso - Versão Completa com Contabilidade */}
               <div className="space-y-4 max-h-96 overflow-y-auto pr-2">
                 <div className="flex justify-between items-center mb-2">
                   <label className="text-sm font-medium text-purple-400">Módulos de Acesso</label>
@@ -561,6 +604,83 @@ const ListaTecnicos = () => {
                   </div>
                 </div>
 
+
+
+{/* ============================================ */}
+                {/* CONTABILIDADE*/}
+                {/* ============================================ */}
+                <div className="bg-gray-700/30 rounded-xl overflow-hidden">
+                  <div className="flex items-center justify-between p-3 bg-gray-700/50">
+                    <span className="font-semibold text-indigo-400">📚 Contabilidade </span>
+                    <button 
+                      onClick={toggleGrupoContabilidade}
+                      className="text-xs px-2 py-1 bg-gray-600 rounded-lg hover:bg-gray-500"
+                    >
+                      {modulosTemp.contabilidade && modulosTemp.planoContas && modulosTemp.lancamentos &&
+                       modulosTemp.diarioGeral && modulosTemp.razaoGeral && modulosTemp.balancete &&
+                       modulosTemp.saldosContas && modulosTemp.balancoPatrimonial && 
+                       modulosTemp.periodosFiscais && modulosTemp.encerramento ? "Desmarcar" : "Marcar"} Grupo
+                    </button>
+                  </div>
+                  <div className="p-3 grid grid-cols-2 gap-2">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input type="checkbox" checked={modulosTemp.contabilidade} onChange={(e) => {
+                        const checked = e.target.checked;
+                        setModulosTemp(prev => ({
+                          ...prev,
+                          contabilidade: checked,
+                          planoContas: checked,
+                          lancamentos: checked,
+                          diarioGeral: checked,
+                          razaoGeral: checked,
+                          balancete: checked,
+                          saldosContas: checked,
+                          balancoPatrimonial: checked,
+                          periodosFiscais: checked,
+                          encerramento: checked
+                        }));
+                      }} className="w-4 h-4 text-indigo-600 rounded" />
+                      <span className="text-gray-300 text-sm font-medium">Acesso Geral à Contabilidade</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input type="checkbox" checked={modulosTemp.planoContas} onChange={(e) => setModulosTemp({...modulosTemp, planoContas: e.target.checked})} className="w-4 h-4 text-indigo-600 rounded" />
+                      <span className="text-gray-300 text-sm">Plano de Contas</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input type="checkbox" checked={modulosTemp.lancamentos} onChange={(e) => setModulosTemp({...modulosTemp, lancamentos: e.target.checked})} className="w-4 h-4 text-indigo-600 rounded" />
+                      <span className="text-gray-300 text-sm">Lançamentos</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input type="checkbox" checked={modulosTemp.diarioGeral} onChange={(e) => setModulosTemp({...modulosTemp, diarioGeral: e.target.checked})} className="w-4 h-4 text-indigo-600 rounded" />
+                      <span className="text-gray-300 text-sm">Diário Geral</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input type="checkbox" checked={modulosTemp.razaoGeral} onChange={(e) => setModulosTemp({...modulosTemp, razaoGeral: e.target.checked})} className="w-4 h-4 text-indigo-600 rounded" />
+                      <span className="text-gray-300 text-sm">Razão Geral</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input type="checkbox" checked={modulosTemp.balancete} onChange={(e) => setModulosTemp({...modulosTemp, balancete: e.target.checked})} className="w-4 h-4 text-indigo-600 rounded" />
+                      <span className="text-gray-300 text-sm">Balancete</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input type="checkbox" checked={modulosTemp.saldosContas} onChange={(e) => setModulosTemp({...modulosTemp, saldosContas: e.target.checked})} className="w-4 h-4 text-indigo-600 rounded" />
+                      <span className="text-gray-300 text-sm">Saldos de Contas</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input type="checkbox" checked={modulosTemp.balancoPatrimonial} onChange={(e) => setModulosTemp({...modulosTemp, balancoPatrimonial: e.target.checked})} className="w-4 h-4 text-indigo-600 rounded" />
+                      <span className="text-gray-300 text-sm">Balanço Patrimonial</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input type="checkbox" checked={modulosTemp.periodosFiscais} onChange={(e) => setModulosTemp({...modulosTemp, periodosFiscais: e.target.checked})} className="w-4 h-4 text-indigo-600 rounded" />
+                      <span className="text-gray-300 text-sm">Períodos Fiscais</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input type="checkbox" checked={modulosTemp.encerramento} onChange={(e) => setModulosTemp({...modulosTemp, encerramento: e.target.checked})} className="w-4 h-4 text-indigo-600 rounded" />
+                      <span className="text-gray-300 text-sm">Encerramento</span>
+                    </label>
+                  </div>
+                </div>
+              
                 {/* Financeiro */}
                 <div className="bg-gray-700/30 rounded-xl overflow-hidden">
                   <div className="flex items-center justify-between p-3 bg-gray-700/50">
@@ -642,8 +762,8 @@ const ListaTecnicos = () => {
                     </label>
                   </div>
                 </div>
-              </div>
             </div>
+          </div>
             
             <div className="px-6 py-4 border-t border-gray-700 flex justify-end gap-3">
               <button
@@ -828,9 +948,9 @@ const ListaTecnicos = () => {
                     </p>
                     <div className="flex flex-wrap gap-1 mt-2">
                       {t.modulos?.vendas && <span className="text-xs px-2 py-0.5 bg-blue-500/20 text-blue-400 rounded">Vendas</span>}
-                      {t.modulos?.stock && <span className="text-xs px-2 py-0.5 bg-blue-500/20 text-blue-400 rounded">Estoque</span>}
+                      {t.modulos?.stock && <span className="text-xs px-2 py-0.5 bg-blue-500/20 text-blue-400 rounded">Stock</span>}
+                      {t.modulos?.contabilidade && <span className="text-xs px-2 py-0.5 bg-indigo-500/20 text-indigo-400 rounded">Contabilidade</span>}
                       {t.modulos?.funcionarios && <span className="text-xs px-2 py-0.5 bg-green-500/20 text-green-400 rounded">Funcionários</span>}
-                      {t.modulos?.financeiro && <span className="text-xs px-2 py-0.5 bg-purple-500/20 text-purple-400 rounded">Financeiro</span>}
                     </div>
                   </div>
                 </div>

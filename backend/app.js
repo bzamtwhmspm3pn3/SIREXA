@@ -1,3 +1,4 @@
+// server.js (ATUALIZADO COM MÓDULO DE CONTABILIDADE)
 // 📦 Carrega variáveis de ambiente
 require('dotenv').config();
 
@@ -15,8 +16,9 @@ connectDB();
 // 🛡️ Middlewares personalizados
 const { verifyToken } = require('./middlewares/auth');
 const errorHandler = require('./middlewares/errorHandler');
+const { integrarAutomaticamente } = require('./middlewares/contabilidadeAuto');
 
-// 📁 Rotas
+// 📁 Rotas Existentes
 const folhaSalarialRoutes = require('./routes/folhaSalarial'); 
 const stockRoutes = require('./routes/stock');
 const vendasRoutes = require('./routes/vendas');
@@ -27,6 +29,9 @@ const reconciliacaoRoutes = require('./routes/reconciliacao');
 const analiseGeralRoutes = require('./routes/analisegeral');
 const inventarioRoutes = require('./routes/inventario');
 const configuracaoBancoRoutes = require('./routes/configuracaoBanco');
+
+// 📁 Rotas do Módulo de Contabilidade (NOVO)
+const contabilidadeRoutes = require('./routes/contabilidadeRoutes');
 
 // 🚀 Inicialização da app
 const app = express();
@@ -57,16 +62,21 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 // ============================================
 // 📁 ROTAS PÚBLICAS (sem token)
 // ============================================
-// Apenas cadastro e login são públicos
-app.use('/api/gestor', require('./routes/gestor')); // POST / e POST /login
+app.use('/api/gestor', require('./routes/gestor'));
 app.use('/api/tecnico', require('./routes/tecnico'));
 
+// ============================================
+// 📁 MIDDLEWARE DE AUTOMAÇÃO CONTABILÍSTICA
+// Aplica-se automaticamente às rotas de Vendas e Pagamentos
+// ============================================
+app.use('/api/vendas', integrarAutomaticamente);
+app.use('/api/pagamentos', integrarAutomaticamente);
 
 // ============================================
 // 📁 ROTAS PROTEGIDAS (com verificação de token)
 // ============================================
 
-// 🏢 Gestão de Empresas (protegido - cada gestor vê apenas suas empresas)
+// 🏢 Gestão de Empresas
 app.use('/api/empresa', verifyToken, require('./routes/empresa'));
 
 // 💰 Gestão Financeira
@@ -113,17 +123,59 @@ app.use('/api/fluxocaixa', verifyToken, require('./routes/fluxoCaixa'));
 app.use('/api/graficos', verifyToken, require('./routes/graficos'));
 app.use('/api/relatorios', verifyToken, require('./routes/relatorios'));
 
-// 🛒 Vendas
+// 🛒 Vendas (protegida após middleware de integração)
 app.use('/api/stock', verifyToken, stockRoutes);
-app.use('/api/vendas', vendasRoutes);
-app.use('/api/clientes', clienteRoutes);
-app.use('/api/facturas', facturasRoutes);
+app.use('/api/vendas', verifyToken, vendasRoutes);
+app.use('/api/clientes', verifyToken, clienteRoutes);
+app.use('/api/facturas', verifyToken, facturasRoutes);
 
 // 📋 Rotas existentes
 app.use('/api/contacorrente', verifyToken, require('./routes/contaCorrente'));
 app.use('/api/folhabanco', verifyToken, require('./routes/folhaBanco'));
 app.use('/api/demonstrativoderesultados', verifyToken, require('./routes/demonstrativoResultados'));
 app.use('/api/estimativa', verifyToken, require('./routes/estimativa'));
+
+// ============================================
+// 📁 MÓDULO DE CONTABILIDADE - PGCA ANGOLA
+// ============================================
+// Todas as rotas de contabilidade requerem autenticação
+app.use('/api/contabilidade', verifyToken, contabilidadeRoutes);
+
+// Rota especial para inicializar plano de contas padrão
+app.post('/api/contabilidade/inicializar', verifyToken, async (req, res) => {
+  try {
+    const PlanoContasController = require('./controllers/contabilidade/PlanoContasController');
+    await PlanoContasController.inicializarPadrao(req, res);
+  } catch (error) {
+    console.error('Erro ao inicializar plano de contas:', error);
+    res.status(500).json({ sucesso: false, mensagem: error.message });
+  }
+});
+
+// ============================================
+// 📊 ROTA DE STATUS DO SISTEMA
+// ============================================
+app.get('/api/status', (req, res) => {
+  res.json({
+    sucesso: true,
+    mensagem: 'API SIREXA está funcionando',
+    versao: '2.0.0',
+    modulos: [
+      'Gestão de Empresas',
+      'Recursos Humanos',
+      'Gestão Patrimonial',
+      'Financeiro',
+      'Operacional',
+      'Contabilidade (PGCA Angola)'
+    ],
+    contabilidade: {
+      classes: 9,
+      planoCotnas: 'PGC Angola',
+      automacao: true,
+      partidasDobradas: true
+    }
+  });
+});
 
 // 🔚 Middleware de tratamento de erro (global)
 app.use(errorHandler);
@@ -151,6 +203,18 @@ async function startServer() {
       console.log(`   - /api/bancos`);
       console.log(`   - /api/transferencias`);
       console.log(`   - /api/analisegeral`);
+      console.log(`   - /api/contabilidade (NOVO - PGCA Angola)`);
+      console.log(`     - GET  /plano-contas`);
+      console.log(`     - POST /plano-contas`);
+      console.log(`     - POST /plano-contas/auto`);
+      console.log(`     - POST /plano-contas/inicializar`);
+      console.log(`     - GET  /lancamentos`);
+      console.log(`     - POST /lancamentos/manual`);
+      console.log(`     - POST /reconciliar`);
+      console.log(`     - GET  /relatorios/balancete`);
+      console.log(`     - GET  /relatorios/dre`);
+      console.log(`   - 🔄 Integração automática Vendas → Contabilidade`);
+      console.log(`   - 🔄 Integração automática Pagamentos → Contabilidade`);
     });
     
   } catch (error) {
