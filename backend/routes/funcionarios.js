@@ -29,7 +29,7 @@ const storage = multer.diskStorage({
 
 const upload = multer({ 
   storage,
-  limits: { fileSize: 10 * 1024 * 1024 }, // AUMENTADO PARA 10MB
+  limits: { fileSize: 10 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
     const allowedTypes = /jpeg|jpg|png|gif/;
     const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
@@ -97,7 +97,7 @@ router.post('/', validateEmpresaAccess, upload.single('foto'), async (req, res) 
       banco, numeroConta, iban, titularConta,
       grupoIRT, dependentes,
       horasSemanais, horasDiarias,
-      contribuiINSS,  // NOVO CAMPO
+      contribuiINSS,
       isTecnico,
       tecnicoSenha, tecnicoModulos
     } = req.body;
@@ -138,6 +138,12 @@ router.post('/', validateEmpresaAccess, upload.single('foto'), async (req, res) 
       return res.status(400).json({ mensagem: 'Senha é obrigatória para técnico' });
     }
     
+    // Parse dos módulos de contabilidade se for técnico
+    let modulosTecnico = null;
+    if (isTecnicoBool && tecnicoModulos) {
+      modulosTecnico = typeof tecnicoModulos === 'string' ? JSON.parse(tecnicoModulos) : tecnicoModulos;
+    }
+    
     const funcionario = new Funcionario({
       nome: nome.trim(),
       nif: nif.trim(),
@@ -163,10 +169,11 @@ router.post('/', validateEmpresaAccess, upload.single('foto'), async (req, res) 
       dependentes: dependentes ? parseInt(dependentes) : 0,
       horasSemanais: horasSemanais ? parseFloat(horasSemanais) : 40,
       horasDiarias: horasDiarias ? parseFloat(horasDiarias) : 8,
-      contribuiINSS: contribuiINSS === 'true' || contribuiINSS === true || contribuiINSS === undefined, // Padrão true
+      contribuiINSS: contribuiINSS === 'true' || contribuiINSS === true || contribuiINSS === undefined,
       empresaId,
       empresaNome: empresa.nome,
-      isTecnico: isTecnicoBool
+      isTecnico: isTecnicoBool,
+      modulos: modulosTecnico
     });
     
     await funcionario.save();
@@ -176,32 +183,25 @@ router.post('/', validateEmpresaAccess, upload.single('foto'), async (req, res) 
     let tecnicoCriado = null;
     if (funcionario.isTecnico && tecnicoSenha) {
       try {
-        const modulos = tecnicoModulos ? JSON.parse(tecnicoModulos) : {
-          vendas: true,
-          stock: true,
-          facturacao: true,
-          funcionarios: false,
-          folhaSalarial: false,
-          gestaoFaltas: false,
-          gestaoAbonos: false,
-          avaliacao: false,
-          viaturas: false,
-          abastecimentos: false,
-          manutencoes: false,
-          inventario: false,
-          fornecedores: false,
-          fluxoCaixa: false,
-          contaCorrente: false,
-          controloPagamento: false,
-          custosReceitas: false,
-          orcamentos: false,
-          dre: false,
-          indicadores: false,
-          transferencias: false,
-          reconciliacao: false,
-          relatorios: false,
-          graficos: false,
-          analise: false
+        const modulos = modulosTecnico || {
+          // Operacional
+          vendas: true, stock: true, facturacao: true,
+          // Recursos Humanos
+          funcionarios: false, folhaSalarial: false, gestaoFaltas: false,
+          gestaoAbonos: false, avaliacao: false,
+          // Gestão Patrimonial
+          viaturas: false, abastecimentos: false, manutencoes: false, inventario: false,
+          // Financeiro
+          fornecedores: false, fluxoCaixa: false, contaCorrente: false,
+          controloPagamento: false, custosReceitas: false, orcamentos: false,
+          dre: false, indicadores: false, transferencias: false, reconciliacao: false,
+          // Relatórios
+          relatorios: false, graficos: false, analise: false,
+          // Contabilidade
+          contabilidade: false, planoContas: false, lancamentos: false,
+          diarioGeral: false, razaoGeral: false, balancete: false,
+          saldosContas: false, balancoPatrimonial: false, periodosFiscais: false,
+          encerramento: false
         };
         
         const tecnico = new Tecnico({
@@ -262,7 +262,7 @@ router.put('/:id', upload.single('foto'), async (req, res) => {
       banco, numeroConta, iban, titularConta,
       grupoIRT, dependentes,
       horasSemanais, horasDiarias,
-      contribuiINSS,  // NOVO CAMPO
+      contribuiINSS,
       isTecnico,
       tecnicoSenha, tecnicoModulos
     } = req.body;
@@ -311,7 +311,6 @@ router.put('/:id', upload.single('foto'), async (req, res) => {
     funcionario.horasSemanais = horasSemanais ? parseFloat(horasSemanais) : funcionario.horasSemanais;
     funcionario.horasDiarias = horasDiarias ? parseFloat(horasDiarias) : funcionario.horasDiarias;
     
-    // ATUALIZAR CAMPO contribuiINSS
     if (contribuiINSS !== undefined) {
       funcionario.contribuiINSS = contribuiINSS === 'true' || contribuiINSS === true;
     }
@@ -319,36 +318,28 @@ router.put('/:id', upload.single('foto'), async (req, res) => {
     const wasTecnico = funcionario.isTecnico;
     funcionario.isTecnico = isTecnico === 'true' || isTecnico === true;
     
+    // Atualizar módulos se for técnico
+    if (funcionario.isTecnico && tecnicoModulos) {
+      funcionario.modulos = typeof tecnicoModulos === 'string' ? JSON.parse(tecnicoModulos) : tecnicoModulos;
+    }
+    
     await funcionario.save();
     
     // Gerenciar criação/atualização do técnico
     if (funcionario.isTecnico && !wasTecnico && tecnicoSenha) {
-      const modulos = tecnicoModulos ? JSON.parse(tecnicoModulos) : {
-        vendas: true,
-        stock: true,
-        facturacao: true,
-        funcionarios: false,
-        folhaSalarial: false,
-        gestaoFaltas: false,
-        gestaoAbonos: false,
-        avaliacao: false,
-        viaturas: false,
-        abastecimentos: false,
-        manutencoes: false,
-        inventario: false,
-        fornecedores: false,
-        fluxoCaixa: false,
-        contaCorrente: false,
-        controloPagamento: false,
-        custosReceitas: false,
-        orcamentos: false,
-        dre: false,
-        indicadores: false,
-        transferencias: false,
-        reconciliacao: false,
-        relatorios: false,
-        graficos: false,
-        analise: false
+      const modulos = funcionario.modulos || {
+        vendas: true, stock: true, facturacao: true,
+        funcionarios: false, folhaSalarial: false, gestaoFaltas: false,
+        gestaoAbonos: false, avaliacao: false,
+        viaturas: false, abastecimentos: false, manutencoes: false, inventario: false,
+        fornecedores: false, fluxoCaixa: false, contaCorrente: false,
+        controloPagamento: false, custosReceitas: false, orcamentos: false,
+        dre: false, indicadores: false, transferencias: false, reconciliacao: false,
+        relatorios: false, graficos: false, analise: false,
+        contabilidade: false, planoContas: false, lancamentos: false,
+        diarioGeral: false, razaoGeral: false, balancete: false,
+        saldosContas: false, balancoPatrimonial: false, periodosFiscais: false,
+        encerramento: false
       };
       
       const tecnico = new Tecnico({
@@ -377,8 +368,8 @@ router.put('/:id', upload.single('foto'), async (req, res) => {
         }
         tecnico.telefone = funcionario.telefone || '';
         tecnico.funcao = funcionario.funcao;
-        if (tecnicoModulos) {
-          tecnico.modulos = JSON.parse(tecnicoModulos);
+        if (funcionario.modulos) {
+          tecnico.modulos = funcionario.modulos;
         }
         await tecnico.save();
         console.log('✅ Técnico atualizado:', tecnico._id);
@@ -437,13 +428,11 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
-
 // 🔒 IMPORTAR FUNCIONÁRIOS EM LOTE (COM VALIDAÇÃO DE EMPRESA)
 router.post('/importar-lote', validateEmpresaAccess, async (req, res) => {
   try {
     const { funcionarios, empresaId } = req.body;
 
-    // Validações básicas
     if (!funcionarios || !Array.isArray(funcionarios) || funcionarios.length === 0) {
       return res.status(400).json({ mensagem: 'Envie uma lista de funcionários' });
     }
@@ -451,7 +440,6 @@ router.post('/importar-lote', validateEmpresaAccess, async (req, res) => {
       return res.status(400).json({ mensagem: 'empresaId é obrigatório' });
     }
 
-    // Garantir que a empresaId do corpo corresponde à do token (segurança extra)
     if (empresaId !== req.empresaAtual) {
       return res.status(403).json({ mensagem: 'Empresa não autorizada' });
     }
@@ -467,20 +455,16 @@ router.post('/importar-lote', validateEmpresaAccess, async (req, res) => {
       total: funcionarios.length
     };
 
-    // Processar cada funcionário
     for (const dados of funcionarios) {
       try {
-        // Validar campos obrigatórios
         if (!dados.nome || !dados.nome.trim()) throw new Error('Nome é obrigatório');
         if (!dados.nif || !dados.nif.trim()) throw new Error('NIF é obrigatório');
         if (!dados.funcao || !dados.funcao.trim()) throw new Error('Função é obrigatória');
         if (!dados.salarioBase || parseFloat(dados.salarioBase) <= 0) throw new Error('Salário base inválido');
 
-        // Verificar duplicidade dentro da mesma empresa
         const existente = await Funcionario.findOne({ empresaId, nif: dados.nif.trim() });
         if (existente) throw new Error('NIF já cadastrado nesta empresa');
 
-        // Criar objeto do funcionário
         const funcionarioData = {
           nome: dados.nome.trim(),
           nif: dados.nif.trim(),
@@ -504,24 +488,26 @@ router.post('/importar-lote', validateEmpresaAccess, async (req, res) => {
           empresaId,
           empresaNome: empresa.nome,
           isTecnico: dados.isTecnico === true || dados.isTecnico === 'true',
-          ...(dados.foto ? { foto: dados.foto } : {})
+          modulos: dados.modulos || null
         };
 
-        // Se o funcionário for técnico, criar usuário técnico também (opcional)
         const funcionario = new Funcionario(funcionarioData);
         await funcionario.save();
 
-        // Se marcado como técnico, criar entrada na coleção Tecnico
         if (funcionario.isTecnico && dados.tecnicoSenha) {
-          const modulos = dados.tecnicoModulos || {
-            vendas: true, stock: true, facturacao: true, funcionarios: false,
-            folhaSalarial: false, gestaoFaltas: false, gestaoAbonos: false,
-            avaliacao: false, viaturas: false, abastecimentos: false,
-            manutencoes: false, inventario: false, fornecedores: false,
-            fluxoCaixa: false, contaCorrente: false, controloPagamento: false,
-            custosReceitas: false, orcamentos: false, dre: false,
-            indicadores: false, transferencias: false, reconciliacao: false,
-            relatorios: false, graficos: false, analise: false
+          const modulos = dados.modulos || {
+            vendas: true, stock: true, facturacao: true,
+            funcionarios: false, folhaSalarial: false, gestaoFaltas: false,
+            gestaoAbonos: false, avaliacao: false,
+            viaturas: false, abastecimentos: false, manutencoes: false, inventario: false,
+            fornecedores: false, fluxoCaixa: false, contaCorrente: false,
+            controloPagamento: false, custosReceitas: false, orcamentos: false,
+            dre: false, indicadores: false, transferencias: false, reconciliacao: false,
+            relatorios: false, graficos: false, analise: false,
+            contabilidade: false, planoContas: false, lancamentos: false,
+            diarioGeral: false, razaoGeral: false, balancete: false,
+            saldosContas: false, balancoPatrimonial: false, periodosFiscais: false,
+            encerramento: false
           };
           const tecnico = new Tecnico({
             nome: funcionario.nome,
@@ -554,6 +540,5 @@ router.post('/importar-lote', validateEmpresaAccess, async (req, res) => {
     res.status(500).json({ mensagem: 'Erro interno ao processar importação em lote', erro: error.message });
   }
 });
-
 
 module.exports = router;

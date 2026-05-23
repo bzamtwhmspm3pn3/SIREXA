@@ -12,27 +12,29 @@ const TecnicoSchema = new mongoose.Schema({
   empresaNome: { type: String, required: true },
   funcionarioId: { type: mongoose.Schema.Types.ObjectId, ref: 'Funcionario' },
   
+  // ============================================
   // ESTRUTURA COMPLETA DE MÓDULOS
+  // ============================================
   modulos: {
-    // Operacional
+    // ==================== OPERACIONAL ====================
     vendas: { type: Boolean, default: false },
     stock: { type: Boolean, default: false },
     facturacao: { type: Boolean, default: false },
     
-    // Recursos Humanos
+    // ==================== RECURSOS HUMANOS ====================
     funcionarios: { type: Boolean, default: false },
     folhaSalarial: { type: Boolean, default: false },
     gestaoFaltas: { type: Boolean, default: false },
     gestaoAbonos: { type: Boolean, default: false },
     avaliacao: { type: Boolean, default: false },
     
-    // Gestão Patrimonial
+    // ==================== GESTÃO PATRIMONIAL ====================
     viaturas: { type: Boolean, default: false },
     abastecimentos: { type: Boolean, default: false },
     manutencoes: { type: Boolean, default: false },
     inventario: { type: Boolean, default: false },
     
-    // Financeiro
+    // ==================== FINANCEIRO ====================
     fornecedores: { type: Boolean, default: false },
     fluxoCaixa: { type: Boolean, default: false },
     contaCorrente: { type: Boolean, default: false },
@@ -44,10 +46,24 @@ const TecnicoSchema = new mongoose.Schema({
     transferencias: { type: Boolean, default: false },
     reconciliacao: { type: Boolean, default: false },
     
-    // Relatórios
+    // ==================== RELATÓRIOS E ANÁLISES ====================
     relatorios: { type: Boolean, default: false },
     graficos: { type: Boolean, default: false },
-    analise: { type: Boolean, default: false }
+    analise: { type: Boolean, default: false },
+    
+    // ============================================
+    // CONTABILIDADE
+    // ============================================
+    contabilidade: { type: Boolean, default: false },      
+    planoContas: { type: Boolean, default: false },        
+    lancamentos: { type: Boolean, default: false },        
+    diarioGeral: { type: Boolean, default: false },        
+    razaoGeral: { type: Boolean, default: false },         
+    balancete: { type: Boolean, default: false },          
+    saldosContas: { type: Boolean, default: false },       
+    balancoPatrimonial: { type: Boolean, default: false }, 
+    periodosFiscais: { type: Boolean, default: false },    
+    encerramento: { type: Boolean, default: false }        
   },
   
   createdAt: { type: Date, default: Date.now }
@@ -68,6 +84,29 @@ TecnicoSchema.pre('save', async function(next) {
 // Método para comparar senha
 TecnicoSchema.methods.compararSenha = async function(senha) {
   return await bcrypt.compare(senha, this.senha);
+};
+
+// Método para verificar se tem acesso a um módulo
+TecnicoSchema.methods.temAcesso = function(modulo) {
+  // Gestor tem acesso a tudo (mas este modelo é apenas para técnicos)
+  // Para técnico, verifica se o módulo está ativo
+  if (this.modulos && this.modulos[modulo] === true) {
+    return true;
+  }
+  // Verifica também o acesso geral à contabilidade
+  if (modulo.startsWith('contabilidade/') && this.modulos?.contabilidade === true) {
+    return true;
+  }
+  return false;
+};
+
+// Método para listar módulos ativos
+TecnicoSchema.methods.modulosAtivos = function() {
+  const ativos = [];
+  for (const [modulo, ativo] of Object.entries(this.modulos || {})) {
+    if (ativo) ativos.push(modulo);
+  }
+  return ativos;
 };
 
 module.exports = mongoose.models.Tecnico || mongoose.model('Tecnico', TecnicoSchema);

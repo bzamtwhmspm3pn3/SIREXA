@@ -32,7 +32,6 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ mensagem: "Email ou senha inválidos" });
     }
     
-    // 🔥 CORREÇÃO: Adicionar empresasPermitidas
     const empresasPermitidas = tecnico.empresaId ? [tecnico.empresaId.toString()] : [];
     
     console.log("🏢 Técnico - Empresa ID:", tecnico.empresaId);
@@ -147,33 +146,26 @@ router.post('/', verifyToken, async (req, res) => {
       return res.status(400).json({ mensagem: 'Já existe um técnico com este email' });
     }
     
-    // Módulos padrão se não for fornecido
+    // Módulos padrão com Contabilidade
     const modulosPadrao = {
-      vendas: false,
-      stock: false,
-      facturacao: false,
-      funcionarios: false,
-      folhaSalarial: false,
-      gestaoFaltas: false,
-      gestaoAbonos: false,
-      avaliacao: false,
-      viaturas: false,
-      abastecimentos: false,
-      manutencoes: false,
-      inventario: false,
-      fornecedores: false,
-      fluxoCaixa: false,
-      contaCorrente: false,
-      controloPagamento: false,
-      custosReceitas: false,
-      orcamentos: false,
-      dre: false,
-      indicadores: false,
-      transferencias: false,
-      reconciliacao: false,
-      relatorios: false,
-      graficos: false,
-      analise: false
+      // Operacional
+      vendas: false, stock: false, facturacao: false,
+      // Recursos Humanos
+      funcionarios: false, folhaSalarial: false, gestaoFaltas: false,
+      gestaoAbonos: false, avaliacao: false,
+      // Gestão Patrimonial
+      viaturas: false, abastecimentos: false, manutencoes: false, inventario: false,
+      // Financeiro
+      fornecedores: false, fluxoCaixa: false, contaCorrente: false,
+      controloPagamento: false, custosReceitas: false, orcamentos: false,
+      dre: false, indicadores: false, transferencias: false, reconciliacao: false,
+      // Relatórios
+      relatorios: false, graficos: false, analise: false,
+      // Contabilidade
+      contabilidade: false, planoContas: false, lancamentos: false,
+      diarioGeral: false, razaoGeral: false, balancete: false,
+      saldosContas: false, balancoPatrimonial: false, periodosFiscais: false,
+      encerramento: false
     };
     
     const tecnico = new Tecnico({
@@ -245,7 +237,8 @@ router.put('/:id', verifyToken, async (req, res) => {
         nome: tecnico.nome,
         email: tecnico.email,
         telefone: tecnico.telefone,
-        funcao: tecnico.funcao
+        funcao: tecnico.funcao,
+        modulos: tecnico.modulos
       });
     }
     
@@ -286,7 +279,7 @@ router.delete('/:id', verifyToken, async (req, res) => {
   }
 });
 
-// POST - Promover funcionário a técnico (versão corrigida)
+// POST - Promover funcionário a técnico
 router.post('/promover/:funcionarioId', verifyToken, async (req, res) => {
   try {
     const { funcionarioId } = req.params;
@@ -308,33 +301,20 @@ router.post('/promover/:funcionarioId', verifyToken, async (req, res) => {
       return res.status(404).json({ mensagem: 'Empresa não encontrada' });
     }
     
-    // Módulos padrão
+    // Módulos padrão com Contabilidade
     const modulosPadrao = {
-      vendas: false,
-      stock: false,
-      facturacao: false,
-      funcionarios: false,
-      folhaSalarial: false,
-      gestaoFaltas: false,
-      gestaoAbonos: false,
-      avaliacao: false,
-      viaturas: false,
-      abastecimentos: false,
-      manutencoes: false,
-      inventario: false,
-      fornecedores: false,
-      fluxoCaixa: false,
-      contaCorrente: false,
-      controloPagamento: false,
-      custosReceitas: false,
-      orcamentos: false,
-      dre: false,
-      indicadores: false,
-      transferencias: false,
-      reconciliacao: false,
-      relatorios: false,
-      graficos: false,
-      analise: false
+      vendas: false, stock: false, facturacao: false,
+      funcionarios: false, folhaSalarial: false, gestaoFaltas: false,
+      gestaoAbonos: false, avaliacao: false,
+      viaturas: false, abastecimentos: false, manutencoes: false, inventario: false,
+      fornecedores: false, fluxoCaixa: false, contaCorrente: false,
+      controloPagamento: false, custosReceitas: false, orcamentos: false,
+      dre: false, indicadores: false, transferencias: false, reconciliacao: false,
+      relatorios: false, graficos: false, analise: false,
+      contabilidade: false, planoContas: false, lancamentos: false,
+      diarioGeral: false, razaoGeral: false, balancete: false,
+      saldosContas: false, balancoPatrimonial: false, periodosFiscais: false,
+      encerramento: false
     };
     
     const tecnico = new Tecnico({
@@ -414,14 +394,20 @@ router.post('/ativar/:funcionarioId', verifyToken, async (req, res) => {
       return res.status(400).json({ mensagem: 'Já existe um técnico com este email' });
     }
     
+    // Módulos padrão com Contabilidade
     const modulosPadrao = {
       vendas: false, stock: false, facturacao: false,
-      funcionarios: false, folhaSalarial: false, gestaoFaltas: false, gestaoAbonos: false, avaliacao: false,
+      funcionarios: false, folhaSalarial: false, gestaoFaltas: false,
+      gestaoAbonos: false, avaliacao: false,
       viaturas: false, abastecimentos: false, manutencoes: false, inventario: false,
-      fornecedores: false, fluxoCaixa: false, contaCorrente: false, controloPagamento: false,
-      custosReceitas: false, orcamentos: false, dre: false, indicadores: false,
-      transferencias: false, reconciliacao: false,
-      relatorios: false, graficos: false, analise: false
+      fornecedores: false, fluxoCaixa: false, contaCorrente: false,
+      controloPagamento: false, custosReceitas: false, orcamentos: false,
+      dre: false, indicadores: false, transferencias: false, reconciliacao: false,
+      relatorios: false, graficos: false, analise: false,
+      contabilidade: false, planoContas: false, lancamentos: false,
+      diarioGeral: false, razaoGeral: false, balancete: false,
+      saldosContas: false, balancoPatrimonial: false, periodosFiscais: false,
+      encerramento: false
     };
     
     const tecnico = new Tecnico({

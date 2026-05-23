@@ -7,7 +7,7 @@ import {
   Save, ArrowLeft, Shield, Mail, Phone, CheckCircle, AlertCircle, Loader2,
   TrendingUp, Users, Car, DollarSign, FileText, Package, ShoppingCart, Receipt,
   ClipboardList, Calendar, Gift, BarChart3, Fuel, Wrench, Boxes,
-  Wallet, PieChart, ArrowRightLeft, Truck, Eye
+  Wallet, PieChart, ArrowRightLeft, Truck, Eye, BookOpen, LayoutDashboard, Lock
 } from "lucide-react";
 
 const EditarTecnico = () => {
@@ -78,11 +78,10 @@ const EditarTecnico = () => {
     recursosHumanos: false,
     gestaoPatrimonial: false,
     financeiro: false,
-     relatorios: false,
+    relatorios: false,
     contabilidade: false
   });
 
-  
   const navigate = useNavigate();
   const { id } = useParams();
 
@@ -148,7 +147,18 @@ const EditarTecnico = () => {
           // Relatórios
           relatorios: modulosCarregados.relatorios || false,
           graficos: modulosCarregados.graficos || false,
-          analise: modulosCarregados.analise || false
+          analise: modulosCarregados.analise || false,
+          // Contabilidade
+          contabilidade: modulosCarregados.contabilidade || false,
+          planoContas: modulosCarregados.planoContas || false,
+          lancamentos: modulosCarregados.lancamentos || false,
+          diarioGeral: modulosCarregados.diarioGeral || false,
+          razaoGeral: modulosCarregados.razaoGeral || false,
+          balancete: modulosCarregados.balancete || false,
+          saldosContas: modulosCarregados.saldosContas || false,
+          balancoPatrimonial: modulosCarregados.balancoPatrimonial || false,
+          periodosFiscais: modulosCarregados.periodosFiscais || false,
+          encerramento: modulosCarregados.encerramento || false
         }
       });
     } catch (error) {
@@ -451,7 +461,7 @@ const EditarTecnico = () => {
                     <input type="checkbox" checked={formData.modulos.transferencias} onChange={(e) => setFormData({...formData, modulos: {...formData.modulos, transferencias: e.target.checked}})} className="w-4 h-4 text-purple-600 rounded" />
                   </label>
                   <label className="flex items-center justify-between p-3 bg-gray-700/50 rounded-lg cursor-pointer hover:bg-gray-700 transition">
-                    <div className="flex items-center gap-3"><Wallet size={18} className="text-indigo-400" /><span className="text-gray-300">Reconciliação Bancária</span></div>
+                    <div className="flex items-center gap-3"><RefreshCw size={18} className="text-indigo-400" /><span className="text-gray-300">Reconciliação Bancária</span></div>
                     <input type="checkbox" checked={formData.modulos.reconciliacao} onChange={(e) => setFormData({...formData, modulos: {...formData.modulos, reconciliacao: e.target.checked}})} className="w-4 h-4 text-purple-600 rounded" />
                   </label>
                 </div>
@@ -485,15 +495,14 @@ const EditarTecnico = () => {
               )}
             </div>
 
-
-{/* ============================================ */}
+            {/* ============================================ */}
             {/* Módulos - Seção CONTABILIDADE */}
             {/* ============================================ */}
             <div className="bg-gray-700/30 rounded-xl overflow-hidden">
               <button type="button" onClick={() => toggleSection('contabilidade')} className="w-full flex items-center justify-between p-4 bg-gradient-to-r from-indigo-600/20 to-purple-600/20 hover:bg-indigo-600/30 transition">
                 <div className="flex items-center gap-3">
                   <BookOpen className="text-indigo-400" size={20} />
-                  <span className="font-semibold text-white">Contabilidade </span>
+                  <span className="font-semibold text-white">Contabilidade</span>
                 </div>
                 <span className="text-gray-400">{expandedSections.contabilidade ? '▼' : '▶'}</span>
               </button>
@@ -599,7 +608,6 @@ const EditarTecnico = () => {
                 </div>
               )}
             </div>
-
 
             {/* Botões */}
             <div className="flex gap-3 pt-4">
