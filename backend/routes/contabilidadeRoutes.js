@@ -1,6 +1,7 @@
 // backend/routes/contabilidadeRoutes.js
 const express = require('express');
 const router = express.Router();
+const mongoose = require('mongoose');
 const PlanoContasController = require('../controllers/contabilidade/PlanoContasController');
 const LancamentoController = require('../controllers/contabilidade/LancamentoController');
 const RelatoriosController = require('../controllers/contabilidade/RelatoriosController');
@@ -33,6 +34,101 @@ router.post('/periodos/:id/fechar', (req, res) => PeriodosController.fechar(req,
 router.post('/periodos/:id/reabrir', (req, res) => PeriodosController.reabrir(req, res));
 router.delete('/periodos/:id', (req, res) => PeriodosController.excluir(req, res));
 
+// ==================== MODELOS EXCEL (DOWNLOAD) ====================
+const XLSX = require('xlsx');
+
+// Modelo de Lançamentos
+router.get('/modelo-excel', (req, res) => {
+    try {
+        const wb = XLSX.utils.book_new();
+        const dados = [
+            { codigo: "45.1.1", descricao: "Caixa - Pagamento fornecedor", debito: 0, credito: 1000, data: new Date().toISOString().split('T')[0] },
+            { codigo: "32.1.2.1", descricao: "Fornecedor XYZ", debito: 1000, credito: 0, data: new Date().toISOString().split('T')[0] }
+        ];
+        const ws = XLSX.utils.json_to_sheet(dados);
+        XLSX.utils.book_append_sheet(wb, ws, "Lançamentos");
+        
+        const instrucoes = [
+            { coluna: "codigo", descricao: "Código da conta (ex: 45.1.1, 32.1.2.1)", obrigatorio: "Sim" },
+            { coluna: "descricao", descricao: "Descrição do lançamento", obrigatorio: "Sim" },
+            { coluna: "debito", descricao: "Valor de Débito (se aplicável)", obrigatorio: "Não (0 se crédito)" },
+            { coluna: "credito", descricao: "Valor de Crédito (se aplicável)", obrigatorio: "Não (0 se débito)" },
+            { coluna: "data", descricao: "Data do lançamento (AAAA-MM-DD)", obrigatorio: "Sim" }
+        ];
+        const wsInstrucoes = XLSX.utils.json_to_sheet(instrucoes);
+        XLSX.utils.book_append_sheet(wb, wsInstrucoes, "Instruções");
+        
+        const buffer = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+        res.setHeader('Content-Disposition', 'attachment; filename=modelo_lancamentos.xlsx');
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        res.send(buffer);
+    } catch (error) {
+        console.error('Erro ao gerar modelo:', error);
+        res.status(500).json({ sucesso: false, mensagem: error.message });
+    }
+});
+
+// ==================== SINCRONIZAÇÃO ====================
+router.post('/sincronizar', async (req, res) => {
+    try {
+        const { empresaId } = req.body;
+        
+        if (!empresaId) {
+            return res.status(400).json({ sucesso: false, mensagem: 'Empresa não informada' });
+        }
+        
+        const Venda = require('../models/Venda');
+        const Pagamento = require('../models/Pagamento');
+        const IntegracaoContabilistica = require('../services/IntegracaoContabilistica');
+        
+        // Buscar vendas não contabilizadas
+        const vendasNaoContabilizadas = await Venda.find({
+            empresaId,
+            contabilizado: { $ne: true }
+        });
+        
+        // Buscar pagamentos não contabilizados
+        const pagamentosNaoContabilizados = await Pagamento.find({
+            empresaId,
+            contabilizado: { $ne: true }
+        });
+        
+        let vendasProcessadas = 0;
+        let pagamentosProcessados = 0;
+        const erros = [];
+        
+        for (const venda of vendasNaoContabilizadas) {
+            try {
+                await IntegracaoContabilistica.integrarVenda(venda, empresaId, req.usuarioId);
+                vendasProcessadas++;
+            } catch (error) {
+                erros.push(`Venda ${venda.numeroFactura}: ${error.message}`);
+                console.error(`Erro ao integrar venda ${venda.numeroFactura}:`, error.message);
+            }
+        }
+        
+        for (const pagamento of pagamentosNaoContabilizados) {
+            try {
+                await IntegracaoContabilistica.integrarPagamento(pagamento, empresaId, req.usuarioId);
+                pagamentosProcessados++;
+            } catch (error) {
+                erros.push(`Pagamento ${pagamento.referencia}: ${error.message}`);
+                console.error(`Erro ao integrar pagamento ${pagamento.referencia}:`, error.message);
+            }
+        }
+        
+        res.json({
+            sucesso: true,
+            mensagem: 'Sincronização concluída',
+            resultados: { vendas: vendasProcessadas, pagamentos: pagamentosProcessados },
+            erros: erros.length > 0 ? erros : undefined
+        });
+        
+    } catch (error) {
+        console.error('Erro na sincronização:', error);
+        res.status(500).json({ sucesso: false, mensagem: error.message });
+    }
+});
 
 // ==================== IMPORTAÇÃO/EXPORTAÇÃO ====================
 const multer = require('multer');
@@ -49,6 +145,7 @@ router.get('/modelo-periodos', (req, res) => ImportacaoExportacaoController.down
 // Importação
 router.post('/importar-balancete', upload.single('file'), (req, res) => ImportacaoExportacaoController.importarBalancete(req, res));
 router.post('/importar-periodos', upload.single('file'), (req, res) => ImportacaoExportacaoController.importarPeriodos(req, res));
+router.post('/importar-excel', upload.single('file'), (req, res) => ImportacaoExportacaoController.importarExcel(req, res));
 
 // Sincronização
 router.post('/sincronizar-balancete', (req, res) => ImportacaoExportacaoController.sincronizarBalancete(req, res));
