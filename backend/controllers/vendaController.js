@@ -13,6 +13,10 @@ const integracaoPagamentos = require('../services/integracaoPagamentos');
 const meses = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
                "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
 
+// ============================================
+// FUNÇÕES AUXILIARES
+// ============================================
+
 // Helper para próximo número de factura
 const getProximoNumeroFactura = async (empresaId, serie = "FT") => {
   try {
@@ -79,8 +83,10 @@ async function criarOuAtualizarCliente(dadosCliente, empresaId, empresaNif) {
   }
 }
 
-// Função para criar registo bancário da venda
-async function criarRegistoBancarioVenda(venda, empresa, contaBancaria, iban) {
+// ============================================
+// FUNÇÃO CORRIGIDA: Criar registo bancário com IVA e retenções
+// ============================================
+async function criarRegistoBancarioVendaCompleto(venda, empresa, contaBancaria, detalhesFiscais) {
   try {
     const dataVenda = new Date(venda.data);
     const ano = dataVenda.getFullYear();
@@ -88,28 +94,82 @@ async function criarRegistoBancarioVenda(venda, empresa, contaBancaria, iban) {
     
     const banco = await Banco.findOne({ codNome: contaBancaria, empresaId: empresa._id });
     
+    // Calcular valores fiscais corretamente
+    const subtotalSemIVA = venda.subtotal - (venda.desconto || 0);
+    const iva = detalhesFiscais.incluiIVA ? subtotalSemIVA * ((detalhesFiscais.taxaIVA || 14) / 100) : 0;
+    const retencao = detalhesFiscais.incluiRetencao ? subtotalSemIVA * ((detalhesFiscais.taxaRetencao || 0) / 100) : 0;
+    const valorLiquido = subtotalSemIVA + iva - retencao;
+    
     const tipoReceita = venda.tipoFactura === 'Prestação de Serviço' ? 'Receita - Serviço' : 'Receita - Venda';
     
     const registo = new RegistoBancario({
       data: dataVenda,
       conta: contaBancaria,
       contaId: banco?._id,
-      descricao: `VENDA: ${venda.cliente} - Factura Nº ${venda.numeroFactura}`,
+      descricao: `VENDA: ${venda.cliente} - Factura Nº ${venda.numeroFactura} | IVA: ${iva.toFixed(2)} Kz | Retenção: ${retencao.toFixed(2)} Kz`,
       tipo: tipoReceita,
-      valor: venda.total,
+      valor: valorLiquido,
+      iva: iva,
+      retencao: retencao,
+      taxaIVA: detalhesFiscais.taxaIVA || 14,
+      taxaRetencao: detalhesFiscais.taxaRetencao || 0,
       entradaSaida: 'entrada',
       ano,
       mes,
       documentoReferencia: venda._id.toString(),
       reconcilado: false,
-      empresaId: empresa._id
+      empresaId: empresa._id,
+      detalhesAdicionais: {
+        numeroFactura: venda.numeroFactura,
+        cliente: venda.cliente,
+        nifCliente: venda.nifCliente,
+        formaPagamento: venda.formaPagamento,
+        subtotal: venda.subtotal,
+        desconto: venda.desconto || 0,
+        itensCount: venda.itens.length
+      }
     });
     
     await registo.save();
-    console.log(`✅ Registo bancário criado para venda ${venda._id}: ${venda.total} Kz na conta ${contaBancaria}`);
+    console.log(`✅ Registo bancário criado:`);
+    console.log(`   Valor líquido: ${valorLiquido.toFixed(2)} Kz`);
+    console.log(`   IVA: ${iva.toFixed(2)} Kz (${detalhesFiscais.taxaIVA || 14}%)`);
+    console.log(`   Retenção: ${retencao.toFixed(2)} Kz (${detalhesFiscais.taxaRetencao || 0}%)`);
+    console.log(`   Conta: ${contaBancaria}`);
+    
     return registo;
   } catch (error) {
-    console.error('Erro ao criar registo bancário:', error);
+    console.error('❌ Erro ao criar registo bancário:', error);
+    return null;
+  }
+}
+
+// ============================================
+// FUNÇÃO PARA ATUALIZAR SALDO DA CONTA BANCÁRIA
+// ============================================
+async function atualizarSaldoContaBancaria(empresaId, contaBancaria) {
+  try {
+    const banco = await Banco.findOne({ codNome: contaBancaria, empresaId });
+    if (!banco) {
+      console.log(`⚠️ Conta ${contaBancaria} não encontrada`);
+      return null;
+    }
+    
+    const entradas = await RegistoBancario.find({ empresaId, conta: contaBancaria, entradaSaida: 'entrada' });
+    const saidas = await RegistoBancario.find({ empresaId, conta: contaBancaria, entradaSaida: 'saida' });
+    
+    const totalEntradas = entradas.reduce((sum, r) => sum + (r.valor || 0), 0);
+    const totalSaidas = saidas.reduce((sum, r) => sum + (r.valor || 0), 0);
+    const saldoAtual = (banco.saldoInicial || 0) + totalEntradas - totalSaidas;
+    
+    console.log(`💰 Saldo atual da conta ${contaBancaria}: ${saldoAtual.toFixed(2)} Kz`);
+    console.log(`   Entradas: ${totalEntradas.toFixed(2)} Kz`);
+    console.log(`   Saídas: ${totalSaidas.toFixed(2)} Kz`);
+    console.log(`   Saldo inicial: ${(banco.saldoInicial || 0).toFixed(2)} Kz`);
+    
+    return saldoAtual;
+  } catch (error) {
+    console.error('Erro ao calcular saldo:', error);
     return null;
   }
 }
@@ -269,7 +329,6 @@ exports.emitirVenda = async (req, res) => {
       const taxaIVA = item.taxaIVA || produtoStock.taxaIVA || 14;
       const ivaItem = item.total * (taxaIVA / 100);
       
-      // Processar agendamento para serviços
       let agendamentoData = null;
       if (item.agendamento && (produtoStock.tipo === 'servico' || item.tipo === 'servico')) {
         agendamentoData = {
@@ -434,12 +493,28 @@ exports.emitirVenda = async (req, res) => {
     await novaFactura.save();
     console.log(`✅ Factura salva! Nº ${numeroFactura}`);
 
-    // 3. CRIAR REGISTO BANCÁRIO (apenas se pagamento à vista)
-    if (tipoVenda === 'avista') {
-      await criarRegistoBancarioVenda(novaVenda, empresa, contaParaVenda, ibanParaVenda);
+    // 3. CRIAR REGISTO BANCÁRIO COMPLETO COM IVA E RETENÇÕES
+    const detalhesFiscais = {
+      incluiIVA: venda.incluiIVA !== false,
+      taxaIVA: venda.taxaIVA || 14,
+      incluiRetencao: venda.incluiRetencao || false,
+      taxaRetencao: venda.taxaRetencao || 0
+    };
+
+    await criarRegistoBancarioVendaCompleto(novaVenda, empresa, contaParaVenda, detalhesFiscais);
+
+    // 4. ATUALIZAR SALDO DA CONTA BANCÁRIA
+    await atualizarSaldoContaBancaria(empresa._id, contaParaVenda);
+
+    // 5. VERIFICAR SE A FACTURA FOI CRIADA CORRETAMENTE
+    const facturaCriada = await Factura.findById(novaFactura._id);
+    if (facturaCriada) {
+      console.log(`✅ Factura ${facturaCriada.numeroFactura} disponível no módulo de facturação`);
+    } else {
+      console.log(`⚠️ ERRO: Factura não foi salva corretamente!`);
     }
 
-    // 4. INTEGRAÇÃO COM CONTROLO DE PAGAMENTOS
+    // 6. INTEGRAÇÃO COM CONTROLO DE PAGAMENTOS (apenas para vendas à vista)
     if (venda.formaPagamento !== 'Dinheiro' && tipoVenda === 'avista') {
       try {
         const pagamento = await integracaoPagamentos.integrarVenda(novaVenda, empresa, usuario);
@@ -459,7 +534,13 @@ exports.emitirVenda = async (req, res) => {
         factura: novaFactura,
         cliente: cliente,
         contaBancaria: contaParaVenda,
-        parcelas: parcelasGeradas
+        parcelas: parcelasGeradas,
+        detalhesFiscais: {
+          subtotal: subtotal,
+          iva: totalIva,
+          retencao: totalRetencao,
+          total: totalFinal
+        }
       },
       proximoNumero: numeroFactura + 1
     });
@@ -815,10 +896,9 @@ exports.exportarSAFT = async (req, res) => {
 };
 
 // ============================================
-// 🆕 NOVAS FUNÇÕES: VENDAS A PRAZO
+// 🆕 VENDAS A PRAZO - PARCELAS
 // ============================================
 
-// PUT /api/vendas/:id/pagar-parcela - Registrar pagamento de parcela
 exports.registrarPagamentoParcela = async (req, res) => {
   try {
     const { id } = req.params;
@@ -883,7 +963,6 @@ exports.registrarPagamentoParcela = async (req, res) => {
   }
 };
 
-// GET /api/vendas/pendentes/:empresaId - Vendas com parcelas pendentes
 exports.getVendasPendentes = async (req, res) => {
   try {
     const { empresaId } = req.params;
@@ -921,10 +1000,9 @@ exports.getVendasPendentes = async (req, res) => {
 };
 
 // ============================================
-// 🆕 NOVAS FUNÇÕES: SERVIÇOS COM AGENDAMENTO
+// 🆕 SERVIÇOS COM AGENDAMENTO
 // ============================================
 
-// PUT /api/vendas/:id/servico/:itemIndex - Atualizar agendamento de serviço
 exports.atualizarAgendamentoServico = async (req, res) => {
   try {
     const { id, itemIndex } = req.params;
@@ -967,7 +1045,6 @@ exports.atualizarAgendamentoServico = async (req, res) => {
   }
 };
 
-// GET /api/vendas/servicos/agendados/:empresaId - Listar serviços agendados
 exports.getServicosAgendados = async (req, res) => {
   try {
     const { empresaId } = req.params;
@@ -1015,10 +1092,9 @@ exports.getServicosAgendados = async (req, res) => {
 };
 
 // ============================================
-// 🆕 NOVAS FUNÇÕES: DASHBOARD E RESUMO
+// 🆕 DASHBOARD E RESUMO
 // ============================================
 
-// GET /api/vendas/dashboard/:empresaId - Dashboard
 exports.getDashboard = async (req, res) => {
   try {
     const { empresaId } = req.params;
@@ -1065,7 +1141,6 @@ exports.getDashboard = async (req, res) => {
   }
 };
 
-// GET /api/vendas/resumo/:empresaId - Resumo financeiro
 exports.getResumoFinanceiro = async (req, res) => {
   try {
     const { empresaId } = req.params;
@@ -1108,4 +1183,4 @@ exports.getResumoFinanceiro = async (req, res) => {
   }
 };
 
-console.log('✅ Controller de vendas carregado com todas as melhorias');
+console.log('✅ Controller de vendas carregado com todas as melhorias (IVA, Retenções, Saldos Bancários)');
