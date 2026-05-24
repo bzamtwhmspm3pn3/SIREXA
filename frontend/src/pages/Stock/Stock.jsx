@@ -8,7 +8,8 @@ import {
   Plus, Edit, Trash2, Search, Package, AlertTriangle, TrendingUp, 
   X, CheckCircle, AlertCircle, Loader2, 
   Calendar, DollarSign, FileText, Download,
-  Target, Building2, Save, RefreshCw, Clock, Wrench, Server
+  Target, Building2, Save, RefreshCw, Clock, Wrench, Server,
+  ShoppingCart, Truck
 } from "lucide-react";
 import RelatorioStock from "../../components/RelatorioStock";
 
@@ -20,7 +21,6 @@ const Stock = () => {
   const [loading, setLoading] = useState(false);
   const [loadingEmpresas, setLoadingEmpresas] = useState(true);
   const [salvando, setSalvando] = useState(false);
-  const [redirecting, setRedirecting] = useState(false);
   const [mensagem, setMensagem] = useState({ texto: "", tipo: "" });
   const [modalOpen, setModalOpen] = useState(false);
   const [modalRelatorio, setModalRelatorio] = useState(false);
@@ -30,6 +30,15 @@ const Stock = () => {
   const [filtroStatus, setFiltroStatus] = useState("");
   const [filtroTipo, setFiltroTipo] = useState("");
   const [recarregar, setRecarregar] = useState(false);
+  
+  // Estados para compra com fornecedor
+  const [fornecedores, setFornecedores] = useState([]);
+  const [modalCompra, setModalCompra] = useState(false);
+  const [produtoSelecionado, setProdutoSelecionado] = useState(null);
+  const [fornecedorSelecionado, setFornecedorSelecionado] = useState("");
+  const [quantidadeCompra, setQuantidadeCompra] = useState(1);
+  const [precoUnitarioCompra, setPrecoUnitarioCompra] = useState(0);
+  const [numeroFacturaCompra, setNumeroFacturaCompra] = useState("");
   
   const { user, isGestor, isTecnico, empresaId: userEmpresaId, empresaNome: userEmpresaNome } = useAuth();
 
@@ -58,7 +67,6 @@ const Stock = () => {
     numeroLote: "",
     observacoes: "",
     taxaIVA: 14,
-    // Campos específicos para serviços
     duracaoEstimada: 0,
     unidadeTempo: "horas",
     precoHora: 0,
@@ -69,7 +77,7 @@ const Stock = () => {
     instrucoes: ""
   });
 
-  // Carregar empresas (apenas gestor)
+  // Carregar empresas
   useEffect(() => {
     carregarEmpresas();
   }, []);
@@ -85,14 +93,16 @@ const Stock = () => {
   useEffect(() => {
     if (empresaSelecionada) {
       carregarStock();
+      carregarFornecedores();
     } else {
       setItens([]);
+      setFornecedores([]);
     }
   }, [empresaSelecionada, recarregar]);
 
   const mostrarMensagem = (texto, tipo) => {
     setMensagem({ texto, tipo });
-    setTimeout(() => setMensagem({ texto: "", tipo: "" }), 2000);
+    setTimeout(() => setMensagem({ texto: "", tipo: "" }), 3000);
   };
 
   const carregarEmpresas = async () => {
@@ -101,6 +111,7 @@ const Stock = () => {
       return;
     }
     
+    setLoadingEmpresas(true);
     try {
       const token = localStorage.getItem("token");
       const response = await fetch("https://sirexa-api.onrender.com/api/empresa", {
@@ -123,6 +134,7 @@ const Stock = () => {
       }
     } catch (error) {
       console.error("Erro ao carregar empresas:", error);
+      mostrarMensagem("Erro ao carregar empresas", "erro");
     } finally {
       setLoadingEmpresas(false);
     }
@@ -172,6 +184,85 @@ const Stock = () => {
     }
   };
 
+  const carregarFornecedores = async () => {
+    if (!empresaSelecionada) return;
+    
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch(`https://sirexa-api.onrender.com/api/fornecedores?empresaId=${empresaSelecionada}`, {
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        const fornecedoresList = Array.isArray(data) ? data : (data.dados || []);
+        setFornecedores(fornecedoresList);
+      }
+    } catch (error) {
+      console.error("Erro ao carregar fornecedores:", error);
+    }
+  };
+
+  const registrarCompraComFornecedor = async () => {
+    if (!produtoSelecionado) return;
+    
+    if (!fornecedorSelecionado) {
+      mostrarMensagem("Selecione um fornecedor", "erro");
+      return;
+    }
+    
+    if (quantidadeCompra <= 0) {
+      mostrarMensagem("Quantidade inválida", "erro");
+      return;
+    }
+    
+    const precoUnitario = precoUnitarioCompra > 0 ? precoUnitarioCompra : produtoSelecionado.precoCompra;
+    
+    setSalvando(true);
+    
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch(`https://sirexa-api.onrender.com/api/stock/${produtoSelecionado._id}/compra-fornecedor`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          empresaId: empresaSelecionada,
+          quantidade: quantidadeCompra,
+          precoUnitario: precoUnitario,
+          fornecedorId: fornecedorSelecionado,
+          numeroFactura: numeroFacturaCompra
+        })
+      });
+      
+      const result = await response.json();
+      
+      if (response.ok) {
+        mostrarMensagem(result.mensagem || `Compra registrada com sucesso!`, "sucesso");
+        setModalCompra(false);
+        setRecarregar(!recarregar);
+        resetCompraModal();
+      } else {
+        mostrarMensagem(result.mensagem || "Erro ao registrar compra", "erro");
+      }
+    } catch (error) {
+      console.error("Erro:", error);
+      mostrarMensagem("Erro ao conectar ao servidor", "erro");
+    } finally {
+      setSalvando(false);
+    }
+  };
+
+  const resetCompraModal = () => {
+    setProdutoSelecionado(null);
+    setFornecedorSelecionado("");
+    setQuantidadeCompra(1);
+    setPrecoUnitarioCompra(0);
+    setNumeroFacturaCompra("");
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     
@@ -190,7 +281,6 @@ const Stock = () => {
       return;
     }
 
-    // Validações específicas para produto
     if (formData.tipo === "produto") {
       if (!formData.precoCompra || formData.precoCompra <= 0) {
         mostrarMensagem("Preço de compra é obrigatório para produtos", "erro");
@@ -213,11 +303,21 @@ const Stock = () => {
       const url = editando ? `https://sirexa-api.onrender.com/api/stock/${editando}` : "https://sirexa-api.onrender.com/api/stock";
       const method = editando ? "PUT" : "POST";
       
-      const dadosEnvio = { 
+      let dadosEnvio = { 
         ...formData, 
-        empresaId: empresaSelecionada,
-        dataValidade: formData.dataValidade || (formData.tipo === "produto" ? null : undefined)
+        empresaId: empresaSelecionada
       };
+      
+      if (formData.tipo === "servico") {
+        delete dadosEnvio.precoCompra;
+        delete dadosEnvio.quantidade;
+        delete dadosEnvio.quantidadeMinima;
+        delete dadosEnvio.quantidadeMaxima;
+        delete dadosEnvio.dataValidade;
+        delete dadosEnvio.armazem;
+        delete dadosEnvio.fornecedor;
+        delete dadosEnvio.numeroLote;
+      }
 
       const response = await fetch(url, {
         method,
@@ -241,11 +341,12 @@ const Stock = () => {
         setRecarregar(!recarregar);
       } else {
         mostrarMensagem(result.mensagem || "Erro ao salvar", "erro");
-        setSalvando(false);
+        console.error('Erro detalhado:', result);
       }
     } catch (error) {
       console.error("Erro ao salvar:", error);
       mostrarMensagem("Erro ao conectar ao servidor", "erro");
+    } finally {
       setSalvando(false);
     }
   };
@@ -305,11 +406,9 @@ const Stock = () => {
   };
 
   const handleTipoChange = (novoTipo) => {
-    // Manter os campos comuns, resetar apenas os específicos
     setFormData(prev => ({
       ...prev,
       tipo: novoTipo,
-      // Resetar campos específicos ao mudar tipo
       ...(novoTipo === "produto" ? {
         duracaoEstimada: 0,
         unidadeTempo: "horas",
@@ -405,7 +504,6 @@ const Stock = () => {
 
   const categorias = [...new Set(itens.map(item => item.categoria).filter(Boolean))];
 
-  // Calcular valor total do stock (apenas produtos)
   const valorTotalStock = itens.filter(item => item.tipo === "produto").reduce((acc, p) => {
     const qtd = p.quantidade || 0;
     const precoVenda = p.precoVenda || 0;
@@ -416,7 +514,6 @@ const Stock = () => {
     item.tipo === "produto" && (item.quantidade || 0) <= (item.quantidadeMinima || 5)
   ).length;
   
-  // Calcular margem média (apenas produtos)
   const produtosList = itens.filter(item => item.tipo === "produto");
   const margemMedia = produtosList.length > 0 
     ? (produtosList.reduce((acc, p) => {
@@ -448,8 +545,7 @@ const Stock = () => {
 
   return (
     <Layout title="Gestão de Stock" showBackButton={true} backToRoute="/menu">
-      {/* Toast Notification */}
-      {mensagem.texto && !redirecting && (
+      {mensagem.texto && (
         <div className="fixed top-20 left-1/2 transform -translate-x-1/2 z-50 animate-fade-in-out">
           <div className={`flex items-center gap-2 px-4 py-2 rounded-lg shadow-lg ${
             mensagem.tipo === "sucesso" ? "bg-green-600" : "bg-red-600"
@@ -460,7 +556,6 @@ const Stock = () => {
         </div>
       )}
 
-      {/* Modal de Relatório */}
       {modalRelatorio && (
         <RelatorioStock
           produtos={itens.filter(i => i.tipo === "produto")}
@@ -471,7 +566,6 @@ const Stock = () => {
       )}
 
       <div className="space-y-6">
-        {/* Seletor de Empresa */}
         <EmpresaSelector
           empresas={empresas}
           empresaSelecionada={empresaSelecionada}
@@ -489,7 +583,6 @@ const Stock = () => {
           </div>
         ) : (
           <>
-            {/* Cards de Resumo */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <div className="bg-gradient-to-br from-blue-600/20 to-blue-800/20 rounded-2xl p-5 border border-blue-500/30">
                 <div className="flex items-center justify-between">
@@ -547,7 +640,6 @@ const Stock = () => {
               </div>
             </div>
 
-            {/* Barra de pesquisa */}
             <div className="flex flex-col lg:flex-row gap-4">
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
@@ -605,7 +697,6 @@ const Stock = () => {
               </button>
             </div>
 
-            {/* Tabela de Itens */}
             {loading ? (
               <div className="text-center py-12">
                 <Loader2 className="animate-spin mx-auto mb-4 text-blue-400" size={40} />
@@ -625,122 +716,130 @@ const Stock = () => {
             ) : (
               <div className="bg-gray-800 rounded-2xl overflow-hidden border border-gray-700">
                 <div className="overflow-x-auto">
-                  <table className="w-full min-w-[800px]">
-                    <thead className="bg-gray-700">
-                      <tr className="text-gray-300 text-sm">
-                        <th className="p-4 text-left">Item</th>
-                        <th className="p-4 text-left">Código</th>
-                        <th className="p-4 text-center">Tipo</th>
-                        <th className="p-4 text-center">Qtd</th>
-                        <th className="p-4 text-right">Compra</th>
-                        <th className="p-4 text-right">Venda</th>
-                        <th className="p-4 text-right">Margem</th>
-                        <th className="p-4 text-center">Data Registo</th>
-                        <th className="p-4 text-center">Validade</th>
-                        <th className="p-4 text-center">Ações</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {itensFiltrados.map(item => {
-                        const margem = item.tipo === "produto" && item.precoCompra > 0 
-                          ? ((item.precoVenda - item.precoCompra) / item.precoCompra * 100).toFixed(1) 
-                          : 0;
-                        const isBaixoEstoque = item.tipo === "produto" && (item.quantidade || 0) <= (item.quantidadeMinima || 5);
-                        const isVencido = item.tipo === "produto" && item.dataValidade && new Date(item.dataValidade) < new Date();
-                        const dataRegisto = item.createdAt;
-                        
-                        return (
-                          <tr key={item._id} className="border-t border-gray-700 hover:bg-gray-750 transition">
-                            <td className="p-4">
-                              <div className="font-medium text-white flex items-center gap-2">
-                                {item.tipo === "servico" ? (
-                                  <Wrench size={16} className="text-purple-400" />
-                                ) : (
-                                  <Package size={16} className="text-blue-400" />
-                                )}
-                                {item.produto}
-                              </div>
-                              <div className="text-xs text-gray-400">{item.marca || item.categoria}</div>
-                            </td>
-                            <td className="p-4 text-gray-300 text-sm">{item.codigoBarras || item.codigoInterno || "—"}</td>
-                            <td className="p-4 text-center">
-                              <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs ${
-                                item.tipo === "servico" 
-                                  ? 'bg-purple-500/20 text-purple-400' 
-                                  : 'bg-blue-500/20 text-blue-400'
-                              }`}>
-                                {item.tipo === "servico" ? "Serviço" : "Produto"}
-                              </span>
-                            </td>
-                            <td className="p-4 text-center">
-                              {item.tipo === "produto" ? (
-                                <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-sm font-medium ${
-                                  isBaixoEstoque ? 'bg-yellow-500/20 text-yellow-400' : 
-                                  item.quantidade === 0 ? 'bg-red-500/20 text-red-400' : 'bg-green-500/20 text-green-400'
-                                }`}>
-                                  {item.quantidade || 0} {item.unidadeMedida === "Unidade" ? "un" : item.unidadeMedida?.substring(0, 3)}
-                                </span>
-                              ) : (
-                                <span className="text-gray-400 text-xs">—</span>
-                              )}
-                            </td>
-                            <td className="p-4 text-right text-gray-300">
-                              {item.tipo === "produto" ? `${item.precoCompra?.toLocaleString()} Kz` : "—"}
-                            </td>
-                            <td className="p-4 text-right text-white font-medium">{item.precoVenda?.toLocaleString()} Kz</td>
-                            <td className={`p-4 text-right font-medium ${
-                              item.tipo === "produto" ? (
-                                margem > 50 ? 'text-green-400' : margem > 25 ? 'text-blue-400' : margem > 10 ? 'text-yellow-400' : 'text-red-400'
-                              ) : 'text-gray-500'
-                            }`}>
-                              {item.tipo === "produto" ? `${margem}%` : "—"}
-                            </td>
-                            <td className="p-4 text-center text-gray-400 text-sm">
-                              {formatarData(dataRegisto)}
-                            </td>
-                            <td className="p-4 text-center">
-                              {item.tipo === "produto" && item.dataValidade ? (
-                                <span className={`text-xs px-2 py-1 rounded-full ${
-                                  isVencido ? 'bg-red-500/20 text-red-400' : 'bg-green-500/20 text-green-400'
-                                }`}>
-                                  {formatarData(item.dataValidade)}
-                                </span>
-                              ) : (
-                                <span className="text-xs text-gray-500">—</span>
-                              )}
-                            </td>
-                            <td className="p-4">
-                              <div className="flex justify-center gap-2">
-                                <button
-                                  onClick={() => handleEditClick(item)}
-                                  className="p-2 bg-yellow-600/20 hover:bg-yellow-600/40 rounded-lg transition"
-                                  title="Editar"
-                                >
-                                  <Edit size={16} className="text-yellow-400" />
-                                </button>
-                                <button
-                                  onClick={() => excluirItem(item._id)}
-                                  className="p-2 bg-red-600/20 hover:bg-red-600/40 rounded-lg transition"
-                                  title="Excluir"
-                                >
-                                  <Trash2 size={16} className="text-red-400" />
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
+  <table className="w-full min-w-[900px]">
+    <thead className="bg-gray-700">
+      <tr className="text-gray-300 text-sm">
+        <th className="p-4 text-left">Item</th>
+        <th className="p-4 text-left">Código</th>
+        <th className="p-4 text-center">Tipo</th>
+        <th className="p-4 text-center">Qtd</th>
+        <th className="p-4 text-right">Compra</th>
+        <th className="p-4 text-right">Venda</th>
+        <th className="p-4 text-right">Margem</th>
+        <th className="p-4 text-center">Validade</th>
+        <th className="p-4 text-center">Ações</th>
+       </tr>
+    </thead>
+    <tbody>
+      {itensFiltrados.map(item => {
+        const margem = item.tipo === "produto" && item.precoCompra > 0 
+          ? ((item.precoVenda - item.precoCompra) / item.precoCompra * 100).toFixed(1) 
+          : 0;
+        const isBaixoEstoque = item.tipo === "produto" && (item.quantidade || 0) <= (item.quantidadeMinima || 5);
+        const isVencido = item.tipo === "produto" && item.dataValidade && new Date(item.dataValidade) < new Date();
+        
+        return (
+          <tr key={item._id} className="border-t border-gray-700 hover:bg-gray-750 transition">
+            <td className="p-4">
+              <div className="font-medium text-white flex items-center gap-2">
+                {item.tipo === "servico" ? (
+                  <Wrench size={16} className="text-purple-400" />
+                ) : (
+                  <Package size={16} className="text-blue-400" />
+                )}
+                {item.produto}
+              </div>
+              <div className="text-xs text-gray-400">{item.marca || item.categoria}</div>
+            </td>
+            <td className="p-4 text-gray-300 text-sm">{item.codigoBarras || item.codigoInterno || "—"}</td>
+            <td className="p-4 text-center">
+              <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs ${
+                item.tipo === "servico" 
+                  ? 'bg-purple-500/20 text-purple-400' 
+                  : 'bg-blue-500/20 text-blue-400'
+              }`}>
+                {item.tipo === "servico" ? "Serviço" : "Produto"}
+              </span>
+            </td>
+            <td className="p-4 text-center">
+              {item.tipo === "produto" ? (
+                <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-sm font-medium ${
+                  isBaixoEstoque ? 'bg-yellow-500/20 text-yellow-400' : 
+                  item.quantidade === 0 ? 'bg-red-500/20 text-red-400' : 'bg-green-500/20 text-green-400'
+                }`}>
+                  {item.quantidade || 0} {item.unidadeMedida === "Unidade" ? "un" : item.unidadeMedida?.substring(0, 3)}
+                </span>
+              ) : (
+                <span className="text-gray-400 text-xs">—</span>
+              )}
+            </td>
+            <td className="p-4 text-right text-gray-300">
+              {item.tipo === "produto" ? `${item.precoCompra?.toLocaleString()} Kz` : "—"}
+            </td>
+            <td className="p-4 text-right text-white font-medium">{item.precoVenda?.toLocaleString()} Kz</td>
+            <td className={`p-4 text-right font-medium ${
+              item.tipo === "produto" ? (
+                margem > 50 ? 'text-green-400' : margem > 25 ? 'text-blue-400' : margem > 10 ? 'text-yellow-400' : 'text-red-400'
+              ) : 'text-gray-500'
+            }`}>
+              {item.tipo === "produto" ? `${margem}%` : "—"}
+            </td>
+            <td className="p-4 text-center">
+              {item.tipo === "produto" && item.dataValidade ? (
+                <span className={`text-xs px-2 py-1 rounded-full ${
+                  isVencido ? 'bg-red-500/20 text-red-400' : 'bg-green-500/20 text-green-400'
+                }`}>
+                  {formatarData(item.dataValidade)}
+                </span>
+              ) : (
+                <span className="text-xs text-gray-500">—</span>
+              )}
+            </td>
+            <td className="p-4">
+              <div className="flex justify-center gap-2">
+                {item.tipo === "produto" && (
+                  <button
+                    onClick={() => { 
+                      setProdutoSelecionado(item);
+                      setPrecoUnitarioCompra(item.precoCompra || 0);
+                      setModalCompra(true);
+                    }}
+                    className="p-2 bg-green-600/20 hover:bg-green-600/40 rounded-lg transition"
+                    title="Registar Compra"
+                  >
+                    <ShoppingCart size={16} className="text-green-400" />
+                  </button>
+                )}
+                <button
+                  onClick={() => handleEditClick(item)}
+                  className="p-2 bg-yellow-600/20 hover:bg-yellow-600/40 rounded-lg transition"
+                  title="Editar"
+                >
+                  <Edit size={16} className="text-yellow-400" />
+                </button>
+                <button
+                  onClick={() => excluirItem(item._id)}
+                  className="p-2 bg-red-600/20 hover:bg-red-600/40 rounded-lg transition"
+                  title="Excluir"
+                >
+                  <Trash2 size={16} className="text-red-400" />
+                </button>
+              </div>
+            </td>
+          </tr>
+        );
+      })}
+    </tbody>
+  </table>
+</div>
               </div>
             )}
           </>
         )}
       </div>
 
-      {/* Modal de Cadastro/Edição (Produtos e Serviços) */}
-      {modalOpen && empresaSelecionada && !redirecting && (
+      {/* Modal de Cadastro/Edição */}
+      {modalOpen && empresaSelecionada && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
           <div className="bg-gray-800 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <div className="sticky top-0 bg-gradient-to-r from-blue-600/20 to-purple-600/20 px-6 py-4 border-b border-gray-700">
@@ -765,7 +864,6 @@ const Stock = () => {
                   <p className="text-blue-400 text-sm">Empresa: {empresaAtual?.nome}</p>
                 </div>
 
-                {/* Tipo (Produto ou Serviço) */}
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-2">Tipo</label>
                   <div className="flex gap-4">
@@ -858,7 +956,6 @@ const Stock = () => {
                   </div>
                 </div>
 
-                {/* Campos específicos para Produto */}
                 {formData.tipo === "produto" && (
                   <>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -910,7 +1007,6 @@ const Stock = () => {
                   </>
                 )}
 
-                {/* Campos específicos para Serviço */}
                 {formData.tipo === "servico" && (
                   <>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -938,19 +1034,19 @@ const Stock = () => {
                       <div>
                         <label className="block text-sm font-medium text-gray-300 mb-2">Executado Por</label>
                         <input type="text" className="w-full p-3 rounded-xl bg-gray-700/50 border border-gray-600 text-white"
-                          value={formData.executadoPor} onChange={(e) => setFormData({...formData, executadoPor: e.target.value})} placeholder="Ex: Equipe Técnica, João Silva" />
+                          value={formData.executadoPor} onChange={(e) => setFormData({...formData, executadoPor: e.target.value})} />
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-300 mb-2">Local de Execução</label>
                         <input type="text" className="w-full p-3 rounded-xl bg-gray-700/50 border border-gray-600 text-white"
-                          value={formData.localExecucao} onChange={(e) => setFormData({...formData, localExecucao: e.target.value})} placeholder="Cliente, Oficina, Remoto" />
+                          value={formData.localExecucao} onChange={(e) => setFormData({...formData, localExecucao: e.target.value})} />
                       </div>
                     </div>
 
                     <div>
                       <label className="block text-sm font-medium text-gray-300 mb-2">Recursos Necessários</label>
                       <input type="text" className="w-full p-3 rounded-xl bg-gray-700/50 border border-gray-600 text-white"
-                        value={formData.recursosNecessarios} onChange={(e) => setFormData({...formData, recursosNecessarios: e.target.value})} placeholder="Ferramentas, equipamentos necessários" />
+                        value={formData.recursosNecessarios} onChange={(e) => setFormData({...formData, recursosNecessarios: e.target.value})} />
                     </div>
 
                     <div>
@@ -968,7 +1064,7 @@ const Stock = () => {
                     <div>
                       <label className="block text-sm font-medium text-gray-300 mb-2">Instruções Especiais</label>
                       <textarea rows="2" className="w-full p-3 rounded-xl bg-gray-700/50 border border-gray-600 text-white resize-none"
-                        value={formData.instrucoes} onChange={(e) => setFormData({...formData, instrucoes: e.target.value})} placeholder="Instruções adicionais para execução do serviço" />
+                        value={formData.instrucoes} onChange={(e) => setFormData({...formData, instrucoes: e.target.value})} />
                     </div>
                   </>
                 )}
@@ -1002,6 +1098,125 @@ const Stock = () => {
         </div>
       )}
 
+      {/* Modal de Registro de Compra com Fornecedor */}
+      {modalCompra && produtoSelecionado && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-800 rounded-2xl w-full max-w-md">
+            <div className="bg-gradient-to-r from-green-600/20 to-blue-600/20 px-6 py-4 border-b border-gray-700">
+              <div className="flex justify-between items-center">
+                <div className="flex items-center gap-3">
+                  <div className="bg-green-600 p-2 rounded-lg">
+                    <ShoppingCart className="text-white" size={20} />
+                  </div>
+                  <h2 className="text-xl font-bold text-white">Registar Compra</h2>
+                </div>
+                <button onClick={() => { setModalCompra(false); resetCompraModal(); }} className="text-gray-400 hover:text-white">
+                  <X size={24} />
+                </button>
+              </div>
+            </div>
+            
+            <div className="p-6 space-y-4">
+              <div className="bg-gray-700/30 rounded-lg p-3">
+                <p className="text-gray-400 text-sm">Produto</p>
+                <p className="text-white font-medium">{produtoSelecionado.produto}</p>
+                <p className="text-gray-400 text-sm mt-2">Preço Atual</p>
+                <p className="text-green-400 font-bold">{produtoSelecionado.precoVenda?.toLocaleString()} Kz</p>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Fornecedor *
+                </label>
+                <select 
+                  className="w-full p-3 rounded-xl bg-gray-700/50 border border-gray-600 text-white"
+                  value={fornecedorSelecionado}
+                  onChange={(e) => setFornecedorSelecionado(e.target.value)}
+                  required
+                >
+                  <option value="">Selecione um fornecedor</option>
+                  {fornecedores.map(f => (
+                    <option key={f._id} value={f._id}>{f.nome}</option>
+                  ))}
+                </select>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    Quantidade *
+                  </label>
+                  <input 
+                    type="number" 
+                    className="w-full p-3 rounded-xl bg-gray-700/50 border border-gray-600 text-white"
+                    value={quantidadeCompra}
+                    onChange={(e) => setQuantidadeCompra(parseInt(e.target.value) || 0)}
+                    min="1"
+                    required
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    Preço Unitário (Kz)
+                  </label>
+                  <input 
+                    type="number" 
+                    className="w-full p-3 rounded-xl bg-gray-700/50 border border-gray-600 text-white"
+                    value={precoUnitarioCompra}
+                    onChange={(e) => setPrecoUnitarioCompra(parseFloat(e.target.value) || 0)}
+                    placeholder={produtoSelecionado.precoCompra}
+                  />
+                  <p className="text-xs text-gray-400 mt-1">
+                    Deixe em branco para usar o preço atual
+                  </p>
+                </div>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Nº Factura
+                </label>
+                <input 
+                  type="text" 
+                  className="w-full p-3 rounded-xl bg-gray-700/50 border border-gray-600 text-white"
+                  value={numeroFacturaCompra}
+                  onChange={(e) => setNumeroFacturaCompra(e.target.value)}
+                  placeholder="Opcional"
+                />
+              </div>
+              
+              <div className="bg-blue-600/10 rounded-lg p-3">
+                <p className="text-blue-400 text-sm">Resumo da Compra</p>
+                <div className="flex justify-between mt-2">
+                  <span className="text-gray-400">Total:</span>
+                  <span className="text-green-400 font-bold">
+                    {(quantidadeCompra * (precoUnitarioCompra > 0 ? precoUnitarioCompra : produtoSelecionado.precoCompra)).toLocaleString()} Kz
+                  </span>
+                </div>
+              </div>
+              
+              <div className="flex gap-3 pt-4">
+                <button
+                  onClick={registrarCompraComFornecedor}
+                  disabled={salvando}
+                  className="flex-1 bg-green-600 hover:bg-green-700 py-3 rounded-xl transition flex items-center justify-center gap-2"
+                >
+                  {salvando ? <Loader2 className="animate-spin" size={20} /> : <CheckCircle size={20} />}
+                  {salvando ? "Processando..." : "Confirmar Compra"}
+                </button>
+                <button
+                  onClick={() => { setModalCompra(false); resetCompraModal(); }}
+                  className="px-6 py-3 bg-gray-700 hover:bg-gray-600 rounded-xl transition"
+                >
+                  Cancelar
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <style jsx>{`
         @keyframes fade-in-out {
           0% { opacity: 0; transform: translateY(-20px); }
@@ -1009,20 +1224,7 @@ const Stock = () => {
           85% { opacity: 1; transform: translateY(0); }
           100% { opacity: 0; transform: translateY(-20px); }
         }
-        
-        @keyframes fade-in {
-          from { opacity: 0; }
-          to { opacity: 1; }
-        }
-        
-        @keyframes scale-in {
-          from { transform: scale(0.95); opacity: 0; }
-          to { transform: scale(1); opacity: 1; }
-        }
-        
         .animate-fade-in-out { animation: fade-in-out 2s ease forwards; }
-        .animate-fade-in { animation: fade-in 0.2s ease-out; }
-        .animate-scale-in { animation: scale-in 0.2s ease-out; }
         .bg-gray-750 { background-color: #2a2a3a; }
       `}</style>
     </Layout>

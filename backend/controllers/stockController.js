@@ -491,12 +491,16 @@ exports.getStockById = async (req, res) => {
   }
 };
 
-// POST - Criar item (produto ou serviço)
+// ============================================
+// POST - Criar item (produto ou serviço) - CORRIGIDO
+// ============================================
 exports.createStock = async (req, res) => {
   try {
     const { empresaId, tipo = 'produto' } = req.body;
     
-    // Validação da empresa
+    console.log('📦 Recebendo dados:', JSON.stringify(req.body, null, 2));
+    
+    // 1. VALIDAÇÃO DA EMPRESA
     if (!empresaId || !mongoose.Types.ObjectId.isValid(empresaId)) {
       return res.status(400).json({ 
         sucesso: false, 
@@ -506,7 +510,7 @@ exports.createStock = async (req, res) => {
     
     const empresaIdObj = new mongoose.Types.ObjectId(empresaId);
     
-    // Validação de campos obrigatórios comuns
+    // 2. VALIDAÇÃO DO NOME (OBRIGATÓRIO)
     const nome = sanitizarString(req.body.produto);
     if (!nome) {
       return res.status(400).json({ 
@@ -515,6 +519,7 @@ exports.createStock = async (req, res) => {
       });
     }
     
+    // 3. VALIDAÇÃO DO PREÇO DE VENDA (OBRIGATÓRIO)
     const precoVenda = validarNumero(req.body.precoVenda, 0);
     if (precoVenda <= 0) {
       return res.status(400).json({ 
@@ -523,7 +528,7 @@ exports.createStock = async (req, res) => {
       });
     }
     
-    // Verificação de duplicatas
+    // 4. VERIFICAR DUPLICATA POR NOME
     const existeItem = await Stock.findOne({ 
       empresaId: empresaIdObj, 
       produto: nome 
@@ -536,12 +541,13 @@ exports.createStock = async (req, res) => {
       });
     }
     
+    // 5. VERIFICAR DUPLICATA POR CÓDIGO DE BARRAS (SE FORNECIDO)
     if (req.body.codigoBarras) {
-      const existeCodigoBarras = await Stock.findOne({ 
+      const existeCodigo = await Stock.findOne({ 
         empresaId: empresaIdObj, 
         codigoBarras: sanitizarString(req.body.codigoBarras) 
       });
-      if (existeCodigoBarras) {
+      if (existeCodigo) {
         return res.status(400).json({ 
           sucesso: false, 
           mensagem: `Código de barras "${req.body.codigoBarras}" já está em uso` 
@@ -549,6 +555,7 @@ exports.createStock = async (req, res) => {
       }
     }
     
+    // 6. VERIFICAR DUPLICATA POR CÓDIGO INTERNO (SE FORNECIDO)
     if (req.body.codigoInterno) {
       const existeCodigoInterno = await Stock.findOne({ 
         empresaId: empresaIdObj, 
@@ -562,27 +569,29 @@ exports.createStock = async (req, res) => {
       }
     }
     
-    // Validações específicas por tipo
-    let itemData = {
-      ...req.body,
+    // 7. DADOS COMUNS (produto e serviço)
+    const itemData = {
       produto: nome,
       empresaId: empresaIdObj,
       tipo: tipo,
-      precoVenda,
-      precoCompra: 0,
-      quantidade: 0,
+      precoVenda: precoVenda,
+      categoria: req.body.categoria || 'Geral',
+      unidadeMedida: req.body.unidadeMedida || 'Unidade',
+      taxaIVA: validarNumero(req.body.taxaIVA, 0, 36, 14),
+      observacoes: req.body.observacoes || '',
+      ativo: true,
       criadoPor: req.user?.nome || "Sistema",
-      criadoPorId: req.user?.id,
       createdAt: new Date(),
       updatedAt: new Date()
     };
     
+    // 8. CAMPOS ESPECÍFICOS PARA PRODUTO
     if (tipo === 'produto') {
       const precoCompra = validarNumero(req.body.precoCompra, 0);
       if (precoCompra <= 0) {
         return res.status(400).json({ 
           sucesso: false, 
-          mensagem: "Preço de compra deve ser maior que zero" 
+          mensagem: "Preço de compra deve ser maior que zero para produtos" 
         });
       }
       
@@ -590,6 +599,14 @@ exports.createStock = async (req, res) => {
         return res.status(400).json({ 
           sucesso: false, 
           mensagem: "Preço de venda não pode ser menor que o preço de compra" 
+        });
+      }
+      
+      // DATA DE VALIDADE - OBRIGATÓRIA PARA PRODUTOS
+      if (!req.body.dataValidade) {
+        return res.status(400).json({ 
+          sucesso: false, 
+          mensagem: "Data de validade é obrigatória para produtos" 
         });
       }
       
@@ -603,7 +620,6 @@ exports.createStock = async (req, res) => {
       
       const hoje = new Date();
       hoje.setHours(0, 0, 0, 0);
-      
       if (dataValidade <= hoje) {
         return res.status(400).json({ 
           sucesso: false, 
@@ -611,54 +627,50 @@ exports.createStock = async (req, res) => {
         });
       }
       
-      itemData = {
-        ...itemData,
-        precoCompra,
-        dataValidade,
-        quantidade: validarNumero(req.body.quantidade, 0),
-        quantidadeMinima: validarNumero(req.body.quantidadeMinima, 0, 999999, 5),
-        quantidadeMaxima: validarNumero(req.body.quantidadeMaxima, 0, 999999, 1000),
-        estoqueSeguranca: validarNumero(req.body.estoqueSeguranca, 0),
-        pontoReposicao: validarNumero(req.body.pontoReposicao, 0),
-        armazem: sanitizarString(req.body.armazem) || "Principal",
-        dataUltimaEntrada: (req.body.quantidade || 0) > 0 ? new Date() : null,
-        controlaValidade: req.body.controlaValidade !== false,
-        controlaLote: req.body.controlaLote === true
-      };
-    } else {
-      // Serviço: validações específicas
-      const errosServico = validarServico(req.body);
-      if (errosServico.length > 0) {
-        return res.status(400).json({ 
-          sucesso: false, 
-          mensagem: errosServico.join(', ') 
-        });
+      itemData.precoCompra = precoCompra;
+      itemData.dataValidade = dataValidade;
+      itemData.quantidade = validarNumero(req.body.quantidade, 0, 999999, 0);
+      itemData.quantidadeMinima = validarNumero(req.body.quantidadeMinima, 0, 999999, 5);
+      itemData.quantidadeMaxima = validarNumero(req.body.quantidadeMaxima, 0, 999999, 1000);
+      itemData.armazem = sanitizarString(req.body.armazem) || "Principal";
+      itemData.fornecedor = sanitizarString(req.body.fornecedor) || "";
+      itemData.numeroLote = sanitizarString(req.body.numeroLote) || "";
+      itemData.marca = sanitizarString(req.body.marca) || "";
+      itemData.controlaValidade = req.body.controlaValidade !== false;
+      
+      if (itemData.quantidade > 0) {
+        itemData.dataUltimaEntrada = new Date();
       }
       
-      itemData = {
-        ...itemData,
-        quantidade: 0,
-        controlaValidade: false,
-        duracaoEstimada: validarNumero(req.body.duracaoEstimada, 0),
-        unidadeTempo: req.body.unidadeTempo || 'horas',
-        precoHora: validarNumero(req.body.precoHora, 0),
-        executadoPor: sanitizarString(req.body.executadoPor),
-        requerAgendamento: req.body.requerAgendamento === true,
-        localExecucao: sanitizarString(req.body.localExecucao),
-        recursosNecessarios: sanitizarString(req.body.recursosNecessarios),
-        instrucoes: sanitizarString(req.body.instrucoes)
-      };
+    } else if (tipo === 'servico') {
+      // 9. CAMPOS ESPECÍFICOS PARA SERVIÇO
+      itemData.quantidade = 0;
+      itemData.controlaValidade = false;
+      itemData.duracaoEstimada = validarNumero(req.body.duracaoEstimada, 0);
+      itemData.unidadeTempo = req.body.unidadeTempo || 'horas';
+      itemData.precoHora = validarNumero(req.body.precoHora, 0);
+      itemData.executadoPor = sanitizarString(req.body.executadoPor) || '';
+      itemData.requerAgendamento = req.body.requerAgendamento === true;
+      itemData.localExecucao = sanitizarString(req.body.localExecucao) || '';
+      itemData.recursosNecessarios = sanitizarString(req.body.recursosNecessarios) || '';
+      itemData.instrucoes = sanitizarString(req.body.instrucoes) || '';
+      
+      // Remover campos que não se aplicam a serviços
+      delete itemData.precoCompra;
+      delete itemData.dataValidade;
+      delete itemData.quantidadeMinima;
+      delete itemData.quantidadeMaxima;
+      delete itemData.armazem;
+      delete itemData.fornecedor;
+      delete itemData.numeroLote;
+      delete itemData.dataUltimaEntrada;
     }
     
-    // Remover campos undefined
-    Object.keys(itemData).forEach(key => {
-      if (itemData[key] === undefined || itemData[key] === null) {
-        delete itemData[key];
-      }
-    });
-    
+    // 10. SALVAR NO BANCO
     const item = new Stock(itemData);
     await item.save();
+    
+    console.log(`✅ ${tipo === 'produto' ? 'Produto' : 'Serviço'} criado: ${item.produto}`);
     
     res.status(201).json({ 
       sucesso: true, 
@@ -667,7 +679,7 @@ exports.createStock = async (req, res) => {
     });
     
   } catch (error) {
-    console.error('Erro em createStock:', error);
+    console.error('❌ Erro em createStock:', error);
     
     if (error.code === 11000) {
       return res.status(400).json({ 
@@ -678,10 +690,11 @@ exports.createStock = async (req, res) => {
     
     res.status(500).json({ 
       sucesso: false, 
-      mensagem: "Erro interno ao cadastrar item" 
+      mensagem: "Erro interno ao cadastrar item: " + error.message 
     });
   }
 };
+
 
 // PUT - Atualizar item (produto ou serviço)
 exports.updateStock = async (req, res) => {
@@ -1579,3 +1592,119 @@ exports.getDashboardStock = async (req, res) => {
     });
   }
 };
+
+
+// ============================================
+// ASSOCIAR PRODUTO AO FORNECEDOR AUTOMATICAMENTE
+// ============================================
+
+// POST - Registrar entrada com associação automática ao fornecedor
+exports.registrarEntradaComFornecedor = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { empresaId, quantidade, fornecedorId, numeroFactura, dataCompra } = req.body;
+    
+    if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ 
+        sucesso: false, 
+        mensagem: "ID do produto inválido" 
+      });
+    }
+    
+    const produto = await Stock.findOne({ 
+      _id: id, 
+      empresaId: new mongoose.Types.ObjectId(empresaId) 
+    });
+    
+    if (!produto) {
+      return res.status(404).json({ 
+        sucesso: false, 
+        mensagem: "Produto não encontrado" 
+      });
+    }
+    
+    const quantidadeNum = parseInt(quantidade);
+    if (isNaN(quantidadeNum) || quantidadeNum <= 0) {
+      return res.status(400).json({ 
+        sucesso: false, 
+        mensagem: "Quantidade inválida" 
+      });
+    }
+    
+    // Registrar movimentação
+    await produto.registrarMovimentacao(
+      'entrada',
+      quantidadeNum,
+      `Compra do fornecedor ${fornecedorId} - Factura ${numeroFactura || 'N/A'}`,
+      req.user?.nome || "Sistema",
+      req.user?.id
+    );
+    
+    // Registrar associação com fornecedor no histórico
+    produto.ultimoFornecedor = fornecedorId;
+    produto.ultimaCompra = {
+      data: dataCompra || new Date(),
+      quantidade: quantidadeNum,
+      precoUnitario: produto.precoCompra,
+      numeroFactura: numeroFactura,
+      fornecedorId: fornecedorId
+    };
+    
+    // Atualizar preço médio se necessário
+    const valorTotalAntigo = produto.quantidade * produto.precoCompra;
+    const valorTotalNovo = quantidadeNum * produto.precoCompra;
+    const quantidadeTotal = produto.quantidade + quantidadeNum;
+    produto.precoCompraMedio = (valorTotalAntigo + valorTotalNovo) / quantidadeTotal;
+    
+    await produto.save();
+    
+    // Atualizar estatísticas do fornecedor
+    await atualizarEstatisticasFornecedor(fornecedorId, produto._id, quantidadeNum, produto.precoCompra);
+    
+    res.json({ 
+      sucesso: true, 
+      mensagem: `${quantidadeNum} unidade(s) adicionadas e associadas ao fornecedor`,
+      dados: {
+        produto: produto.produto,
+        quantidadeAtual: produto.quantidade,
+        fornecedorId,
+        precoMedio: produto.precoCompraMedio
+      }
+    });
+    
+  } catch (error) {
+    console.error('Erro ao registrar entrada com fornecedor:', error);
+    res.status(500).json({ 
+      sucesso: false, 
+      mensagem: error.message 
+    });
+  }
+};
+
+// Função para atualizar estatísticas do fornecedor
+async function atualizarEstatisticasFornecedor(fornecedorId, produtoId, quantidade, preco) {
+  try {
+    const Fornecedor = require('../models/Fornecedor');
+    const fornecedor = await Fornecedor.findById(fornecedorId);
+    
+    if (fornecedor) {
+      // Adicionar ao histórico de compras do fornecedor
+      fornecedor.historicoCompras = fornecedor.historicoCompras || [];
+      fornecedor.historicoCompras.push({
+        data: new Date(),
+        produtoId,
+        quantidade,
+        valorTotal: quantidade * preco,
+        precoUnitario: preco
+      });
+      
+      // Atualizar total comprado
+      fornecedor.totalCompras = (fornecedor.totalCompras || 0) + (quantidade * preco);
+      fornecedor.ultimaCompra = new Date();
+      
+      await fornecedor.save();
+    }
+  } catch (error) {
+    console.error('Erro ao atualizar estatísticas do fornecedor:', error);
+  }
+}

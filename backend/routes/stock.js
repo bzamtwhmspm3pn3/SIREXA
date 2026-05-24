@@ -4,13 +4,13 @@ const router = express.Router();
 const stockController = require('../controllers/stockController');
 const { verifyToken } = require('../middlewares/auth');
 const { validateEmpresaAccess } = require('../middlewares/security');
-const { logMiddleware } = require('../middlewares/logger'); // <-- ADICIONADO
+const { logMiddleware } = require('../middlewares/logger');
 
 // ============================================
 // 🔒 TODAS AS ROTAS EXIGEM AUTENTICAÇÃO E VALIDAÇÃO DE EMPRESA
 // ============================================
 router.use(verifyToken);
-router.use(validateEmpresaAccess); // Garante que apenas dados da empresa autorizada sejam acessados
+router.use(validateEmpresaAccess);
 
 // ============================================
 // 📊 DASHBOARD E ESTATÍSTICAS
@@ -33,39 +33,62 @@ router.get('/por-lote/:lote', stockController.getStockByLote);
 router.get('/por-armazem/:armazem', stockController.getStockByArmazem);
 
 // ============================================
-// 📦 CRUD PRINCIPAL (produtos e serviços) - COM LOGGER
+// 📦 CRUD PRINCIPAL (produtos e serviços)
 // ============================================
 router.get('/', stockController.getAllStock);
 router.get('/:id', stockController.getStockById);
-router.post('/', logMiddleware('stock'), stockController.createStock);
-router.put('/:id', logMiddleware('stock'), stockController.updateStock);
-router.delete('/:id', logMiddleware('stock'), stockController.deleteStock);
+router.post('/', stockController.createStock);
+router.put('/:id', stockController.updateStock);
+router.delete('/:id', stockController.deleteStock);
 
 // ============================================
-// 📦 OPERAÇÕES DE ESTOQUE (apenas produtos) - COM LOGGER
+// 🆕 ROTA PARA COMPRA COM FORNECEDOR (ADICIONAR)
 // ============================================
-router.patch('/:id/ajustar-estoque', logMiddleware('stock-ajuste'), stockController.ajustarEstoque);
-router.post('/:id/entrada', logMiddleware('stock-entrada'), stockController.registrarEntrada);
-router.post('/:id/saida', logMiddleware('stock-saida'), stockController.registrarSaida);
+router.post('/:id/compra-fornecedor', stockController.registrarEntradaComFornecedor);
 
 // ============================================
-// 🔄 DEVOLUÇÕES E DESCARTES (apenas produtos) - COM LOGGER
+// 📦 OPERAÇÕES DE ESTOQUE (apenas produtos)
 // ============================================
-router.post('/:id/devolver', logMiddleware('stock-devolucao'), stockController.devolverProduto);
-router.post('/:id/descartar', logMiddleware('stock-descarte'), stockController.descartarProduto);
+router.patch('/:id/ajustar-estoque', stockController.ajustarEstoque);
+router.post('/:id/entrada', stockController.registrarEntrada);
+router.post('/:id/saida', stockController.registrarSaida);
 
 // ============================================
-// 📄 RELATÓRIOS (produtos e serviços separados)
+// 🔄 DEVOLUÇÕES E DESCARTES (apenas produtos)
+// ============================================
+router.post('/:id/devolver', stockController.devolverProduto);
+router.post('/:id/descartar', stockController.descartarProduto);
+
+// ============================================
+// 📄 RELATÓRIOS
 // ============================================
 router.get('/relatorio/validade', stockController.relatorioValidade);
 router.get('/relatorio/movimentacoes', stockController.relatorioMovimentacoes);
 
 // ============================================
-// 🆕 ROTA ESPECÍFICA PARA SERVIÇOS (opcional)
+// 🆕 ROTA ESPECÍFICA PARA SERVIÇOS
 // ============================================
 router.get('/servicos', (req, res, next) => {
   req.query.tipo = 'servico';
   next();
 }, stockController.getAllStock);
+
+// ============================================
+// 📊 ROTA DE TESTE
+// ============================================
+router.get('/health/check', (req, res) => {
+  res.json({ 
+    sucesso: true, 
+    mensagem: 'API de Stock funcionando',
+    controllers: {
+      getAllStock: typeof stockController.getAllStock === 'function',
+      getStockById: typeof stockController.getStockById === 'function',
+      createStock: typeof stockController.createStock === 'function',
+      updateStock: typeof stockController.updateStock === 'function',
+      deleteStock: typeof stockController.deleteStock === 'function',
+      registrarEntradaComFornecedor: typeof stockController.registrarEntradaComFornecedor === 'function'
+    }
+  });
+});
 
 module.exports = router;

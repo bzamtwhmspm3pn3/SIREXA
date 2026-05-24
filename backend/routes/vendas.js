@@ -4,6 +4,7 @@ const router = express.Router();
 const vendaController = require('../controllers/vendaController');
 const { verifyToken } = require('../middlewares/auth');
 const { validateEmpresaAccess } = require('../middlewares/security');
+const { logMiddleware } = require('../middlewares/logger');
 
 // ============================================
 // 🔒 Todas as rotas exigem autenticação
@@ -11,31 +12,56 @@ const { validateEmpresaAccess } = require('../middlewares/security');
 router.use(verifyToken);
 
 // ============================================
-// 📋 ROTAS COM VALIDAÇÃO DE ACESSO À EMPRESA
+// 📋 ROTAS PRINCIPAIS
 // ============================================
 
 // GET - Histórico de vendas da empresa
-// 🔒 middleware validateEmpresaAccess usa o parâmetro :empresaId da URL
 router.get('/historico/:empresaId', validateEmpresaAccess, vendaController.getHistorico);
 
 // POST - Emitir nova venda
-// 🔒 middleware validateEmpresaAccess usa o body empresaId ou a empresa do token
 router.post('/emitir', validateEmpresaAccess, vendaController.emitirVenda);
 
-// ============================================
-// 🔍 ROTAS COM VALIDAÇÃO MANUAL (sem middleware, controller valida)
-// ============================================
-
-// GET - Próximo número de factura (validação manual no controller)
+// GET - Próximo número de factura
 router.get('/proximo-numero/:empresaNif', vendaController.getProximoNumero);
 
-// GET - Exportar SAFT (validação manual no controller)
+// GET - Exportar SAFT
 router.get('/exportar-saft/:empresaNif', vendaController.exportarSAFT);
 
-// GET - Buscar venda por ID (validação manual no controller)
+// GET - Buscar venda por ID
 router.get('/:id', vendaController.getVendaById);
 
-// DELETE - Cancelar venda por ID (validação manual no controller)
+// DELETE - Cancelar venda
 router.delete('/:id', vendaController.cancelarVenda);
+
+// ============================================
+// 🆕 ROTA PARA PAGAMENTO DE PARCELA (ADICIONAR)
+// ============================================
+router.put('/:id/pagar-parcela', vendaController.registrarPagamentoParcela);
+
+// ============================================
+// 🆕 ROTA PARA VENDAS PENDENTES
+// ============================================
+router.get('/pendentes/:empresaId', vendaController.getVendasPendentes);
+
+// ============================================
+// 🆕 ROTA PARA SERVIÇOS AGENDADOS
+// ============================================
+router.get('/servicos/agendados/:empresaId', vendaController.getServicosAgendados);
+
+// ============================================
+// 📊 ROTA DE TESTE
+// ============================================
+router.get('/health/check', (req, res) => {
+  res.json({ 
+    sucesso: true, 
+    mensagem: 'API de Vendas funcionando',
+    rotas: {
+      historico: '/historico/:empresaId',
+      emitir: '/emitir',
+      pagarParcela: '/:id/pagar-parcela',
+      pendentes: '/pendentes/:empresaId'
+    }
+  });
+});
 
 module.exports = router;

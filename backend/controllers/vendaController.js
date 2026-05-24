@@ -84,24 +84,115 @@ async function criarOuAtualizarCliente(dadosCliente, empresaId, empresaNif) {
 }
 
 // ============================================
-// FUNÇÃO CORRIGIDA: Criar registo bancário com IVA e retenções
+// FUNÇÃO CORRIGIDA E ROBUSTA: Criar registo bancário com IVA e retenções
 // ============================================
 async function criarRegistoBancarioVendaCompleto(venda, empresa, contaBancaria, detalhesFiscais) {
   try {
-    const dataVenda = new Date(venda.data);
+    console.log('🔧 [REGISTO BANCÁRIO] Iniciando criação...');
+    console.log('   Venda ID:', venda._id);
+    console.log('   Conta:', contaBancaria);
+    console.log('   Empresa ID:', empresa._id);
+    
+    // Validações iniciais
+    if (!venda) {
+      throw new Error('Dados da venda não fornecidos');
+    }
+    if (!empresa || !empresa._id) {
+      throw new Error('Empresa inválida');
+    }
+    if (!contaBancaria) {
+      throw new Error('Conta bancária não informada');
+    }
+    
+    const dataVenda = venda.data ? new Date(venda.data) : new Date();
+    if (isNaN(dataVenda.getTime())) {
+      throw new Error('Data da venda inválida');
+    }
+    
     const ano = dataVenda.getFullYear();
     const mes = meses[dataVenda.getMonth()];
     
-    const banco = await Banco.findOne({ codNome: contaBancaria, empresaId: empresa._id });
+    // Buscar banco (com tratamento de erro)
+    let banco = null;
+    try {
+      banco = await Banco.findOne({ codNome: contaBancaria, empresaId: empresa._id });
+      if (!banco) {
+        console.log(`⚠️ Banco com código "${contaBancaria}" não encontrado. Continuando sem referência...`);
+      } else {
+        console.log(`✅ Banco encontrado: ${banco.nome} (${banco.codNome})`);
+      }
+    } catch (err) {
+      console.log(`⚠️ Erro ao buscar banco: ${err.message}. Continuando...`);
+    }
     
-    // Calcular valores fiscais corretamente
-    const subtotalSemIVA = venda.subtotal - (venda.desconto || 0);
-    const iva = detalhesFiscais.incluiIVA ? subtotalSemIVA * ((detalhesFiscais.taxaIVA || 14) / 100) : 0;
-    const retencao = detalhesFiscais.incluiRetencao ? subtotalSemIVA * ((detalhesFiscais.taxaRetencao || 0) / 100) : 0;
+    // Calcular valores fiscais com segurança
+    const subtotal = venda.subtotal || 0;
+    const desconto = venda.desconto || 0;
+    const subtotalSemIVA = Math.max(0, subtotal - desconto);
+    
+    // Calcular IVA
+    let iva = 0;
+    if (detalhesFiscais.incluiIVA !== false) {
+      const taxaIVA = detalhesFiscais.taxaIVA || 14;
+      iva = subtotalSemIVA * (taxaIVA / 100);
+    }
+    
+    // Calcular Retenção
+    let retencao = 0;
+    if (detalhesFiscais.incluiRetencao === true) {
+      const taxaRetencao = detalhesFiscais.taxaRetencao || 0;
+      retencao = subtotalSemIVA * (taxaRetencao / 100);
+    }
+    
     const valorLiquido = subtotalSemIVA + iva - retencao;
     
     const tipoReceita = venda.tipoFactura === 'Prestação de Serviço' ? 'Receita - Serviço' : 'Receita - Venda';
     
+    console.log(`💰 Valores calculados:`);
+    console.log(`   Subtotal: ${subtotal.toFixed(2)} Kz`);
+    console.log(`   Desconto: ${desconto.toFixed(2)} Kz`);
+    console.log(`   Base cálculo: ${subtotalSemIVA.toFixed(2)} Kz`);
+    console.log(`   IVA (${detalhesFiscais.taxaIVA || 14}%): ${iva.toFixed(2)} Kz`);
+    console.log(`   Retenção (${detalhesFiscais.taxaRetencao || 0}%): ${retencao.toFixed(2)} Kz`);
+    console.log(`   Valor Líquido: ${valorLiquido.toFixed(2)} Kz`);
+    
+    // Verificar se já existe registo para esta venda (evitar duplicação)
+    const registoExistente = await RegistoBancario.findOne({ 
+      documentoReferencia: venda._id.toString(),
+      empresaId: empresa._id 
+    });
+    
+    if (registoExistente) {
+      console.log(`⚠️ Registo bancário já existe para esta venda: ${registoExistente._id}`);
+      console.log(`   Atualizando em vez de criar novo...`);
+      
+      // Atualizar registo existente
+      registoExistente.data = dataVenda;
+      registoExistente.conta = contaBancaria;
+      registoExistente.descricao = `VENDA: ${venda.cliente} - Factura Nº ${venda.numeroFactura} | IVA: ${iva.toFixed(2)} Kz | Retenção: ${retencao.toFixed(2)} Kz`;
+      registoExistente.valor = valorLiquido;
+      registoExistente.iva = iva;
+      registoExistente.retencao = retencao;
+      registoExistente.taxaIVA = detalhesFiscais.taxaIVA || 14;
+      registoExistente.taxaRetencao = detalhesFiscais.taxaRetencao || 0;
+      registoExistente.ano = ano;
+      registoExistente.mes = mes;
+      registoExistente.detalhesAdicionais = {
+        numeroFactura: venda.numeroFactura,
+        cliente: venda.cliente,
+        nifCliente: venda.nifCliente,
+        formaPagamento: venda.formaPagamento,
+        subtotal: venda.subtotal,
+        desconto: venda.desconto || 0,
+        itensCount: venda.itens?.length || 0
+      };
+      
+      await registoExistente.save();
+      console.log(`✅ Registo bancário atualizado com sucesso!`);
+      return registoExistente;
+    }
+    
+    // Criar novo registo
     const registo = new RegistoBancario({
       data: dataVenda,
       conta: contaBancaria,
@@ -114,8 +205,8 @@ async function criarRegistoBancarioVendaCompleto(venda, empresa, contaBancaria, 
       taxaIVA: detalhesFiscais.taxaIVA || 14,
       taxaRetencao: detalhesFiscais.taxaRetencao || 0,
       entradaSaida: 'entrada',
-      ano,
-      mes,
+      ano: ano,
+      mes: mes,
       documentoReferencia: venda._id.toString(),
       reconcilado: false,
       empresaId: empresa._id,
@@ -126,53 +217,89 @@ async function criarRegistoBancarioVendaCompleto(venda, empresa, contaBancaria, 
         formaPagamento: venda.formaPagamento,
         subtotal: venda.subtotal,
         desconto: venda.desconto || 0,
-        itensCount: venda.itens.length
+        itensCount: venda.itens?.length || 0
       }
     });
     
     await registo.save();
-    console.log(`✅ Registo bancário criado:`);
-    console.log(`   Valor líquido: ${valorLiquido.toFixed(2)} Kz`);
-    console.log(`   IVA: ${iva.toFixed(2)} Kz (${detalhesFiscais.taxaIVA || 14}%)`);
-    console.log(`   Retenção: ${retencao.toFixed(2)} Kz (${detalhesFiscais.taxaRetencao || 0}%)`);
+    console.log(`✅ Registo bancário criado com sucesso!`);
+    console.log(`   ID: ${registo._id}`);
     console.log(`   Conta: ${contaBancaria}`);
+    console.log(`   Valor: ${valorLiquido.toFixed(2)} Kz`);
     
     return registo;
+    
   } catch (error) {
-    console.error('❌ Erro ao criar registo bancário:', error);
+    console.error('❌ ERRO AO CRIAR REGISTO BANCÁRIO:');
+    console.error('   Mensagem:', error.message);
+    console.error('   Stack:', error.stack);
+    
+    // Não lançar erro para não interromper a venda
+    console.log('⚠️ Continuando processo de venda mesmo com erro no registo bancário');
     return null;
   }
 }
 
 // ============================================
-// FUNÇÃO PARA ATUALIZAR SALDO DA CONTA BANCÁRIA
+// FUNÇÃO CORRIGIDA: Atualizar saldo da conta bancária
 // ============================================
 async function atualizarSaldoContaBancaria(empresaId, contaBancaria) {
   try {
-    const banco = await Banco.findOne({ codNome: contaBancaria, empresaId });
-    if (!banco) {
-      console.log(`⚠️ Conta ${contaBancaria} não encontrada`);
+    console.log('💰 [SALDO] Calculando saldo da conta...');
+    console.log(`   Empresa: ${empresaId}`);
+    console.log(`   Conta: ${contaBancaria}`);
+    
+    if (!empresaId || !contaBancaria) {
+      console.log('⚠️ Dados incompletos para calcular saldo');
       return null;
     }
     
-    const entradas = await RegistoBancario.find({ empresaId, conta: contaBancaria, entradaSaida: 'entrada' });
-    const saidas = await RegistoBancario.find({ empresaId, conta: contaBancaria, entradaSaida: 'saida' });
+    const banco = await Banco.findOne({ codNome: contaBancaria, empresaId });
+    if (!banco) {
+      console.log(`⚠️ Conta ${contaBancaria} não encontrada para calcular saldo`);
+      return null;
+    }
+    
+    const entradas = await RegistoBancario.find({ 
+      empresaId, 
+      conta: contaBancaria, 
+      entradaSaida: 'entrada' 
+    });
+    
+    const saidas = await RegistoBancario.find({ 
+      empresaId, 
+      conta: contaBancaria, 
+      entradaSaida: 'saida' 
+    });
     
     const totalEntradas = entradas.reduce((sum, r) => sum + (r.valor || 0), 0);
     const totalSaidas = saidas.reduce((sum, r) => sum + (r.valor || 0), 0);
     const saldoAtual = (banco.saldoInicial || 0) + totalEntradas - totalSaidas;
     
-    console.log(`💰 Saldo atual da conta ${contaBancaria}: ${saldoAtual.toFixed(2)} Kz`);
-    console.log(`   Entradas: ${totalEntradas.toFixed(2)} Kz`);
-    console.log(`   Saídas: ${totalSaidas.toFixed(2)} Kz`);
+    console.log(`💰 Saldo atual da conta ${contaBancaria}:`);
     console.log(`   Saldo inicial: ${(banco.saldoInicial || 0).toFixed(2)} Kz`);
+    console.log(`   Total entradas: ${totalEntradas.toFixed(2)} Kz`);
+    console.log(`   Total saídas: ${totalSaidas.toFixed(2)} Kz`);
+    console.log(`   Saldo atual: ${saldoAtual.toFixed(2)} Kz`);
+    
+    // Opcional: Atualizar campo de saldo no banco (se existir)
+    if (banco.saldoAtual !== undefined) {
+      banco.saldoAtual = saldoAtual;
+      await banco.save();
+      console.log(`✅ Saldo atualizado no registro do banco`);
+    }
     
     return saldoAtual;
+    
   } catch (error) {
-    console.error('Erro ao calcular saldo:', error);
+    console.error('❌ Erro ao calcular saldo da conta:', error);
+    console.error('   Stack:', error.stack);
     return null;
   }
 }
+
+
+
 
 // ============================================
 // FUNÇÃO PARA GERAR PARCELAS
