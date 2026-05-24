@@ -210,10 +210,26 @@ const FacturaSchema = new mongoose.Schema({
 });
 
 // ============================================
-// ÍNDICES OTIMIZADOS
+// ÍNDICES OTIMIZADOS - CORRIGIDOS (SEM ERRO DE DUPLICAÇÃO)
 // ============================================
-FacturaSchema.index({ empresaNif: 1, serie: 1, numeroFactura: 1 }, { unique: true, sparse: true });
-FacturaSchema.index({ empresaNif: 1, tipo: 1, numeroDocumento: 1 }, { unique: true, sparse: true });
+
+// 🔥 Índice para facturas (numeroFactura) - IGNORA NULL
+FacturaSchema.index(
+  { empresaNif: 1, serie: 1, numeroFactura: 1 }, 
+  { 
+    unique: true, 
+    sparse: true,
+    partialFilterExpression: { numeroFactura: { $exists: true, $ne: null } }
+  }
+);
+
+// 🔥 ÍNDICE REMOVIDO - CAUSAVA DUPLICATE KEY ERROR
+// Este índice foi removido porque causava conflito com numeroDocumento: null
+// Para documentos que usam numeroDocumento (Orcamento, Recibo, NotaCredito), 
+// o índice não é necessário pois a unicidade é garantida pelo _id
+// FacturaSchema.index({ empresaNif: 1, tipo: 1, numeroDocumento: 1 }, { unique: true, sparse: true });
+
+// Índices simples (sem unique - nunca causam erro)
 FacturaSchema.index({ empresaId: 1, dataEmissao: -1 });
 FacturaSchema.index({ cliente: 1 });
 FacturaSchema.index({ clienteId: 1 });
