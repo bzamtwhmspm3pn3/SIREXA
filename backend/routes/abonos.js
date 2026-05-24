@@ -2,14 +2,15 @@ const express = require('express');
 const router = express.Router();
 const abonoController = require('../controllers/abonoController');
 const { verifyToken } = require('../middlewares/auth');
+const { logMiddleware } = require('../middlewares/logger');
 
 router.use(verifyToken);
 
-router.get('/', abonoController.listarAbonos);
-router.post('/', abonoController.criarAbono);
-router.put('/:id', abonoController.atualizarAbono);
-router.delete('/:id', abonoController.excluirAbono);
-router.post('/:id/integrar', abonoController.integrarFolha);
-router.get('/estatisticas', abonoController.getEstatisticas);
+router.get('/', logMiddleware('abono-listar'), abonoController.listarAbonos);
+router.post('/', logMiddleware('abono-criar'), abonoController.criarAbono);
+router.put('/:id', logMiddleware('abono-atualizar'), abonoController.atualizarAbono);
+router.delete('/:id', logMiddleware('abono-deletar'), abonoController.excluirAbono);
+router.post('/:id/integrar', logMiddleware('abono-integrar-folha'), abonoController.integrarFolha);
+router.get('/estatisticas', logMiddleware('abono-estatisticas'), abonoController.getEstatisticas);
 
 module.exports = router;

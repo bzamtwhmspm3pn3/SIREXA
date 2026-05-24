@@ -5,6 +5,7 @@ const path = require('path');
 const Empresa = require('../models/Empresa');
 const ImportService = require('../services/importService');
 const { verifyToken } = require('../middlewares/auth');
+const { logMiddleware } = require('../middlewares/logger');
 
 // Configurar multer para upload
 const storage = multer.memoryStorage();
@@ -44,7 +45,7 @@ const upload = multer({
 });
 
 // GET - Baixar modelo de Excel
-router.get('/modelo', async (req, res) => {
+router.get('/modelo', logMiddleware('importacao-modelo-baixar'), async (req, res) => {
   try {
     const buffer = ImportService.generateTemplate();
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
@@ -58,7 +59,7 @@ router.get('/modelo', async (req, res) => {
 });
 
 // POST - Importar funcionários
-router.post('/funcionarios', verifyToken, upload.single('arquivo'), async (req, res) => {
+router.post('/funcionarios', verifyToken, logMiddleware('importacao-funcionarios-upload'), upload.single('arquivo'), async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ mensagem: 'Nenhum arquivo enviado' });
@@ -128,7 +129,7 @@ router.post('/funcionarios', verifyToken, upload.single('arquivo'), async (req, 
 });
 
 // POST - Importar via JSON (API)
-router.post('/funcionarios/json', verifyToken, async (req, res) => {
+router.post('/funcionarios/json', verifyToken, logMiddleware('importacao-funcionarios-json'), async (req, res) => {
   try {
     const { dados } = req.body;
     

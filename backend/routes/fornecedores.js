@@ -2,9 +2,10 @@ const express = require('express');
 const router = express.Router();
 const Fornecedor = require('../models/Fornecedor');
 const Empresa = require('../models/Empresa');
-const Pagamento = require('../models/Pagamento'); // <-- ADICIONADO
+const Pagamento = require('../models/Pagamento');
 const integracaoPagamentos = require('../services/integracaoPagamentos');
 const { verifyToken } = require('../middlewares/auth');
+const { logMiddleware } = require('../middlewares/logger'); // <-- ADICIONADO
 
 router.use(verifyToken);
 
@@ -49,8 +50,8 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// POST - Criar novo fornecedor (COM INTEGRAÇÃO AUTOMÁTICA)
-router.post('/', async (req, res) => {
+// POST - Criar novo fornecedor (COM LOGGER)
+router.post('/', logMiddleware('fornecedores'), async (req, res) => {
   try {
     const { nome, nif, empresaId, ...outros } = req.body;
 
@@ -79,23 +80,22 @@ router.post('/', async (req, res) => {
     await fornecedor.save();
     
     // 🔥 INTEGRAÇÃO AUTOMÁTICA - Gerar APENAS o PRÓXIMO pagamento
-if (fornecedor.contratos && fornecedor.contratos.length > 0) {
-    const hoje = new Date();
-    // Encontrar o contrato com a data de pagamento mais próxima
-    const contratosAtivos = fornecedor.contratos
+    if (fornecedor.contratos && fornecedor.contratos.length > 0) {
+      const hoje = new Date();
+      const contratosAtivos = fornecedor.contratos
         .filter(c => new Date(c.dataFim) >= hoje && c.modalidadePagamento !== 'Único')
         .sort((a, b) => {
-            const pa = a.proximoPagamento || new Date(a.dataInicio);
-            const pb = b.proximoPagamento || new Date(b.dataInicio);
-            return pa - pb;
+          const pa = a.proximoPagamento || new Date(a.dataInicio);
+          const pb = b.proximoPagamento || new Date(b.dataInicio);
+          return pa - pb;
         });
-    
-    if (contratosAtivos.length > 0) {
+      
+      if (contratosAtivos.length > 0) {
         const proximoContrato = contratosAtivos[0];
         console.log(`🏢 Gerando APENAS o próximo pagamento para ${fornecedor.nome}`);
         await integracaoPagamentos.integrarFornecedor(fornecedor, proximoContrato, req.user?.nome || 'Sistema');
+      }
     }
-}
     
     res.status(201).json(fornecedor);
   } catch (error) {
@@ -104,8 +104,8 @@ if (fornecedor.contratos && fornecedor.contratos.length > 0) {
   }
 });
 
-// PUT - Atualizar fornecedor
-router.put('/:id', async (req, res) => {
+// PUT - Atualizar fornecedor (COM LOGGER)
+router.put('/:id', logMiddleware('fornecedores'), async (req, res) => {
   try {
     const { id } = req.params;
     const { nif, empresaId, ...atualizacoes } = req.body;
@@ -154,8 +154,8 @@ router.put('/:id', async (req, res) => {
   }
 });
 
-// DELETE - Excluir fornecedor
-router.delete('/:id', async (req, res) => {
+// DELETE - Excluir fornecedor (COM LOGGER)
+router.delete('/:id', logMiddleware('fornecedores'), async (req, res) => {
   try {
     const fornecedor = await Fornecedor.findByIdAndDelete(req.params.id);
     if (!fornecedor) {
@@ -172,8 +172,8 @@ router.delete('/:id', async (req, res) => {
 // ROTAS DE CONTRATOS COM INTEGRAÇÃO AUTOMÁTICA
 // =============================================
 
-// POST - Adicionar contrato a fornecedor (COM INTEGRAÇÃO AUTOMÁTICA)
-router.post('/:id/contratos', async (req, res) => {
+// POST - Adicionar contrato a fornecedor (COM LOGGER)
+router.post('/:id/contratos', logMiddleware('fornecedores-contratos'), async (req, res) => {
   try {
     const { id } = req.params;
     const contrato = req.body;
@@ -215,11 +215,10 @@ router.post('/:id/contratos', async (req, res) => {
 });
 
 // =============================================
-// ROTA DE RECALCULO E GERAÇÃO DE PAGAMENTOS PENDENTES
+// ROTA DE RECALCULO E GERAÇÃO DE PAGAMENTOS PENDENTES (COM LOGGER)
 // =============================================
 
-// POST - Recalcular todos os contratos e gerar pagamentos pendentes
-router.post('/recalcular-pagamentos', async (req, res) => {
+router.post('/recalcular-pagamentos', logMiddleware('fornecedores-recalculo'), async (req, res) => {
   try {
     const { empresaId } = req.body;
     console.log('\n🔄 [FORNECEDORES] Recalculando contratos e gerando pagamentos pendentes...');
@@ -358,8 +357,8 @@ router.get('/:id/pagamentos', async (req, res) => {
   }
 });
 
-// PUT - Atualizar status do pagamento
-router.put('/pagamentos/:pagamentoId', async (req, res) => {
+// PUT - Atualizar status do pagamento (COM LOGGER)
+router.put('/pagamentos/:pagamentoId', logMiddleware('fornecedores-pagamentos'), async (req, res) => {
   try {
     const { pagamentoId } = req.params;
     const { status, dataPagamento, observacao } = req.body;
@@ -394,8 +393,8 @@ router.put('/pagamentos/:pagamentoId', async (req, res) => {
   }
 });
 
-// POST - Gerar pagamentos automáticos para fornecedores
-router.post('/gerar-pagamentos', async (req, res) => {
+// POST - Gerar pagamentos automáticos para fornecedores (COM LOGGER)
+router.post('/gerar-pagamentos', logMiddleware('fornecedores-gerar-pagamentos'), async (req, res) => {
   try {
     const { empresaId } = req.body;
     const pagamentos = await integracaoPagamentos.gerarPagamentosFornecedores(empresaId);
@@ -411,13 +410,11 @@ router.post('/gerar-pagamentos', async (req, res) => {
   }
 });
 
-
 // =============================================
-// ROTA PARA GERAR PAGAMENTO DE CONTRATO ESPECÍFICO
+// ROTA PARA GERAR PAGAMENTO DE CONTRATO ESPECÍFICO (COM LOGGER)
 // =============================================
 
-// POST - Gerar pagamento para um contrato específico
-router.post('/:id/contratos/:contratoIndex/gerar-pagamento', async (req, res) => {
+router.post('/:id/contratos/:contratoIndex/gerar-pagamento', logMiddleware('fornecedores-contrato-pagamento'), async (req, res) => {
   try {
     const { id, contratoIndex } = req.params;
     
@@ -475,8 +472,8 @@ router.post('/:id/contratos/:contratoIndex/gerar-pagamento', async (req, res) =>
   }
 });
 
-// DELETE - Excluir contrato específico
-router.delete('/:id/contratos/:contratoIndex', async (req, res) => {
+// DELETE - Excluir contrato específico (COM LOGGER)
+router.delete('/:id/contratos/:contratoIndex', logMiddleware('fornecedores-contrato'), async (req, res) => {
   try {
     const { id, contratoIndex } = req.params;
     
@@ -514,7 +511,6 @@ router.delete('/:id/contratos/:contratoIndex', async (req, res) => {
     res.status(500).json({ sucesso: false, mensagem: error.message });
   }
 });
-
 
 // =============================================
 // FUNÇÕES AUXILIARES

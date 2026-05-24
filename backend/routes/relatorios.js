@@ -1,7 +1,8 @@
-// backend/routes/relatorios.js - VERSAO COMPLETA (CORRIGIDA E ACENTUADA)
+// backend/routes/relatorios.js
 const express = require('express');
 const router = express.Router();
 const { verifyToken } = require('../middlewares/auth');
+const { logMiddleware } = require('../middlewares/logger');
 
 // Importar modelos
 const Venda = require('../models/Venda');
@@ -654,7 +655,7 @@ No que concerne à liquidez, o saldo bancário ${textoVariacaoSaldo}. Partiu de 
 // ============================================
 // ROTA PRINCIPAL
 // ============================================
-router.get('/completo', async (req, res) => {
+router.get('/completo', logMiddleware('relatorio-consulta'), async (req, res) => {
   try {
     const { empresaId, tipoPeriodo, ano, mes } = req.query;
     
@@ -746,7 +747,7 @@ router.get('/completo', async (req, res) => {
 // ============================================
 // ROTAS DE HISTÓRICO
 // ============================================
-router.get('/historico/listar', async (req, res) => {
+router.get('/historico/listar', logMiddleware('relatorio-historico-listar'), async (req, res) => {
   try {
     const { empresaId, page = 1, limit = 10 } = req.query;
     if (!empresaId) {
@@ -771,7 +772,7 @@ router.get('/historico/listar', async (req, res) => {
   }
 });
 
-router.get('/detalhes/:id', async (req, res) => {
+router.get('/detalhes/:id', logMiddleware('relatorio-detalhes'), async (req, res) => {
   try {
     const relatorio = await Relatorio.findById(req.params.id);
     if (!relatorio) {
@@ -787,7 +788,7 @@ router.get('/detalhes/:id', async (req, res) => {
   }
 });
 
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', logMiddleware('relatorio-deletar'), async (req, res) => {
   try {
     await Relatorio.findByIdAndDelete(req.params.id);
     res.json({ sucesso: true });

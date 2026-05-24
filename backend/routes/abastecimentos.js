@@ -1,16 +1,18 @@
 // backend/routes/abastecimentos.js
 const express = require('express');
 const router = express.Router();
+const mongoose = require('mongoose');
 const Abastecimento = require('../models/Abastecimento');
 const Viatura = require('../models/Viatura');
 const Empresa = require('../models/Empresa');
 const integracaoPagamentos = require('../services/integracaoPagamentos');
 const { verifyToken } = require('../middlewares/auth');
+const { logMiddleware } = require('../middlewares/logger');
 
 router.use(verifyToken);
 
 // GET - Listar abastecimentos por empresa
-router.get('/', async (req, res) => {
+router.get('/', logMiddleware('abastecimento-listar'), async (req, res) => {
   try {
     const { empresaId } = req.query;
     
@@ -29,7 +31,7 @@ router.get('/', async (req, res) => {
 });
 
 // GET - Por ID
-router.get('/:id', async (req, res) => {
+router.get('/:id', logMiddleware('abastecimento-consultar'), async (req, res) => {
   try {
     const { empresaId } = req.query;
     const abastecimento = await Abastecimento.findOne({ 
@@ -49,7 +51,7 @@ router.get('/:id', async (req, res) => {
 });
 
 // GET - Estatísticas por empresa
-router.get('/stats/resumo', async (req, res) => {
+router.get('/stats/resumo', logMiddleware('abastecimento-estatisticas'), async (req, res) => {
   try {
     const { empresaId } = req.query;
     
@@ -92,7 +94,7 @@ router.get('/stats/resumo', async (req, res) => {
 });
 
 // POST - Criar abastecimento
-router.post('/', async (req, res) => {
+router.post('/', logMiddleware('abastecimento-criar'), async (req, res) => {
   try {
     console.log('\n⛽ [ABASTECIMENTO] Criando abastecimento...');
     console.log('Body:', JSON.stringify(req.body, null, 2));
@@ -161,7 +163,7 @@ router.post('/', async (req, res) => {
 });
 
 // PUT - Atualizar abastecimento
-router.put('/:id', async (req, res) => {
+router.put('/:id', logMiddleware('abastecimento-atualizar'), async (req, res) => {
   try {
     const { empresaId, ...dados } = req.body;
     
@@ -194,7 +196,7 @@ router.put('/:id', async (req, res) => {
 });
 
 // DELETE - Excluir abastecimento
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', logMiddleware('abastecimento-deletar'), async (req, res) => {
   try {
     const { empresaId } = req.query;
     

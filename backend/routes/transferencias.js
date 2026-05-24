@@ -1,14 +1,15 @@
-// backend/routes/transferencias.js - ADICIONAR CRIAÇÃO DE PAGAMENTO
+// backend/routes/transferencias.js
 const express = require('express');
 const router = express.Router();
 const Transferencia = require('../models/Transferencia');
 const Banco = require('../models/Banco');
 const RegistoBancario = require('../models/RegistoBancario');
 const ContaCorrente = require('../models/ContaCorrente');
-const Pagamento = require('../models/Pagamento'); // 🔥 ADICIONADO
+const Pagamento = require('../models/Pagamento');
 const Custo = require('../models/Custo');
 const Receita = require('../models/Receita');
 const { verifyToken } = require('../middlewares/auth');
+const { logMiddleware } = require('../middlewares/logger');
 
 router.use(verifyToken);
 
@@ -48,13 +49,11 @@ async function calcularSaldoAtual(codNome, empresaId) {
 // ============================================
 async function criarPagamento(transferencia, empresaId) {
   try {
-    // Apenas transferências de SAÍDA (pagamentos) viram pagamentos
     if (transferencia.tipo !== 'Saída') {
       console.log(`   ⏭️ Não é saída - não criar pagamento`);
       return null;
     }
     
-    // Verificar se já existe pagamento para esta transferência
     const pagamentoExistente = await Pagamento.findOne({
       origemId: transferencia._id,
       origemModel: 'Transferencia',
@@ -66,7 +65,6 @@ async function criarPagamento(transferencia, empresaId) {
       return pagamentoExistente;
     }
     
-    // Determinar o tipo de pagamento baseado na categoria
     let tipoPagamento = 'Operacional';
     let categoriaPagamento = transferencia.categoria;
     
@@ -76,7 +74,6 @@ async function criarPagamento(transferencia, empresaId) {
       tipoPagamento = 'Outro';
     }
     
-    // Gerar referência única para o pagamento
     const ano = new Date().getFullYear();
     const mes = String(new Date().getMonth() + 1).padStart(2, '0');
     const sequencial = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
@@ -97,7 +94,7 @@ async function criarPagamento(transferencia, empresaId) {
       saldo: 0,
       dataVencimento: transferencia.data || new Date(),
       dataPagamento: transferencia.data || new Date(),
-      status: 'Pago', // 🔥 Já vem como PAGO porque a transferência foi efetuada
+      status: 'Pago',
       descricao: transferencia.designacao,
       observacao: transferencia.observacao,
       formaPagamento: 'Transferência Bancária',
@@ -341,8 +338,8 @@ router.get('/', async (req, res) => {
   }
 });
 
-// POST - Criar transferência
-router.post('/', async (req, res) => {
+// POST - Criar transferência (COM LOGGER)
+router.post('/', logMiddleware('transferencias'), async (req, res) => {
   try {
     const { 
       contaDebitar, 
@@ -464,8 +461,8 @@ router.post('/', async (req, res) => {
   }
 });
 
-// DELETE - Excluir transferência
-router.delete('/:id', async (req, res) => {
+// DELETE - Excluir transferência (COM LOGGER)
+router.delete('/:id', logMiddleware('transferencias'), async (req, res) => {
   try {
     const { empresaId } = req.query;
     

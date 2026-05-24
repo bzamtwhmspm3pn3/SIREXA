@@ -3,6 +3,7 @@ const express = require('express');
 const router = express.Router();
 const pagamentoController = require('../controllers/pagamentoController');
 const { verifyToken } = require('../middlewares/auth');
+const { logMiddleware } = require('../middlewares/logger');
 
 router.use(verifyToken);
 
@@ -10,21 +11,21 @@ router.use(verifyToken);
 router.get('/contas-debito', pagamentoController.listarContasDebito);
 router.get('/saldo-conta', pagamentoController.getSaldoConta);
 
-// Rotas principais
+// Rotas principais (GET - sem logging)
 router.get('/', pagamentoController.listarPagamentos);
 router.get('/dashboard', pagamentoController.getDashboard);
 router.get('/proximos', pagamentoController.getProximosPagamentos);
 router.get('/estatisticas', pagamentoController.getEstatisticasPorCategoria);
 router.get('/folha', pagamentoController.buscarPagamentosFolha);
 
-// 🔥 NOVAS ROTAS - Pagamento com seleção de conta
+// 🔥 ROTAS DE PAGAMENTO COM LOGGER
 router.get('/preparar-pagamento', pagamentoController.prepararPagamento);
-router.post('/processar-pagamento/:id', pagamentoController.processarPagamento);
+router.post('/processar-pagamento/:id', logMiddleware('pagamentos-processar'), pagamentoController.processarPagamento);
 
-// Rotas de criação e atualização
-router.post('/', pagamentoController.criarPagamentoManual);
-router.put('/:id/status', pagamentoController.atualizarStatusPagamento);
-router.put('/:id', pagamentoController.atualizarStatus);
-router.delete('/:id', pagamentoController.cancelarPagamento);
+// Rotas de criação e atualização - COM LOGGER
+router.post('/', logMiddleware('pagamentos'), pagamentoController.criarPagamentoManual);
+router.put('/:id/status', logMiddleware('pagamentos-status'), pagamentoController.atualizarStatusPagamento);
+router.put('/:id', logMiddleware('pagamentos'), pagamentoController.atualizarStatus);
+router.delete('/:id', logMiddleware('pagamentos'), pagamentoController.cancelarPagamento);
 
 module.exports = router;

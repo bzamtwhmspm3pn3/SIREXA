@@ -8,6 +8,7 @@ const jwt = require('jsonwebtoken');
 const Empresa = require('../models/Empresa');
 const Gestor = require('../models/Gestor');
 const { verifyToken } = require('../middlewares/auth');
+const { logMiddleware } = require('../middlewares/logger'); // <-- ADICIONADO
 
 // Garantir que a pasta uploads existe
 const uploadDir = path.join(__dirname, '../uploads');
@@ -174,12 +175,9 @@ router.get('/:id', async (req, res) => {
 });
 
 // ============================================
-// POST - Criar empresa e associar ao gestor (COM NOVO TOKEN)
+// POST - Criar empresa e associar ao gestor (COM LOGGER)
 // ============================================
-// ============================================
-// POST - Criar empresa e associar ao gestor (COM CONFIGURAÇÕES INSS)
-// ============================================
-router.post('/', upload.single('logotipo'), async (req, res) => {
+router.post('/', logMiddleware('empresa'), upload.single('logotipo'), async (req, res) => {
   try {
     console.log('=== INICIANDO CADASTRO DE EMPRESA ===');
     console.log('👤 Gestor ID:', req.user.id);
@@ -196,7 +194,6 @@ router.post('/', upload.single('logotipo'), async (req, res) => {
       objetoSocial, dataConstituicao, capitalSocial, servicos,
       banco, iban, swift,
       caed, regimeTributario,
-      // 🔥 NOVOS CAMPOS 🔥
       isBaixosRendimentos,
       regimeINSS,
       inssColaboradorTaxa,
@@ -223,18 +220,17 @@ router.post('/', upload.single('logotipo'), async (req, res) => {
       return res.status(400).json({ mensagem: 'Já existe uma empresa com este NIF' });
     }
     
-    // 🔥 CONFIGURAR TAXAS INSS 🔥
     let inssColaborador = inssColaboradorTaxa;
     let inssEmpregador = inssEmpregadorTaxa;
     let isBaixos = false;
     
     if (isBaixosRendimentos || regimeINSS === 'baixos_rendimentos') {
       isBaixos = true;
-      inssColaborador = inssColaboradorTaxa || 0.015;  // 1.5%
-      inssEmpregador = inssEmpregadorTaxa || 0.04;     // 4%
+      inssColaborador = inssColaboradorTaxa || 0.015;
+      inssEmpregador = inssEmpregadorTaxa || 0.04;
     } else {
-      inssColaborador = inssColaboradorTaxa || 0.03;   // 3%
-      inssEmpregador = inssEmpregadorTaxa || 0.08;     // 8%
+      inssColaborador = inssColaboradorTaxa || 0.03;
+      inssEmpregador = inssEmpregadorTaxa || 0.08;
     }
     
     const empresaData = {
@@ -256,16 +252,13 @@ router.post('/', upload.single('logotipo'), async (req, res) => {
       regimeTributario: regimeTributario || '',
       logotipo: req.file ? req.file.filename : null,
       ativo: true,
-      // 🔥 CAMPOS INSS 🔥
       isBaixosRendimentos: isBaixos,
       regimeINSS: isBaixos ? 'baixos_rendimentos' : 'normal',
       inssColaboradorTaxa: inssColaborador,
       inssEmpregadorTaxa: inssEmpregador,
       limiteBaixosRendimentos: limiteBaixosRendimentos || 350000,
-      // 🔥 CAMPOS IRT 🔥
       irtTipoCalculo: irtTipoCalculo || 'progressivo',
       irtTaxaFixa: irtTaxaFixa || 0.065,
-      // 🔥 CAMPOS IVA 🔥
       taxaIVA: taxaIVA || 14,
       incluiIVA: incluiIVA !== undefined ? incluiIVA : true,
       incluiRetencao: incluiRetencao || false,
@@ -278,9 +271,6 @@ router.post('/', upload.single('logotipo'), async (req, res) => {
     await empresa.save();
     
     console.log(`✅ Empresa criada: ${empresa.nome}`);
-    console.log(`   Regime INSS: ${empresa.descricaoRegimeINSS}`);
-    console.log(`   Colaborador: ${empresa.inssColaboradorTaxa * 100}%`);
-    console.log(`   Empregador: ${empresa.inssEmpregadorTaxa * 100}%`);
     
     // ASSOCIAR EMPRESA AO GESTOR
     await Gestor.findByIdAndUpdate(
@@ -322,9 +312,9 @@ router.post('/', upload.single('logotipo'), async (req, res) => {
 });
 
 // ============================================
-// PUT - Atualizar empresa (com verificação de acesso)
+// PUT - Atualizar empresa (COM LOGGER)
 // ============================================
-router.put('/:id', upload.single('logotipo'), async (req, res) => {
+router.put('/:id', logMiddleware('empresa'), upload.single('logotipo'), async (req, res) => {
   try {
     const gestor = await Gestor.findById(req.user.id);
     if (!gestor || !gestor.empresas || !gestor.empresas.includes(req.params.id)) {
@@ -359,9 +349,9 @@ router.put('/:id', upload.single('logotipo'), async (req, res) => {
 });
 
 // ============================================
-// DELETE - Excluir empresa (com verificação de acesso)
+// DELETE - Excluir empresa (COM LOGGER)
 // ============================================
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', logMiddleware('empresa'), async (req, res) => {
   try {
     const gestor = await Gestor.findById(req.user.id);
     if (!gestor || !gestor.empresas || !gestor.empresas.includes(req.params.id)) {
@@ -385,7 +375,6 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
-
 // ============================================
 // GET - Verificar acesso do gestor à empresa
 // ============================================
@@ -401,16 +390,13 @@ router.get('/verificar-acesso/:empresaId', async (req, res) => {
     
     let temAcesso = false;
     
-    // ADMIN tem acesso total
     if (usuarioRole === 'admin') {
       temAcesso = true;
     }
-    // TÉCNICO: verifica se a empresa do token é a mesma
     else if (usuarioRole === 'tecnico') {
       temAcesso = empresaId === usuarioEmpresaId;
       console.log(`   Técnico: acesso = ${temAcesso}`);
     }
-    // GESTOR: verifica se a empresa está na lista de empresas permitidas
     else if (usuarioRole === 'gestor') {
       const gestor = await Gestor.findById(req.user.id);
       if (gestor && gestor.empresas) {
@@ -446,9 +432,7 @@ router.get('/config-fiscal/:empresaId', verifyToken, async (req, res) => {
     
     console.log('🔍 Buscando configuração fiscal para empresa:', empresaId);
     
-    // Verificar acesso (apenas gestor ou técnico da empresa)
     if (req.user.role === 'tecnico') {
-      // Técnico só pode acessar sua empresa designada
       if (req.user.empresaId !== empresaId) {
         return res.status(403).json({ 
           sucesso: false, 
@@ -456,7 +440,6 @@ router.get('/config-fiscal/:empresaId', verifyToken, async (req, res) => {
         });
       }
     } else if (req.user.role === 'gestor') {
-      // Gestor precisa ter a empresa na lista
       const gestor = await Gestor.findById(req.user.id);
       if (!gestor || !gestor.empresas || !gestor.empresas.includes(empresaId)) {
         return res.status(403).json({ 
@@ -474,7 +457,6 @@ router.get('/config-fiscal/:empresaId', verifyToken, async (req, res) => {
       });
     }
     
-    // Configuração fiscal padrão
     const configFiscal = {
       incluiIVA: true,
       taxaIVA: empresa.taxaIVA || 14,
@@ -498,16 +480,15 @@ router.get('/config-fiscal/:empresaId', verifyToken, async (req, res) => {
 });
 
 // ============================================
-// POST - Atualizar Configuração Fiscal da Empresa
+// POST - Atualizar Configuração Fiscal da Empresa (COM LOGGER)
 // ============================================
-router.post('/config-fiscal/:empresaId', verifyToken, async (req, res) => {
+router.post('/config-fiscal/:empresaId', verifyToken, logMiddleware('empresa-config-fiscal'), async (req, res) => {
   try {
     const { empresaId } = req.params;
     const { incluiIVA, taxaIVA, incluiRetencao, taxaRetencao, regimeIva, regimeTributario } = req.body;
     
     console.log('📝 Atualizando configuração fiscal para empresa:', empresaId);
     
-    // Verificar acesso (apenas gestor)
     if (req.user.role !== 'gestor') {
       return res.status(403).json({ 
         sucesso: false, 
@@ -571,7 +552,7 @@ router.post('/config-fiscal/:empresaId', verifyToken, async (req, res) => {
 });
 
 // ============================================
-// GET - Estatísticas da empresa (com verificação de acesso)
+// GET - Estatísticas da empresa
 // ============================================
 router.get('/:id/estatisticas', async (req, res) => {
   try {

@@ -5,6 +5,7 @@ const multer = require('multer');
 const upload = multer({ dest: 'uploads/' });
 const faltaController = require('../controllers/faltaController');
 const { verifyToken } = require('../middlewares/auth');
+const { logMiddleware } = require('../middlewares/logger');
 
 // Verificar se as funções existem antes de usar
 console.log('📋 Carregando rotas de faltas...');
@@ -26,28 +27,28 @@ console.log('  - getEstatisticas:', typeof faltaController.getEstatisticas);
 
 // ==================== CRUD FALTAS ====================
 if (faltaController.listarFaltas) {
-  router.get('/', faltaController.listarFaltas);
+  router.get('/', logMiddleware('falta-listar'), faltaController.listarFaltas);
   console.log('✅ Rota GET /faltas carregada');
 } else {
   console.error('❌ função listarFaltas não encontrada');
 }
 
 if (faltaController.criarFalta) {
-  router.post('/', faltaController.criarFalta);
+  router.post('/', logMiddleware('falta-criar'), faltaController.criarFalta);
   console.log('✅ Rota POST /faltas carregada');
 } else {
   console.error('❌ função criarFalta não encontrada');
 }
 
 if (faltaController.atualizarFalta) {
-  router.put('/:id', faltaController.atualizarFalta);
+  router.put('/:id', logMiddleware('falta-atualizar'), faltaController.atualizarFalta);
   console.log('✅ Rota PUT /faltas/:id carregada');
 } else {
   console.error('❌ função atualizarFalta não encontrada');
 }
 
 if (faltaController.excluirFalta) {
-  router.delete('/:id', faltaController.excluirFalta);
+  router.delete('/:id', logMiddleware('falta-deletar'), faltaController.excluirFalta);
   console.log('✅ Rota DELETE /faltas/:id carregada');
 } else {
   console.error('❌ função excluirFalta não encontrada');
@@ -55,28 +56,28 @@ if (faltaController.excluirFalta) {
 
 // ==================== CONFIGURAÇÃO BIOMÉTRICA ====================
 if (faltaController.getConfigBiometrico) {
-  router.get('/biometrico/config/:empresaId', faltaController.getConfigBiometrico);
+  router.get('/biometrico/config/:empresaId', logMiddleware('falta-config-biometrico-consultar'), faltaController.getConfigBiometrico);
   console.log('✅ Rota GET /faltas/biometrico/config/:empresaId carregada');
 } else {
   console.error('❌ função getConfigBiometrico não encontrada');
 }
 
 if (faltaController.configurarBiometrico) {
-  router.post('/biometrico/config', faltaController.configurarBiometrico);
+  router.post('/biometrico/config', logMiddleware('falta-config-biometrico-salvar'), faltaController.configurarBiometrico);
   console.log('✅ Rota POST /faltas/biometrico/config carregada');
 } else {
   console.error('❌ função configurarBiometrico não encontrada');
 }
 
 if (faltaController.testarConexaoBiometrico) {
-  router.post('/biometrico/testar', faltaController.testarConexaoBiometrico);
+  router.post('/biometrico/testar', logMiddleware('falta-biometrico-testar'), faltaController.testarConexaoBiometrico);
   console.log('✅ Rota POST /faltas/biometrico/testar carregada');
 } else {
   console.error('❌ função testarConexaoBiometrico não encontrada');
 }
 
 if (faltaController.sincronizarBiometrico) {
-  router.post('/biometrico/sincronizar', faltaController.sincronizarBiometrico);
+  router.post('/biometrico/sincronizar', logMiddleware('falta-biometrico-sincronizar'), faltaController.sincronizarBiometrico);
   console.log('✅ Rota POST /faltas/biometrico/sincronizar carregada');
 } else {
   console.error('❌ função sincronizarBiometrico não encontrada');
@@ -84,7 +85,7 @@ if (faltaController.sincronizarBiometrico) {
 
 // ==================== WEBHOOK PARA APLICATIVOS MÓVEIS ====================
 if (faltaController.receberRegistroBiometrico) {
-  router.post('/biometrico/receber', faltaController.receberRegistroBiometrico);
+  router.post('/biometrico/receber', logMiddleware('falta-biometrico-webhook'), faltaController.receberRegistroBiometrico);
   console.log('✅ Rota POST /faltas/biometrico/receber carregada (webhook para apps móveis)');
 } else {
   console.error('❌ função receberRegistroBiometrico não encontrada');
@@ -92,7 +93,7 @@ if (faltaController.receberRegistroBiometrico) {
 
 // ==================== IMPORTAÇÃO CSV ====================
 if (faltaController.importarCSV) {
-  router.post('/importar/csv', upload.single('arquivo'), faltaController.importarCSV);
+  router.post('/importar/csv', logMiddleware('falta-importar-csv'), upload.single('arquivo'), faltaController.importarCSV);
   console.log('✅ Rota POST /faltas/importar/csv carregada');
 } else {
   console.error('❌ função importarCSV não encontrada');
@@ -100,7 +101,7 @@ if (faltaController.importarCSV) {
 
 // ==================== ESTATÍSTICAS ====================
 if (faltaController.getEstatisticas) {
-  router.get('/estatisticas', faltaController.getEstatisticas);
+  router.get('/estatisticas', logMiddleware('falta-estatisticas'), faltaController.getEstatisticas);
   console.log('✅ Rota GET /faltas/estatisticas carregada');
 } else {
   console.error('❌ função getEstatisticas não encontrada');

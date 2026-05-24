@@ -9,6 +9,7 @@ const Tecnico = require('../models/Tecnico');
 const Empresa = require('../models/Empresa');
 const { verifyToken } = require('../middlewares/auth');
 const { validateEmpresaAccess } = require('../middlewares/security');
+const { logMiddleware } = require('../middlewares/logger');
 
 // Garantir que a pasta uploads/funcionarios existe
 const uploadDir = path.join(__dirname, '../uploads/funcionarios');
@@ -86,8 +87,8 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// 🔒 POST - Criar funcionário (COM VALIDAÇÃO DE EMPRESA)
-router.post('/', validateEmpresaAccess, upload.single('foto'), async (req, res) => {
+// 🔒 POST - Criar funcionário (COM LOGGER E VALIDAÇÃO DE EMPRESA)
+router.post('/', validateEmpresaAccess, logMiddleware('funcionarios'), upload.single('foto'), async (req, res) => {
   try {
     const {
       nome, nif, dataNascimento, genero, estadoCivil, nacionalidade,
@@ -184,20 +185,14 @@ router.post('/', validateEmpresaAccess, upload.single('foto'), async (req, res) 
     if (funcionario.isTecnico && tecnicoSenha) {
       try {
         const modulos = modulosTecnico || {
-          // Operacional
           vendas: true, stock: true, facturacao: true,
-          // Recursos Humanos
           funcionarios: false, folhaSalarial: false, gestaoFaltas: false,
           gestaoAbonos: false, avaliacao: false,
-          // Gestão Patrimonial
           viaturas: false, abastecimentos: false, manutencoes: false, inventario: false,
-          // Financeiro
           fornecedores: false, fluxoCaixa: false, contaCorrente: false,
           controloPagamento: false, custosReceitas: false, orcamentos: false,
           dre: false, indicadores: false, transferencias: false, reconciliacao: false,
-          // Relatórios
           relatorios: false, graficos: false, analise: false,
-          // Contabilidade
           contabilidade: false, planoContas: false, lancamentos: false,
           diarioGeral: false, razaoGeral: false, balancete: false,
           saldosContas: false, balancoPatrimonial: false, periodosFiscais: false,
@@ -238,8 +233,8 @@ router.post('/', validateEmpresaAccess, upload.single('foto'), async (req, res) 
   }
 });
 
-// PUT - Atualizar funcionário
-router.put('/:id', upload.single('foto'), async (req, res) => {
+// PUT - Atualizar funcionário (COM LOGGER)
+router.put('/:id', logMiddleware('funcionarios'), upload.single('foto'), async (req, res) => {
   try {
     const funcionario = await Funcionario.findById(req.params.id);
     if (!funcionario) {
@@ -390,8 +385,8 @@ router.put('/:id', upload.single('foto'), async (req, res) => {
   }
 });
 
-// DELETE - Excluir funcionário
-router.delete('/:id', async (req, res) => {
+// DELETE - Excluir funcionário (COM LOGGER)
+router.delete('/:id', logMiddleware('funcionarios'), async (req, res) => {
   try {
     const funcionario = await Funcionario.findById(req.params.id);
     if (!funcionario) {
@@ -428,8 +423,8 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
-// 🔒 IMPORTAR FUNCIONÁRIOS EM LOTE (COM VALIDAÇÃO DE EMPRESA)
-router.post('/importar-lote', validateEmpresaAccess, async (req, res) => {
+// 🔒 IMPORTAR FUNCIONÁRIOS EM LOTE (COM LOGGER E VALIDAÇÃO DE EMPRESA)
+router.post('/importar-lote', validateEmpresaAccess, logMiddleware('funcionarios-importacao'), async (req, res) => {
   try {
     const { funcionarios, empresaId } = req.body;
 

@@ -2,11 +2,15 @@
 const express = require('express');
 const router = express.Router();
 const { ConfiguracaoAvaliacao, AvaliacaoRealizada } = require('../models/Avaliacao');
+const { verifyToken } = require('../middlewares/auth');
+const { logMiddleware } = require('../middlewares/logger');
+
+router.use(verifyToken);
 
 // ==================== CONFIGURAÇÕES ====================
 
 // GET - Buscar configuração da empresa
-router.get('/configuracao/:empresaId', async (req, res) => {
+router.get('/configuracao/:empresaId', logMiddleware('avaliacao-config-consultar'), async (req, res) => {
   try {
     const config = await ConfiguracaoAvaliacao.findOne({ 
       empresaId: req.params.empresaId,
@@ -20,7 +24,7 @@ router.get('/configuracao/:empresaId', async (req, res) => {
 });
 
 // POST - Criar/Atualizar configuração da empresa
-router.post('/configuracao', async (req, res) => {
+router.post('/configuracao', logMiddleware('avaliacao-config-salvar'), async (req, res) => {
   try {
     const { empresaId, metodosSelecionados, metodoPadrao, categorias, configuracao } = req.body;
     
@@ -61,7 +65,8 @@ router.post('/configuracao', async (req, res) => {
     res.status(500).json({ sucesso: false, mensagem: 'Erro ao salvar configuração', error: error.message });
   }
 });
-router.post('/configuracao', async (req, res) => {
+
+router.post('/configuracao', logMiddleware('avaliacao-config-salvar'), async (req, res) => {
   try {
     const { empresaId, metodosSelecionados, metodoPadrao, categorias, configuracao } = req.body;
     
@@ -109,7 +114,7 @@ router.post('/configuracao', async (req, res) => {
 // ==================== AVALIAÇÕES ====================
 
 // GET - Listar avaliações
-router.get('/', async (req, res) => {
+router.get('/', logMiddleware('avaliacao-listar'), async (req, res) => {
   try {
     const { empresaId, funcionarioId, periodo, ano, status } = req.query;
     const query = {};
@@ -129,7 +134,7 @@ router.get('/', async (req, res) => {
 });
 
 // GET - Buscar avaliação por ID
-router.get('/:id', async (req, res) => {
+router.get('/:id', logMiddleware('avaliacao-consultar'), async (req, res) => {
   try {
     const avaliacao = await AvaliacaoRealizada.findById(req.params.id);
     if (!avaliacao) {
@@ -160,7 +165,7 @@ function classificarNota(nota) {
 }
 
 // POST - Criar avaliação
-router.post('/', async (req, res) => {
+router.post('/', logMiddleware('avaliacao-criar'), async (req, res) => {
   try {
     const { notas, ...dados } = req.body;
     
@@ -184,7 +189,7 @@ router.post('/', async (req, res) => {
 });
 
 // DELETE - Excluir avaliação
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', logMiddleware('avaliacao-deletar'), async (req, res) => {
   try {
     const avaliacao = await AvaliacaoRealizada.findByIdAndDelete(req.params.id);
     if (!avaliacao) {

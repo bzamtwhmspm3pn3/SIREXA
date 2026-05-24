@@ -1,8 +1,9 @@
-// backend/routes/viaturas.js - CORRIGIDO
+// backend/routes/viaturas.js - COM LOGGER ADICIONADO
 const express = require('express');
 const router = express.Router();
 const Viatura = require('../models/Viatura');
 const { verifyToken } = require('../middlewares/auth');
+const { logMiddleware } = require('../middlewares/logger'); // <-- ADICIONADO
 
 // Todas as rotas exigem autenticação
 router.use(verifyToken);
@@ -41,8 +42,8 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// POST - Criar viatura
-router.post('/', async (req, res) => {
+// POST - Criar viatura (COM LOGGER)
+router.post('/', logMiddleware('viaturas'), async (req, res) => {
   try {
     console.log("=== CRIANDO VIATURA ===");
     console.log("Body recebido:", JSON.stringify(req.body, null, 2));
@@ -150,8 +151,8 @@ router.post('/', async (req, res) => {
   }
 });
 
-// PUT - Atualizar viatura
-router.put('/:id', async (req, res) => {
+// PUT - Atualizar viatura (COM LOGGER)
+router.put('/:id', logMiddleware('viaturas'), async (req, res) => {
   try {
     console.log("=== ATUALIZANDO VIATURA ===");
     console.log("ID:", req.params.id);
@@ -212,8 +213,8 @@ router.put('/:id', async (req, res) => {
   }
 });
 
-// DELETE - Excluir viatura (soft delete)
-router.delete('/:id', async (req, res) => {
+// DELETE - Excluir viatura (soft delete) (COM LOGGER)
+router.delete('/:id', logMiddleware('viaturas'), async (req, res) => {
   try {
     const { empresaId } = req.query;
     

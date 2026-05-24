@@ -4,6 +4,7 @@ const router = express.Router();
 const ConfiguracaoBanco = require('../models/ConfiguracaoBanco');
 const { verifyToken } = require('../middlewares/auth');
 const { validateEmpresaAccess } = require('../middlewares/security');
+const { logMiddleware } = require('../middlewares/logger'); // <-- ADICIONADO
 
 // 🔒 TODAS AS ROTAS REQUEREM AUTENTICAÇÃO
 router.use(verifyToken);
@@ -57,9 +58,9 @@ router.get('/listar', validateEmpresaAccess, async (req, res) => {
 });
 
 // ============================================
-// POST - Salvar configuração bancária
+// POST - Salvar configuração bancária (COM LOGGER)
 // ============================================
-router.post('/salvar', validateEmpresaAccess, async (req, res) => {
+router.post('/salvar', validateEmpresaAccess, logMiddleware('configuracao-banco-salvar'), async (req, res) => {
   try {
     const empresaId = req.empresaAtual;
     
@@ -136,9 +137,9 @@ router.post('/salvar', validateEmpresaAccess, async (req, res) => {
 });
 
 // ============================================
-// DELETE - Excluir configuração bancária
+// DELETE - Excluir configuração bancária (COM LOGGER)
 // ============================================
-router.delete('/excluir', validateEmpresaAccess, async (req, res) => {
+router.delete('/excluir', validateEmpresaAccess, logMiddleware('configuracao-banco'), async (req, res) => {
   try {
     const empresaId = req.empresaAtual;
     

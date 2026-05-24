@@ -6,7 +6,7 @@ const crypto = require('crypto');
 
 // ==================== HELPERS CORRIGIDOS ====================
 
-// Helper genérico para próximo número (CORRIGIDO - Garante que nunca retorna null)
+// Helper genérico para próximo número
 const getProximoNumero = async (empresaNif, tipoDocumento) => {
   try {
     let filtro = { empresaNif };
@@ -44,8 +44,6 @@ const getProximoNumero = async (empresaNif, tipoDocumento) => {
         break;
     }
     
-    console.log(`🔍 Buscando próximo número para ${tipoDocumento}:`, filtro);
-    
     const ultimoDoc = await Factura.findOne(filtro).sort({ [campoBusca]: -1 });
     
     let proximoNumero = 1;
@@ -53,7 +51,6 @@ const getProximoNumero = async (empresaNif, tipoDocumento) => {
       proximoNumero = ultimoDoc[campoBusca] + 1;
     }
     
-    console.log(`✅ Próximo número para ${tipoDocumento}: ${proximoNumero}`);
     return proximoNumero;
     
   } catch (error) {
@@ -76,13 +73,87 @@ const getProximoNumeroNotaCredito = async (empresaNif) => {
       proximoNumero = ultimaNC.numeroFactura + 1;
     }
     
-    console.log(`📄 Próximo número para Nota de Crédito (NC): ${proximoNumero}`);
     return proximoNumero;
     
   } catch (error) {
     console.error('Erro ao buscar próximo número para NC:', error);
     return Math.floor(Date.now() / 1000) % 10000;
   }
+};
+
+// Helper para processar itens (produtos e serviços)
+const processarItens = async (itens, empresaId, usuario) => {
+  const itensProcessados = [];
+  
+  for (let i = 0; i < itens.length; i++) {
+    const item = itens[i];
+    
+    // Buscar no stock se tiver produtoId
+    let produtoStock = null;
+    if (item.produtoId) {
+      produtoStock = await Stock.findOne({ 
+        _id: item.produtoId, 
+        empresaId,
+        ativo: true 
+      });
+    } else {
+      produtoStock = await Stock.findOne({ 
+        produto: { $regex: new RegExp(`^${item.produtoOuServico}$`, "i") },
+        empresaId,
+        ativo: true 
+      });
+    }
+    
+    const tipoItem = item.tipo || (produtoStock?.tipo || 'produto');
+    const taxaIVA = item.taxaIVA || (produtoStock?.taxaIVA || 14);
+    const precoUnitario = item.precoUnitario || produtoStock?.precoVenda || 0;
+    const total = (item.quantidade || 1) * precoUnitario;
+    const ivaItem = total * (taxaIVA / 100);
+    
+    // Para produtos, dar baixa no estoque (apenas se for factura definitiva)
+    if (tipoItem === 'produto' && produtoStock && !item.agendamento) {
+      if (produtoStock.quantidade < (item.quantidade || 1)) {
+        throw new Error(`Estoque insuficiente para "${item.produtoOuServico}". Disponível: ${produtoStock.quantidade}`);
+      }
+      produtoStock.quantidade -= (item.quantidade || 1);
+      await produtoStock.save();
+    }
+    
+    // Processar agendamento para serviços
+    let agendamentoData = null;
+    if (tipoItem === 'servico' && item.agendamento) {
+      agendamentoData = {
+        dataInicio: item.agendamento.dataInicio ? new Date(item.agendamento.dataInicio) : null,
+        dataFim: item.agendamento.dataFim ? new Date(item.agendamento.dataFim) : null,
+        duracaoEstimada: item.agendamento.duracaoEstimada || '',
+        tecnicoResponsavel: item.agendamento.tecnicoResponsavel || '',
+        enderecoServico: item.agendamento.enderecoServico || '',
+        observacoes: item.agendamento.observacoes || '',
+        contatoEmergencia: item.agendamento.contatoEmergencia || '',
+        status: 'agendado'
+      };
+    }
+    
+    itensProcessados.push({
+      linha: i + 1,
+      produtoId: produtoStock?._id || item.produtoId,
+      produtoOuServico: item.produtoOuServico,
+      codigoProduto: produtoStock?.codigoBarras || item.codigoBarras || item.produtoOuServico,
+      codigoBarras: produtoStock?.codigoBarras || item.codigoBarras,
+      quantidade: item.quantidade || 1,
+      precoUnitario: precoUnitario,
+      desconto: item.desconto || 0,
+      total: total - (item.desconto || 0),
+      taxaIVA: taxaIVA,
+      iva: ivaItem,
+      tipo: tipoItem,
+      agendamento: agendamentoData,
+      unidade: item.unidade || (produtoStock?.unidade || 'un'),
+      observacoesItem: item.observacoesItem || ''
+    });
+  }
+  
+  return itensProcessados;
 };
 
 // ==================== ORÇAMENTO ====================
@@ -111,16 +182,29 @@ exports.gerarOrcamento = async (req, res) => {
       ? proximoNumero 
       : Math.floor(Date.now() / 1000) % 10000;
 
-    const itensOrcamento = dados.itens.map((item, idx) => ({
-      linha: idx + 1,
-      produtoOuServico: item.produtoOuServico,
-      codigoProduto: item.codigoBarras || item.produtoOuServico,
-      quantidade: item.quantidade,
-      precoUnitario: item.precoUnitario,
-      total: item.quantidade * item.precoUnitario,
-      taxaIVA: item.taxaIVA || 14,
-      iva: (item.quantidade * item.precoUnitario) * ((item.taxaIVA || 14) / 100)
-    }));
+    // Processar itens (sem dar baixa em estoque)
+    const itensOrcamento = dados.itens.map((item, idx) => {
+      const precoUnitario = item.precoUnitario || 0;
+      const total = (item.quantidade || 1) * precoUnitario;
+      const taxaIVA = item.taxaIVA || 14;
+      const ivaItem = total * (taxaIVA / 100);
+      
+      return {
+        linha: idx + 1,
+        produtoId: item.produtoId,
+        produtoOuServico: item.produtoOuServico,
+        codigoProduto: item.codigoBarras || item.produtoOuServico,
+        codigoBarras: item.codigoBarras,
+        quantidade: item.quantidade || 1,
+        precoUnitario: precoUnitario,
+        desconto: item.desconto || 0,
+        total: total - (item.desconto || 0),
+        taxaIVA: taxaIVA,
+        iva: ivaItem,
+        tipo: item.tipo || 'produto',
+        agendamento: item.agendamento || null
+      };
+    });
 
     const subtotal = itensOrcamento.reduce((acc, item) => acc + item.total, 0);
     const totalIva = itensOrcamento.reduce((acc, item) => acc + item.iva, 0);
@@ -131,11 +215,14 @@ exports.gerarOrcamento = async (req, res) => {
       tipo: "Orcamento",
       empresaNif,
       empresaId: empresa._id,
+      contaBancaria: dados.contaBancaria || empresa.contaBancariaPadrao,
       cliente: dados.cliente,
+      clienteId: dados.clienteId,
       nifCliente: dados.nifCliente,
       enderecoCliente: dados.enderecoCliente || "",
       emailCliente: dados.emailCliente || "",
       telefoneCliente: dados.telefoneCliente || "",
+      tipoActividade: dados.tipoActividade || "Venda",
       itens: itensOrcamento,
       subtotal: subtotal,
       totalIva: totalIva,
@@ -145,7 +232,7 @@ exports.gerarOrcamento = async (req, res) => {
       status: "rascunho",
       usuario: usuario,
       dataEmissao: new Date(),
-      dataVencimento: new Date(Date.now() + 30 * 86400000),
+      dataVencimento: dados.dataVencimento || new Date(Date.now() + 30 * 86400000),
       observacoes: dados.observacoes || "",
       impressoes: 1
     });
@@ -167,7 +254,7 @@ exports.gerarOrcamento = async (req, res) => {
   }
 };
 
-// ==================== FACTURA PROFORMA (CORRIGIDA) ====================
+// ==================== FACTURA PROFORMA (MELHORADA) ====================
 exports.gerarProforma = async (req, res) => {
   try {
     const { dados, empresaNif } = req.body;
@@ -193,20 +280,37 @@ exports.gerarProforma = async (req, res) => {
       ? proximoNumero 
       : Math.floor(Date.now() / 1000) % 10000;
 
-    const itensProforma = dados.itens.map((item, idx) => ({
-      linha: idx + 1,
-      produtoOuServico: item.produtoOuServico,
-      codigoProduto: item.codigoBarras || item.produtoOuServico,
-      quantidade: item.quantidade,
-      precoUnitario: item.precoUnitario,
-      total: item.quantidade * item.precoUnitario,
-      taxaIVA: item.taxaIVA || 14,
-      iva: (item.quantidade * item.precoUnitario) * ((item.taxaIVA || 14) / 100)
-    }));
+    // Processar itens com suporte a serviços e agendamentos
+    const itensProforma = dados.itens.map((item, idx) => {
+      const precoUnitario = item.precoUnitario || 0;
+      const total = (item.quantidade || 1) * precoUnitario;
+      const taxaIVA = item.taxaIVA || 14;
+      const ivaItem = total * (taxaIVA / 100);
+      
+      return {
+        linha: idx + 1,
+        produtoId: item.produtoId,
+        produtoOuServico: item.produtoOuServico,
+        codigoProduto: item.codigoBarras || item.produtoOuServico,
+        codigoBarras: item.codigoBarras,
+        quantidade: item.quantidade || 1,
+        precoUnitario: precoUnitario,
+        desconto: item.desconto || 0,
+        total: total - (item.desconto || 0),
+        taxaIVA: taxaIVA,
+        iva: ivaItem,
+        tipo: item.tipo || 'produto',
+        agendamento: item.agendamento || null
+      };
+    });
 
     const subtotal = itensProforma.reduce((acc, item) => acc + item.total, 0);
     const totalIva = itensProforma.reduce((acc, item) => acc + item.iva, 0);
     const total = subtotal + totalIva - (dados.desconto || 0);
+
+    // Verificar se tem serviços para determinar tipo de actividade
+    const temServicos = itensProforma.some(item => item.tipo === 'servico');
+    const tipoActividade = temServicos ? "Prestação de Serviço" : (dados.tipoActividade || "Venda");
 
     const proforma = new Factura({
       numeroFactura: numeroValido,
@@ -214,11 +318,14 @@ exports.gerarProforma = async (req, res) => {
       tipo: "Factura Proforma",
       empresaNif,
       empresaId: empresa._id,
+      contaBancaria: dados.contaBancaria || empresa.contaBancariaPadrao,
       cliente: dados.cliente,
+      clienteId: dados.clienteId,
       nifCliente: dados.nifCliente,
       enderecoCliente: dados.enderecoCliente || "",
       emailCliente: dados.emailCliente || "",
       telefoneCliente: dados.telefoneCliente || "",
+      tipoActividade: tipoActividade,
       itens: itensProforma,
       subtotal: subtotal,
       totalIva: totalIva,
@@ -228,7 +335,7 @@ exports.gerarProforma = async (req, res) => {
       status: "rascunho",
       usuario: usuario,
       dataEmissao: new Date(),
-      dataVencimento: new Date(Date.now() + 15 * 86400000),
+      dataVencimento: dados.dataVencimento || new Date(Date.now() + 15 * 86400000),
       observacoes: dados.observacoes || "",
       impressoes: 1
     });
@@ -256,13 +363,13 @@ exports.gerarProforma = async (req, res) => {
   }
 };
 
-// ==================== FACTURA ====================
+// ==================== FACTURA (COMPLETA COM SERVIÇOS) ====================
 exports.emitirFactura = async (req, res) => {
   try {
-    const { factura, empresaNif } = req.body;
+    const { dados, empresaNif } = req.body;
     const usuario = req.user?.nome || req.user?.email || "Sistema";
 
-    if (!empresaNif || !factura.cliente || !factura.nifCliente || !factura.itens?.length) {
+    if (!empresaNif || !dados.cliente || !dados.nifCliente || !dados.itens?.length) {
       return res.status(400).json({ 
         sucesso: false, 
         mensagem: 'Dados incompletos: empresa, cliente, NIF e itens são obrigatórios' 
@@ -282,80 +389,58 @@ exports.emitirFactura = async (req, res) => {
       ? proximoNumero 
       : Math.floor(Date.now() / 1000) % 10000;
 
-    const itensProcessados = [];
-    for (let i = 0; i < factura.itens.length; i++) {
-      const item = factura.itens[i];
-      
-      let produtoStock = await Stock.findOne({ 
-        produto: { $regex: new RegExp(`^${item.produtoOuServico}$`, "i") }
-      });
-
-      if (!produtoStock) {
-        return res.status(404).json({ 
-          sucesso: false, 
-          mensagem: `Produto "${item.produtoOuServico}" não encontrado no stock` 
-        });
-      }
-
-      if (produtoStock.quantidade < item.quantidade) {
-        return res.status(400).json({ 
-          sucesso: false, 
-          mensagem: `Quantidade insuficiente para "${item.produtoOuServico}". Disponível: ${produtoStock.quantidade}` 
-        });
-      }
-      
-      produtoStock.quantidade -= item.quantidade;
-      await produtoStock.save();
-      
-      const taxaIVA = item.taxaIVA || 14;
-      const ivaItem = item.total * (taxaIVA / 100);
-      
-      itensProcessados.push({
-        linha: i + 1,
-        produtoId: produtoStock._id,
-        produtoOuServico: item.produtoOuServico,
-        codigoProduto: produtoStock.codigoBarras || item.codigoBarras || item.produtoOuServico,
-        quantidade: item.quantidade,
-        precoUnitario: item.precoUnitario,
-        desconto: item.desconto || 0,
-        total: item.total,
-        taxaIVA: taxaIVA,
-        iva: ivaItem
-      });
-    }
+    // Processar itens com validação de estoque e agendamentos
+    const itensProcessados = await processarItens(dados.itens, empresa._id, usuario);
 
     const subtotal = itensProcessados.reduce((acc, item) => acc + item.total, 0);
     const totalIva = itensProcessados.reduce((acc, item) => acc + item.iva, 0);
-    const totalFinal = subtotal + totalIva - (factura.desconto || 0);
+    const totalFinal = subtotal + totalIva - (dados.desconto || 0);
 
     const hashString = `${empresaNif}|${numeroValido}|${new Date().toISOString()}|${totalFinal}`;
     const hashDocumento = crypto.createHash('sha256').update(hashString).digest('hex');
 
+    // Verificar se tem serviços
+    const temServicos = itensProcessados.some(item => item.tipo === 'servico');
+    const tipoActividade = temServicos ? "Prestação de Serviço" : (dados.tipoActividade || "Venda");
+
     const novaFactura = new Factura({
       numeroFactura: numeroValido,
       serie: "FT",
-      tipo: factura.tipo || "Factura",
+      tipo: "Factura",
+      tipoVenda: dados.tipoVenda || 'avista',
       empresaNif,
       empresaId: empresa._id,
-      cliente: factura.cliente,
-      nifCliente: factura.nifCliente,
-      enderecoCliente: factura.enderecoCliente || "",
-      emailCliente: factura.emailCliente || "",
-      telefoneCliente: factura.telefoneCliente || "",
-      tipoActividade: factura.tipoActividade || "Venda",
+      contaBancaria: dados.contaBancaria || empresa.contaBancariaPadrao,
+      cliente: dados.cliente,
+      clienteId: dados.clienteId,
+      nifCliente: dados.nifCliente,
+      enderecoCliente: dados.enderecoCliente || "",
+      emailCliente: dados.emailCliente || "",
+      telefoneCliente: dados.telefoneCliente || "",
+      tipoActividade: tipoActividade,
       itens: itensProcessados,
       subtotal: subtotal,
       totalIva: totalIva,
-      desconto: factura.desconto || 0,
+      desconto: dados.desconto || 0,
+      incluiIVA: dados.incluiIVA !== false,
+      incluiRetencao: dados.incluiRetencao || false,
+      totalRetencao: dados.retencao || 0,
+      taxaRetencao: dados.taxaRetencao || 0,
       total: totalFinal,
-      formaPagamento: factura.formaPagamento,
-      detalhesPagamento: factura.detalhesPagamento || {},
+      formaPagamento: dados.formaPagamento,
+      detalhesPagamento: {
+        ...dados.detalhesPagamento,
+        dataPagamento: dados.formaPagamento === 'Dinheiro' ? new Date() : null,
+        contaBancaria: dados.contaBancaria,
+        valorPago: dados.valorPago || 0,
+        troco: dados.troco || 0
+      },
       status: "emitido",
       usuario: usuario,
       hashDocumento: hashDocumento,
       dataEmissao: new Date(),
-      observacoes: factura.observacoes || "",
-      dataVencimento: factura.dataVencimento || new Date(Date.now() + 30 * 86400000),
+      dataVencimento: dados.dataVencimento || new Date(Date.now() + 30 * 86400000),
+      observacoes: dados.observacoes || "",
       impressoes: 1
     });
 
@@ -402,16 +487,27 @@ exports.emitirFacturaRecibo = async (req, res) => {
       ? proximoNumero 
       : Math.floor(Date.now() / 1000) % 10000;
 
-    const itensProcessados = dados.itens.map((item, idx) => ({
-      linha: idx + 1,
-      produtoOuServico: item.produtoOuServico,
-      codigoProduto: item.codigoBarras || item.produtoOuServico,
-      quantidade: item.quantidade,
-      precoUnitario: item.precoUnitario,
-      total: item.quantidade * item.precoUnitario,
-      taxaIVA: item.taxaIVA || 14,
-      iva: (item.quantidade * item.precoUnitario) * ((item.taxaIVA || 14) / 100)
-    }));
+    const itensProcessados = dados.itens.map((item, idx) => {
+      const precoUnitario = item.precoUnitario || 0;
+      const total = (item.quantidade || 1) * precoUnitario;
+      const taxaIVA = item.taxaIVA || 14;
+      const ivaItem = total * (taxaIVA / 100);
+      
+      return {
+        linha: idx + 1,
+        produtoId: item.produtoId,
+        produtoOuServico: item.produtoOuServico,
+        codigoProduto: item.codigoBarras || item.produtoOuServico,
+        codigoBarras: item.codigoBarras,
+        quantidade: item.quantidade || 1,
+        precoUnitario: precoUnitario,
+        desconto: item.desconto || 0,
+        total: total - (item.desconto || 0),
+        taxaIVA: taxaIVA,
+        iva: ivaItem,
+        tipo: item.tipo || 'produto'
+      };
+    });
 
     const subtotal = itensProcessados.reduce((acc, item) => acc + item.total, 0);
     const totalIva = itensProcessados.reduce((acc, item) => acc + item.iva, 0);
@@ -424,6 +520,7 @@ exports.emitirFacturaRecibo = async (req, res) => {
       empresaNif,
       empresaId: empresa._id,
       cliente: dados.cliente,
+      clienteId: dados.clienteId,
       nifCliente: dados.nifCliente,
       enderecoCliente: dados.enderecoCliente || "",
       emailCliente: dados.emailCliente || "",
@@ -436,6 +533,7 @@ exports.emitirFacturaRecibo = async (req, res) => {
       formaPagamento: dados.formaPagamento || "Dinheiro",
       detalhesPagamento: {
         dataPagamento: new Date(),
+        valorPago: total,
         ...dados.detalhesPagamento
       },
       status: "pago",
@@ -466,7 +564,10 @@ exports.emitirFacturaRecibo = async (req, res) => {
 // ==================== RECIBO ====================
 exports.gerarRecibo = async (req, res) => {
   try {
-    const facturaOriginal = await Factura.findById(req.params.id);
+    const { id } = req.params;
+    const { dados } = req.body;
+    
+    const facturaOriginal = await Factura.findById(id);
     if (!facturaOriginal) {
       return res.status(404).json({ 
         sucesso: false, 
@@ -486,6 +587,9 @@ exports.gerarRecibo = async (req, res) => {
       ? proximoNumero 
       : Math.floor(Date.now() / 1000) % 10000;
 
+    const valorPago = dados?.valorPago || facturaOriginal.total;
+    const troco = dados?.troco || 0;
+
     const recibo = new Factura({
       numeroFactura: numeroValido,
       serie: "RC",
@@ -493,24 +597,30 @@ exports.gerarRecibo = async (req, res) => {
       empresaNif: facturaOriginal.empresaNif,
       empresaId: facturaOriginal.empresaId,
       cliente: facturaOriginal.cliente,
+      clienteId: facturaOriginal.clienteId,
       nifCliente: facturaOriginal.nifCliente,
       enderecoCliente: facturaOriginal.enderecoCliente,
+      emailCliente: facturaOriginal.emailCliente,
+      telefoneCliente: facturaOriginal.telefoneCliente,
       itens: facturaOriginal.itens,
       subtotal: facturaOriginal.subtotal,
       totalIva: facturaOriginal.totalIva,
       desconto: facturaOriginal.desconto,
       total: facturaOriginal.total,
-      formaPagamento: facturaOriginal.formaPagamento,
+      formaPagamento: dados?.formaPagamento || facturaOriginal.formaPagamento,
       detalhesPagamento: {
-        ...facturaOriginal.detalhesPagamento,
-        dataPagamento: new Date()
+        ...facturaOriginal.detalhesPagamento?.toObject(),
+        dataPagamento: new Date(),
+        valorPago: valorPago,
+        troco: troco,
+        contaBancaria: dados?.contaBancaria || facturaOriginal.contaBancaria
       },
       status: "pago",
+      valorPago: valorPago,
+      troco: troco,
       usuario: req.user?.nome || "Sistema",
       documentoOriginalId: facturaOriginal._id,
       dataEmissao: new Date(),
-      dataPagamento: new Date(),
-      valorPago: facturaOriginal.total,
       impressoes: 1
     });
 
@@ -518,6 +628,7 @@ exports.gerarRecibo = async (req, res) => {
 
     facturaOriginal.status = 'pago';
     facturaOriginal.dataPagamento = new Date();
+    facturaOriginal.valorPago = (facturaOriginal.valorPago || 0) + valorPago;
     await facturaOriginal.save();
 
     res.status(201).json({
@@ -539,7 +650,7 @@ exports.gerarRecibo = async (req, res) => {
 exports.gerarNotaCredito = async (req, res) => {
   try {
     const { id } = req.params;
-    const { motivo, observacoes } = req.body;
+    const { motivo, observacoes, itensEstornados } = req.body;
     
     const facturaOriginal = await Factura.findById(id);
     if (!facturaOriginal) {
@@ -552,7 +663,7 @@ exports.gerarNotaCredito = async (req, res) => {
     const notaCreditoExistente = await Factura.findOne({
       empresaNif: facturaOriginal.empresaNif,
       serie: "NC",
-      facturaOriginalId: id
+      notaCreditoOriginalId: id
     });
     
     if (notaCreditoExistente) {
@@ -567,51 +678,82 @@ exports.gerarNotaCredito = async (req, res) => {
       ? numeroNotaCredito 
       : Math.floor(Date.now() / 1000) % 10000;
     
-    const notaCreditoData = {
+    // Processar itens da nota de crédito (valores negativos)
+    let itensNC = [];
+    if (itensEstornados && itensEstornados.length > 0) {
+      itensNC = itensEstornados.map((item, idx) => ({
+        ...item,
+        linha: idx + 1,
+        total: -Math.abs(item.total),
+        quantidade: -Math.abs(item.quantidade)
+      }));
+    } else {
+      itensNC = facturaOriginal.itens.map((item, idx) => ({
+        ...item.toObject(),
+        linha: idx + 1,
+        total: -Math.abs(item.total),
+        quantidade: -Math.abs(item.quantidade)
+      }));
+    }
+    
+    const subtotalNC = -Math.abs(facturaOriginal.subtotal);
+    const totalIvaNC = -Math.abs(facturaOriginal.totalIva);
+    const totalNC = -Math.abs(facturaOriginal.total);
+    
+    const notaCredito = new Factura({
       numeroFactura: numeroValido,
       serie: "NC",
       tipo: "Nota Credito",
       empresaNif: facturaOriginal.empresaNif,
       empresaId: facturaOriginal.empresaId,
       cliente: facturaOriginal.cliente,
+      clienteId: facturaOriginal.clienteId,
       nifCliente: facturaOriginal.nifCliente,
       enderecoCliente: facturaOriginal.enderecoCliente,
+      emailCliente: facturaOriginal.emailCliente,
+      telefoneCliente: facturaOriginal.telefoneCliente,
       tipoActividade: facturaOriginal.tipoActividade,
-      itens: facturaOriginal.itens.map(item => ({
-        ...item.toObject(),
-        total: -Math.abs(item.total)
-      })),
-      subtotal: -Math.abs(facturaOriginal.subtotal),
-      totalIva: -Math.abs(facturaOriginal.totalIva),
-      desconto: -Math.abs(facturaOriginal.desconto || 0),
-      totalRetencao: -Math.abs(facturaOriginal.totalRetencao || 0),
-      taxaRetencao: facturaOriginal.taxaRetencao || 0,
-      total: -Math.abs(facturaOriginal.total),
+      itens: itensNC,
+      subtotal: subtotalNC,
+      totalIva: totalIvaNC,
+      desconto: facturaOriginal.desconto,
+      totalRetencao: facturaOriginal.totalRetencao,
+      taxaRetencao: facturaOriginal.taxaRetencao,
+      total: totalNC,
       formaPagamento: facturaOriginal.formaPagamento,
       status: "emitido",
       usuario: req.user?.nome || "Sistema",
       hashDocumento: crypto.createHash('sha256')
-        .update(`${facturaOriginal.empresaNif}|NC${numeroValido}|${new Date().toISOString()}|${-Math.abs(facturaOriginal.total)}`)
+        .update(`${facturaOriginal.empresaNif}|NC${numeroValido}|${new Date().toISOString()}|${totalNC}`)
         .digest('hex'),
       dataEmissao: new Date(),
-      dataAtualizacao: new Date(),
-      facturaOriginalId: facturaOriginal._id,
+      notaCreditoOriginalId: facturaOriginal._id,
       motivoNotaCredito: motivo || "Anulação de factura",
       observacoes: observacoes || `Nota de crédito referente à factura ${facturaOriginal.serie} ${facturaOriginal.numeroFactura}`,
       impressoes: 0
-    };
+    });
     
-    const novaNotaCredito = new Factura(notaCreditoData);
-    await novaNotaCredito.save();
+    await notaCredito.save();
     
-    facturaOriginal.temNotaCredito = true;
-    facturaOriginal.notaCreditoId = novaNotaCredito._id;
+    facturaOriginal.status = 'estornado';
+    facturaOriginal.notaCreditoId = notaCredito._id;
     await facturaOriginal.save();
+    
+    // Restaurar estoque se necessário
+    for (const item of facturaOriginal.itens) {
+      if (item.tipo === 'produto' && item.produtoId) {
+        const produto = await Stock.findById(item.produtoId);
+        if (produto) {
+          produto.quantidade += Math.abs(item.quantidade);
+          await produto.save();
+        }
+      }
+    }
     
     res.status(201).json({
       sucesso: true,
-      mensagem: `Nota de crédito gerada com sucesso! Nº: ${novaNotaCredito.serie}/${novaNotaCredito.numeroFactura}`,
-      dados: novaNotaCredito
+      mensagem: `Nota de crédito gerada com sucesso! Nº: ${numeroValido}`,
+      dados: notaCredito
     });
     
   } catch (error) {
@@ -661,6 +803,7 @@ exports.converterOrcamentoParaProforma = async (req, res) => {
       empresaNif: orcamento.empresaNif,
       empresaId: orcamento.empresaId,
       cliente: orcamento.cliente,
+      clienteId: orcamento.clienteId,
       nifCliente: orcamento.nifCliente,
       enderecoCliente: orcamento.enderecoCliente,
       emailCliente: orcamento.emailCliente,
@@ -727,6 +870,23 @@ exports.converterProformaParaFactura = async (req, res) => {
       ? proximoNumero 
       : Math.floor(Date.now() / 1000) % 10000;
 
+    // Processar itens com validação de estoque (apenas produtos)
+    for (const item of proforma.itens) {
+      if (item.tipo === 'produto' && item.produtoId) {
+        const produto = await Stock.findById(item.produtoId);
+        if (produto && produto.quantidade < Math.abs(item.quantidade)) {
+          return res.status(400).json({
+            sucesso: false,
+            mensagem: `Estoque insuficiente para "${item.produtoOuServico}". Disponível: ${produto.quantidade}`
+          });
+        }
+        if (produto) {
+          produto.quantidade -= Math.abs(item.quantidade);
+          await produto.save();
+        }
+      }
+    }
+
     const factura = new Factura({
       numeroFactura: numeroValido,
       serie: "FT",
@@ -734,6 +894,7 @@ exports.converterProformaParaFactura = async (req, res) => {
       empresaNif: proforma.empresaNif,
       empresaId: proforma.empresaId,
       cliente: proforma.cliente,
+      clienteId: proforma.clienteId,
       nifCliente: proforma.nifCliente,
       enderecoCliente: proforma.enderecoCliente,
       emailCliente: proforma.emailCliente,
@@ -771,7 +932,7 @@ exports.converterProformaParaFactura = async (req, res) => {
   }
 };
 
-// ==================== LISTAR DOCUMENTOS ====================
+// ==================== LISTAR DOCUMENTOS (COM FILTROS) ====================
 exports.listarDocumentos = async (req, res) => {
   try {
     const { 
@@ -781,6 +942,7 @@ exports.listarDocumentos = async (req, res) => {
       dataInicio,
       dataFim,
       cliente,
+      tipoItem,
       page = 1,
       limit = 50
     } = req.query;
@@ -796,6 +958,12 @@ exports.listarDocumentos = async (req, res) => {
     if (tipo && tipo !== 'Todos') query.tipo = tipo;
     if (status && status !== 'Todos') query.status = status;
     if (cliente) query.cliente = { $regex: cliente, $options: 'i' };
+    
+    // Filtro por tipo de item (produto/servico)
+    if (tipoItem && tipoItem !== 'todos') {
+      query['itens.tipo'] = tipoItem;
+    }
+    
     if (dataInicio && dataFim) {
       query.dataEmissao = {
         $gte: new Date(dataInicio),
@@ -810,12 +978,25 @@ exports.listarDocumentos = async (req, res) => {
 
     const total = await Factura.countDocuments(query);
 
+    // Estatísticas adicionais
+    const stats = await Factura.aggregate([
+      { $match: query },
+      {
+        $group: {
+          _id: null,
+          totalValor: { $sum: '$total' },
+          totalDocumentos: { $sum: 1 }
+        }
+      }
+    ]);
+
     res.json({
       sucesso: true,
       dados: documentos,
       total,
       pagina: parseInt(page),
-      totalPaginas: Math.ceil(total / parseInt(limit))
+      totalPaginas: Math.ceil(total / parseInt(limit)),
+      estatisticas: stats[0] || { totalValor: 0, totalDocumentos: 0 }
     });
   } catch (error) {
     console.error('Erro ao listar documentos:', error);
@@ -827,7 +1008,7 @@ exports.listarDocumentos = async (req, res) => {
   }
 };
 
-// ==================== OUTRAS FUNÇÕES ====================
+// ==================== BUSCAR DOCUMENTO POR ID ====================
 exports.getDocumentoById = async (req, res) => {
   try {
     const documento = await Factura.findById(req.params.id);
@@ -851,6 +1032,7 @@ exports.getDocumentoById = async (req, res) => {
   }
 };
 
+// ==================== SEGUNDA VIA ====================
 exports.segundaVia = async (req, res) => {
   try {
     const documentoOriginal = await Factura.findById(req.params.id);
@@ -862,6 +1044,11 @@ exports.segundaVia = async (req, res) => {
     }
 
     documentoOriginal.impressoes = (documentoOriginal.impressoes || 0) + 1;
+    documentoOriginal.ultimaImpressao = new Date();
+    if (!documentoOriginal.segundaVia) {
+      documentoOriginal.segundaVia = true;
+      documentoOriginal.motivoSegundaVia = req.body.motivo || "Solicitação do cliente";
+    }
     await documentoOriginal.save();
 
     res.json({
@@ -880,6 +1067,7 @@ exports.segundaVia = async (req, res) => {
   }
 };
 
+// ==================== MARCAR COMO PAGO ====================
 exports.marcarComoPago = async (req, res) => {
   try {
     const documento = await Factura.findById(req.params.id);
@@ -917,6 +1105,7 @@ exports.marcarComoPago = async (req, res) => {
   }
 };
 
+// ==================== CANCELAR DOCUMENTO ====================
 exports.cancelarDocumento = async (req, res) => {
   try {
     const documento = await Factura.findById(req.params.id);
@@ -942,6 +1131,8 @@ exports.cancelarDocumento = async (req, res) => {
     }
 
     documento.status = 'cancelado';
+    documento.dataCancelamento = new Date();
+    documento.motivoCancelamento = req.body.motivo || "Cancelamento solicitado";
     await documento.save();
 
     res.json({
@@ -958,9 +1149,10 @@ exports.cancelarDocumento = async (req, res) => {
   }
 };
 
+// ==================== ESTATÍSTICAS ====================
 exports.getStats = async (req, res) => {
   try {
-    const { empresaId, ano, mes } = req.query;
+    const { empresaId, ano, mes, tipoItem } = req.query;
 
     if (!empresaId) {
       return res.status(400).json({ 
@@ -970,6 +1162,10 @@ exports.getStats = async (req, res) => {
     }
 
     const query = { empresaId, status: { $nin: ['cancelado', 'estornado'] } };
+    
+    if (tipoItem && tipoItem !== 'todos') {
+      query['itens.tipo'] = tipoItem;
+    }
     
     if (ano) {
       const anoNum = parseInt(ano);
@@ -1011,11 +1207,26 @@ exports.getStats = async (req, res) => {
       }
     ]);
 
+    // Estatísticas de serviços vs produtos
+    const servicosStats = await Factura.aggregate([
+      { $match: { ...query, 'itens.tipo': 'servico' } },
+      { $unwind: '$itens' },
+      { $match: { 'itens.tipo': 'servico' } },
+      {
+        $group: {
+          _id: null,
+          totalServicos: { $sum: 1 },
+          valorServicos: { $sum: '$itens.total' }
+        }
+      }
+    ]);
+
     res.json({
       sucesso: true,
       dados: {
         geral: stats[0] || { totalDocumentos: 0, totalValor: 0, totalIva: 0, mediaValor: 0 },
-        porTipo
+        porTipo,
+        servicos: servicosStats[0] || { totalServicos: 0, valorServicos: 0 }
       }
     });
   } catch (error) {
@@ -1025,5 +1236,34 @@ exports.getStats = async (req, res) => {
       mensagem: 'Erro ao obter estatísticas',
       erro: error.message 
     });
+  }
+};
+
+exports.getDocumentosPorTipoItem = async (req, res) => {
+  try {
+    const { empresaId, tipoItem } = req.params;
+    const { page = 1, limit = 50 } = req.query;
+    
+    const query = { 
+      empresaId,
+      'itens.tipo': tipoItem // 'produto' ou 'servico'
+    };
+    
+    const documentos = await Factura.find(query)
+      .sort({ dataEmissao: -1 })
+      .skip((parseInt(page) - 1) * parseInt(limit))
+      .limit(parseInt(limit));
+      
+    const total = await Factura.countDocuments(query);
+    
+    res.json({
+      sucesso: true,
+      dados: documentos,
+      total,
+      pagina: parseInt(page),
+      totalPaginas: Math.ceil(total / parseInt(limit))
+    });
+  } catch (error) {
+    res.status(500).json({ sucesso: false, mensagem: error.message });
   }
 };

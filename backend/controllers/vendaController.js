@@ -1,502 +1,11 @@
-// backend/controllers/vendaController.js
-const mongoose = require('mongoose');
-const Venda = require('../models/Venda');
-const Factura = require('../models/Factura');
-const Stock = require('../models/Stock');
-const Empresa = require('../models/Empresa');
-const Banco = require('../models/Banco');
-const RegistoBancario = require('../models/RegistoBancario');
-const Cliente = require('../models/Cliente');
-const crypto = require('crypto');
-const integracaoPagamentos = require('../services/integracaoPagamentos');
+// Adicione estes métodos no final do seu arquivo vendaController.js, antes do module.exports
 
-const meses = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
-               "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
-
-// Helper para próximo número de factura
-const getProximoNumeroFactura = async (empresaId, serie = "FT") => {
-  try {
-    const ultimaFactura = await Factura.findOne({ empresaId, serie }).sort({ numeroFactura: -1 });
-    return ultimaFactura ? ultimaFactura.numeroFactura + 1 : 1;
-  } catch (error) {
-    console.error('Erro ao buscar próximo número de factura:', error);
-    return 1;
-  }
-};
-
-// Helper para próximo número de venda
-const getProximoNumeroVenda = async (empresaId, serie = "FT") => {
-  try {
-    const ultimaVenda = await Venda.findOne({ empresaId, serie }).sort({ numeroFactura: -1 });
-    return ultimaVenda ? ultimaVenda.numeroFactura + 1 : 1;
-  } catch (error) {
-    console.error('Erro ao buscar próximo número de venda:', error);
-    return 1;
-  }
-};
-
-// Função para criar ou atualizar cliente
-async function criarOuAtualizarCliente(dadosCliente, empresaId, empresaNif) {
-  try {
-    if (!dadosCliente.nif || dadosCliente.nif === '999999999' || dadosCliente.nif === '000000000') {
-      console.log('⚠️ Cliente sem NIF válido, não será cadastrado');
-      return null;
-    }
-    
-    let cliente = await Cliente.findOne({ 
-      nif: dadosCliente.nif, 
-      empresaId 
-    });
-    
-    if (cliente) {
-      cliente.nome = dadosCliente.nome || cliente.nome;
-      cliente.email = dadosCliente.email || cliente.email;
-      cliente.telefone = dadosCliente.telefone || cliente.telefone;
-      cliente.endereco = dadosCliente.endereco || cliente.endereco;
-      cliente.updatedAt = new Date();
-      await cliente.save();
-      console.log(`✅ Cliente atualizado: ${cliente.nome} (${cliente.nif})`);
-    } else {
-      cliente = new Cliente({
-        nome: dadosCliente.nome,
-        nif: dadosCliente.nif,
-        email: dadosCliente.email || '',
-        telefone: dadosCliente.telefone || '',
-        endereco: dadosCliente.endereco || '',
-        cidade: dadosCliente.cidade || 'Luanda',
-        tipo: dadosCliente.tipo || 'particular',
-        empresaId: empresaId,
-        ativo: true
-      });
-      await cliente.save();
-      console.log(`✅ Novo cliente cadastrado: ${cliente.nome} (${cliente.nif})`);
-    }
-    
-    return cliente;
-  } catch (error) {
-    console.error('❌ Erro ao criar/atualizar cliente:', error);
-    return null;
-  }
-}
-
-// Função para criar registo bancário da venda
-async function criarRegistoBancarioVenda(venda, empresa, contaBancaria, iban) {
-  try {
-    const dataVenda = new Date(venda.data);
-    const ano = dataVenda.getFullYear();
-    const mes = meses[dataVenda.getMonth()];
-    
-    const banco = await Banco.findOne({ codNome: contaBancaria, empresaId: empresa._id });
-    
-    const tipoReceita = venda.tipoFactura === 'Prestação de Serviço' ? 'Receita - Serviço' : 'Receita - Venda';
-    
-    const registo = new RegistoBancario({
-      data: dataVenda,
-      conta: contaBancaria,
-      contaId: banco?._id,
-      descricao: `VENDA: ${venda.cliente} - Factura Nº ${venda.numeroFactura}`,
-      tipo: tipoReceita,
-      valor: venda.total,
-      entradaSaida: 'entrada',
-      ano,
-      mes,
-      documentoReferencia: venda._id.toString(),
-      reconcilado: false,
-      empresaId: empresa._id
-    });
-    
-    await registo.save();
-    console.log(`✅ Registo bancário criado para venda ${venda._id}: ${venda.total} Kz na conta ${contaBancaria}`);
-    return registo;
-  } catch (error) {
-    console.error('Erro ao criar registo bancário:', error);
-    return null;
-  }
-}
-
-// POST /api/vendas/emitir
-exports.emitirVenda = async (req, res) => {
-  try {
-    const { venda, contaBancaria, ibanBancario } = req.body;
-    const usuario = req.user?.nome || req.user?.email || "Sistema";
-    
-    // 🔥 USAR O VALOR VALIDADO PELO MIDDLEWARE
-    const empresaIdParaVenda = req.empresaAtual;
-    
-    console.log('=== INICIANDO EMISSÃO DE VENDA ===');
-    console.log('Usuário:', usuario);
-    console.log('empresaAtual (validado):', empresaIdParaVenda);
-
-    if (!empresaIdParaVenda) {
-      return res.status(400).json({ 
-        sucesso: false, 
-        mensagem: 'Nenhuma empresa selecionada. Selecione uma empresa para continuar.' 
-      });
-    }
-
-    const empresa = await Empresa.findById(empresaIdParaVenda);
-    
-    if (!empresa) {
-      return res.status(404).json({ 
-        sucesso: false, 
-        mensagem: `Empresa não encontrada: ${empresaIdParaVenda}` 
-      });
-    }
-
-    console.log('✅ Empresa:', empresa.nome);
-
-    // Validações básicas
-    if (!venda || !venda.cliente) {
-      return res.status(400).json({ 
-        sucesso: false, 
-        mensagem: 'Dados do cliente são obrigatórios' 
-      });
-    }
-
-    if (!venda.itens || venda.itens.length === 0) {
-      return res.status(400).json({ 
-        sucesso: false, 
-        mensagem: 'Adicione pelo menos um item à venda' 
-      });
-    }
-
-    if (!venda.formaPagamento) {
-      return res.status(400).json({ 
-        sucesso: false, 
-        mensagem: 'Forma de pagamento é obrigatória' 
-      });
-    }
-
-    // CRIAR/ATUALIZAR CLIENTE
-    let cliente = null;
-    if (venda.nifCliente && venda.nifCliente !== '999999999' && venda.nifCliente !== '000000000') {
-      cliente = await criarOuAtualizarCliente({
-        nome: venda.cliente,
-        nif: venda.nifCliente,
-        email: venda.emailCliente || '',
-        telefone: venda.telefoneCliente || '',
-        endereco: venda.enderecoCliente || '',
-        cidade: venda.cidadeCliente || 'Luanda'
-      }, empresa._id, empresa.nif);
-    }
-
-    // Definir conta bancária
-    const contaParaVenda = contaBancaria || empresa.contaBancariaPadrao || 'BAI01';
-    const ibanParaVenda = ibanBancario || empresa.ibanPadrao || '';
-    
-    console.log(`🏦 Conta bancária para esta venda: ${contaParaVenda}`);
-
-    // Obter números sequenciais
-    const numeroFactura = await getProximoNumeroFactura(empresa._id);
-    const numeroVenda = await getProximoNumeroVenda(empresa._id);
-    console.log(`✅ Números: Factura ${numeroFactura}, Venda ${numeroVenda}`);
-
-    // ============================================
-    // 🔧 PROCESSAR ITENS (com suporte a serviços)
-    // ============================================
-    const itensProcessados = [];
-    for (let i = 0; i < venda.itens.length; i++) {
-      const item = venda.itens[i];
-      console.log(`Processando item ${i + 1}:`, item.produtoOuServico, 'Tipo:', item.tipo || 'produto');
-      
-      let produtoStock = null;
-      
-      // Buscar o item no stock (apenas para validação e obter dados)
-      if (item.produtoId) {
-        produtoStock = await Stock.findOne({ 
-          _id: item.produtoId, 
-          empresaId: empresa._id,
-          ativo: true 
-        });
-      } else {
-        produtoStock = await Stock.findOne({ 
-          produto: { $regex: new RegExp(`^${item.produtoOuServico}$`, "i") },
-          empresaId: empresa._id,
-          ativo: true 
-        });
-      }
-
-      if (!produtoStock) {
-        return res.status(404).json({ 
-          sucesso: false, 
-          mensagem: `Item "${item.produtoOuServico}" não encontrado no sistema` 
-        });
-      }
-
-      // 🔧 VERIFICAÇÃO DE ESTOQUE APENAS PARA PRODUTOS
-      if (produtoStock.tipo === 'produto' || !item.tipo || item.tipo === 'produto') {
-        if (produtoStock.quantidade < item.quantidade) {
-          return res.status(400).json({ 
-            sucesso: false, 
-            mensagem: `Quantidade insuficiente para "${item.produtoOuServico}". Disponível: ${produtoStock.quantidade}` 
-          });
-        }
-        
-        // 🔧 DAR BAIXA NO ESTOQUE APENAS PARA PRODUTOS
-        produtoStock.quantidade -= item.quantidade;
-        await produtoStock.save();
-        console.log(`📦 Estoque atualizado para "${item.produtoOuServico}": ${produtoStock.quantidade} restantes`);
-      } else {
-        // Para serviços, não alterar estoque
-        console.log(`🛠️ Serviço "${item.produtoOuServico}" - sem alteração de estoque`);
-      }
-      
-      const taxaIVA = item.taxaIVA || produtoStock.taxaIVA || 14;
-      const ivaItem = item.total * (taxaIVA / 100);
-      
-      itensProcessados.push({
-        linha: i + 1,
-        produtoId: produtoStock._id,
-        produtoOuServico: item.produtoOuServico,
-        codigoProduto: produtoStock.codigoBarras || item.codigoBarras || item.produtoOuServico,
-        quantidade: item.quantidade,
-        precoUnitario: item.precoUnitario,
-        desconto: item.desconto || 0,
-        total: item.total,
-        taxaIVA: taxaIVA,
-        iva: ivaItem,
-        tipo: produtoStock.tipo === 'servico' ? 'servico' : 'produto'  // 🔧 SALVAR O TIPO
-      });
-    }
-
-    // Calcular totais
-    const subtotal = itensProcessados.reduce((acc, item) => acc + item.total, 0);
-    const totalIva = itensProcessados.reduce((acc, item) => acc + item.iva, 0);
-    const desconto = venda.desconto || 0;
-    const subtotalComDesconto = subtotal - desconto;
-
-    let totalRetencao = 0;
-    let taxaRetencaoAplicada = 0;
-
-    if (venda.retencao && venda.retencao > 0) {
-      if (venda.taxaRetencao && venda.taxaRetencao > 0) {
-        taxaRetencaoAplicada = venda.taxaRetencao;
-        totalRetencao = (subtotalComDesconto * taxaRetencaoAplicada) / 100;
-      } else {
-        totalRetencao = venda.retencao;
-        taxaRetencaoAplicada = (totalRetencao / subtotalComDesconto) * 100;
-      }
-    }
-
-    const totalFinal = subtotalComDesconto + totalIva - totalRetencao;
-
-    // Criar hash do documento
-    const hashString = `${empresa.nif}|${numeroFactura}|${new Date().toISOString()}|${totalFinal}`;
-    const hashDocumento = crypto.createHash('sha256').update(hashString).digest('hex');
-
-    // 1. CRIAR VENDA
-    const novaVenda = new Venda({
-      empresaNif: empresa.nif,
-      empresaId: empresa._id,
-      contaBancaria: contaParaVenda,
-      ibanBancario: ibanParaVenda,
-      numeroFactura: numeroVenda,
-      serie: "FT",
-      tipoDocumento: "FT",
-      cliente: venda.cliente,
-      clienteId: cliente?._id,
-      nifCliente: venda.nifCliente || '999999999',
-      enderecoCliente: venda.enderecoCliente || "",
-      paisCliente: venda.paisCliente || "AO",
-      tipoFactura: venda.tipoFactura || "Venda",
-      itens: itensProcessados,
-      subtotal: subtotal,
-      totalIva: totalIva,
-      totalRetencao: totalRetencao,
-      taxaRetencao: taxaRetencaoAplicada,
-      desconto: venda.desconto || 0,
-      total: totalFinal,
-      formaPagamento: venda.formaPagamento,
-      detalhesPagamento: {
-        ...venda.detalhesPagamento,
-        dataPagamento: new Date()
-      },
-      status: "finalizada",
-      usuario: usuario,
-      hashDocumento: hashDocumento,
-      data: new Date(),
-      dataAtualizacao: new Date()
-    });
-
-    await novaVenda.save();
-    console.log(`✅ Venda salva! ID: ${novaVenda._id}`);
-
-    // 2. CRIAR FACTURA
-    const novaFactura = new Factura({
-      numeroFactura: numeroFactura,
-      serie: "FT",
-      tipo: "Factura",
-      empresaNif: empresa.nif,
-      empresaId: empresa._id,
-      cliente: venda.cliente,
-      nifCliente: venda.nifCliente || '999999999',
-      enderecoCliente: venda.enderecoCliente || "",
-      tipoActividade: venda.tipoFactura || "Venda",
-      itens: itensProcessados.map((item, idx) => ({
-        ...item,
-        linha: idx + 1
-      })),
-      subtotal: subtotal,
-      totalIva: totalIva,
-      desconto: desconto,
-      totalRetencao: totalRetencao,
-      taxaRetencao: taxaRetencaoAplicada,
-      total: totalFinal,
-      formaPagamento: venda.formaPagamento,
-      detalhesPagamento: {
-        ...venda.detalhesPagamento,
-        dataPagamento: new Date()
-      },
-      status: "emitido",
-      usuario: usuario,
-      hashDocumento: hashDocumento,
-      vendaOriginalId: novaVenda._id,
-      dataEmissao: new Date(),
-      impressoes: 1
-    });
-
-    await novaFactura.save();
-    console.log(`✅ Factura salva! Nº ${numeroFactura}`);
-
-    // 3. CRIAR REGISTO BANCÁRIO
-    await criarRegistoBancarioVenda(novaVenda, empresa, contaParaVenda, ibanParaVenda);
-
-    // 4. INTEGRAÇÃO COM CONTROLO DE PAGAMENTOS
-    if (venda.formaPagamento !== 'Dinheiro') {
-      try {
-        const pagamento = await integracaoPagamentos.integrarVenda(novaVenda, empresa, usuario);
-        if (pagamento) {
-          console.log(`✅ Conta a receber criada: ${pagamento.referencia} - Valor: ${pagamento.valor} Kz`);
-        }
-      } catch (err) {
-        console.error('⚠️ Erro ao integrar com pagamentos:', err.message);
-      }
-    }
-
-    res.status(201).json({
-      sucesso: true,
-      mensagem: `Venda registrada com sucesso! Factura Nº ${numeroFactura}`,
-      dados: {
-        venda: novaVenda,
-        factura: novaFactura,
-        cliente: cliente,
-        contaBancaria: contaParaVenda
-      },
-      proximoNumero: numeroFactura + 1
-    });
-
-  } catch (error) {
-    console.error('=== ERRO NA EMISSÃO DE VENDA ===');
-    console.error('Erro:', error.message);
-    console.error('Stack:', error.stack);
-    
-    res.status(500).json({ 
-      sucesso: false, 
-      mensagem: 'Erro ao processar venda',
-      erro: error.message 
-    });
-  }
-};
-
-// GET /api/vendas/proximo-numero/:empresaNif
-exports.getProximoNumero = async (req, res) => {
-  try {
-    const { empresaNif } = req.params;
-    const usuarioEmpresaId = req.user?.empresaId;
-    
-    const empresa = await Empresa.findOne({ nif: empresaNif });
-    if (!empresa) {
-      return res.status(404).json({ 
-        sucesso: false, 
-        mensagem: 'Empresa não encontrada' 
-      });
-    }
-    
-    if (usuarioEmpresaId && empresa._id.toString() !== usuarioEmpresaId.toString()) {
-      console.error(`❌ ACESSO NEGADO: Usuário tentou acessar empresa ${empresa.nome}`);
-      return res.status(403).json({ 
-        sucesso: false, 
-        mensagem: 'Acesso negado' 
-      });
-    }
-    
-    const proximo = await getProximoNumeroFactura(empresa._id);
-    res.json({ 
-      sucesso: true, 
-      proximo 
-    });
-  } catch (error) {
-    console.error('Erro ao buscar próximo número:', error);
-    res.status(500).json({ 
-      sucesso: false, 
-      mensagem: 'Erro ao buscar próximo número',
-      erro: error.message 
-    });
-  }
-};
-
-// GET /api/vendas/historico/:empresaId
-exports.getHistorico = async (req, res) => {
-  try {
-    const { empresaId } = req.params;
-    const usuarioEmpresaId = req.user?.empresaId;
-    
-    if (!empresaId) {
-      return res.status(400).json({ 
-        sucesso: false, 
-        mensagem: 'ID da empresa é obrigatório' 
-      });
-    }
-    
-    const { page = 1, limit = 50, dataInicio, dataFim } = req.query;
-    
-    const query = { empresaId };
-    
-    if (dataInicio && dataFim) {
-      query.data = {
-        $gte: new Date(dataInicio),
-        $lte: new Date(dataFim)
-      };
-    }
-    
-    const vendas = await Venda.find(query)
-      .sort({ data: -1 })
-      .skip((parseInt(page) - 1) * parseInt(limit))
-      .limit(parseInt(limit))
-      .populate('clienteId', 'nome nif telefone email');
-
-    const total = await Venda.countDocuments(query);
-    
-    res.json({
-      sucesso: true,
-      dados: vendas,
-      total,
-      pagina: parseInt(page),
-      totalPaginas: Math.ceil(total / parseInt(limit))
-    });
-    
-  } catch (error) {
-    console.error('❌ Erro ao buscar histórico:', error);
-    res.status(500).json({ 
-      sucesso: false, 
-      mensagem: 'Erro ao buscar histórico',
-      erro: error.message 
-    });
-  }
-};
-
-// GET /api/vendas/:id
-exports.getVendaById = async (req, res) => {
+// ============================================
+// GET - Detalhes financeiros da venda
+// ============================================
+exports.getDetalhesFinanceiros = async (req, res) => {
   try {
     const { id } = req.params;
-    const usuarioEmpresaId = req.user?.empresaId;
-    
-    if (!id) {
-      return res.status(400).json({ 
-        sucesso: false, 
-        mensagem: 'ID da venda é obrigatório' 
-      });
-    }
     
     const venda = await Venda.findById(id).populate('clienteId', 'nome nif telefone email');
     
@@ -507,222 +16,1153 @@ exports.getVendaById = async (req, res) => {
       });
     }
     
-    res.json({ 
-      sucesso: true, 
-      dados: venda 
+    const resumoPagamentos = {
+      total: venda.total,
+      entrada: venda.entrada || 0,
+      totalParcelas: venda.parcelas.reduce((sum, p) => sum + p.valor, 0),
+      pago: venda.parcelas.reduce((sum, p) => sum + (p.valorPago || 0), 0) + (venda.entrada || 0),
+      pendente: venda.valorParcelasRestante || 0,
+      percentual: ((venda.parcelas.reduce((sum, p) => sum + (p.valorPago || 0), 0) + (venda.entrada || 0)) / venda.total * 100).toFixed(2)
+    };
+    
+    const parcelasDetalhadas = venda.parcelas.map(p => ({
+      numero: p.numero,
+      valor: p.valor,
+      valorPago: p.valorPago || 0,
+      dataVencimento: p.dataVencimento,
+      dataPagamento: p.dataPagamento,
+      status: p.status,
+      diasAtraso: p.status === 'pendente' && new Date(p.dataVencimento) < new Date() 
+        ? Math.floor((new Date() - new Date(p.dataVencimento)) / (1000 * 60 * 60 * 24)) 
+        : 0
+    }));
+    
+    res.json({
+      sucesso: true,
+      dados: {
+        venda: {
+          _id: venda._id,
+          numeroFactura: venda.numeroFactura,
+          cliente: venda.cliente,
+          data: venda.data,
+          tipoVenda: venda.tipoVenda,
+          status: venda.status
+        },
+        resumo: resumoPagamentos,
+        parcelas: parcelasDetalhadas
+      }
     });
+    
   } catch (error) {
-    console.error('Erro ao buscar venda:', error);
+    console.error('Erro ao buscar detalhes financeiros:', error);
     res.status(500).json({ 
       sucesso: false, 
-      mensagem: 'Erro ao buscar venda',
+      mensagem: 'Erro ao buscar detalhes financeiros',
       erro: error.message 
     });
   }
 };
 
-// DELETE /api/vendas/:id (cancelar venda)
-exports.cancelarVenda = async (req, res) => {
+// ============================================
+// GET - Serviços por status
+// ============================================
+exports.getServicosPorStatus = async (req, res) => {
   try {
-    const { id } = req.params;
-    const usuarioEmpresaId = req.user?.empresaId;
+    const { empresaId, status } = req.params;
     
-    if (!id) {
-      return res.status(400).json({ 
-        sucesso: false, 
-        mensagem: 'ID da venda é obrigatório' 
-      });
+    const query = {
+      empresaId,
+      'itens.tipo': 'servico',
+      'itens.agendamento': { $exists: true }
+    };
+    
+    if (status && status !== 'todos') {
+      query['itens.agendamento.status'] = status;
     }
     
+    const vendas = await Venda.find(query).populate('clienteId', 'nome nif telefone');
+    
+    const servicos = [];
+    for (const venda of vendas) {
+      for (let idx = 0; idx < venda.itens.length; idx++) {
+        const item = venda.itens[idx];
+        if (item.tipo === 'servico' && item.agendamento) {
+          servicos.push({
+            vendaId: venda._id,
+            itemIndex: idx,
+            numeroFactura: venda.numeroFactura,
+            cliente: venda.cliente,
+            servico: item.produtoOuServico,
+            valor: item.total,
+            agendamento: item.agendamento,
+            dataVenda: venda.data
+          });
+        }
+      }
+    }
+    
+    // Estatísticas por status
+    const stats = {
+      agendado: servicos.filter(s => s.agendamento.status === 'agendado').length,
+      em_andamento: servicos.filter(s => s.agendamento.status === 'em_andamento').length,
+      concluido: servicos.filter(s => s.agendamento.status === 'concluido').length,
+      cancelado: servicos.filter(s => s.agendamento.status === 'cancelado').length
+    };
+    
+    res.json({
+      sucesso: true,
+      dados: servicos,
+      estatisticas: stats,
+      total: servicos.length
+    });
+    
+  } catch (error) {
+    console.error('Erro ao buscar serviços por status:', error);
+    res.status(500).json({ 
+      sucesso: false, 
+      mensagem: 'Erro ao buscar serviços',
+      erro: error.message 
+    });
+  }
+};
+
+// ============================================
+// GET - Resumo financeiro por período
+// ============================================
+exports.getResumoFinanceiro = async (req, res) => {
+  try {
+    const { empresaId } = req.params;
+    const { dataInicio, dataFim, periodo = 'mensal' } = req.query;
+    
+    const matchQuery = { empresaId: new mongoose.Types.ObjectId(empresaId) };
+    
+    if (dataInicio && dataFim) {
+      matchQuery.data = {
+        $gte: new Date(dataInicio),
+        $lte: new Date(dataFim)
+      };
+    }
+    
+    let groupBy;
+    if (periodo === 'diario') {
+      groupBy = {
+        ano: { $year: '$data' },
+        mes: { $month: '$data' },
+        dia: { $dayOfMonth: '$data' }
+      };
+    } else if (periodo === 'anual') {
+      groupBy = { ano: { $year: '$data' } };
+    } else {
+      groupBy = {
+        ano: { $year: '$data' },
+        mes: { $month: '$data' }
+      };
+    }
+    
+    const resultado = await Venda.aggregate([
+      { $match: matchQuery },
+      {
+        $group: {
+          _id: groupBy,
+          totalVendas: { $sum: 1 },
+          totalFaturado: { $sum: '$total' },
+          totalPago: { 
+            $sum: { 
+              $cond: [
+                { $eq: ['$tipoVenda', 'avista'] },
+                '$total',
+                { $add: ['$entrada', { $sum: '$parcelas.valorPago' }] }
+              ]
+            }
+          },
+          totalPendente: { $sum: '$valorParcelasRestante' }
+        }
+      },
+      { $sort: { '_id.ano': 1, '_id.mes': 1, '_id.dia': 1 } }
+    ]);
+    
+    res.json({
+      sucesso: true,
+      dados: resultado,
+      periodo: periodo
+    });
+    
+  } catch (error) {
+    console.error('Erro ao buscar resumo financeiro:', error);
+    res.status(500).json({ 
+      sucesso: false, 
+      mensagem: 'Erro ao buscar resumo financeiro',
+      erro: error.message 
+    });
+  }
+};
+
+// ============================================
+// GET - Vendas por período (agrupado)
+// ============================================
+exports.getVendasPorPeriodo = async (req, res) => {
+  try {
+    const { empresaId } = req.params;
+    const { dataInicio, dataFim, grupo = 'dia' } = req.query;
+    
+    const matchQuery = { empresaId: new mongoose.Types.ObjectId(empresaId) };
+    
+    if (dataInicio && dataFim) {
+      matchQuery.data = {
+        $gte: new Date(dataInicio),
+        $lte: new Date(dataFim)
+      };
+    }
+    
+    let groupBy;
+    let format;
+    
+    if (grupo === 'mes') {
+      groupBy = {
+        ano: { $year: '$data' },
+        mes: { $month: '$data' }
+      };
+      format = { $concat: [
+        { $toString: '$_id.mes' }, '/', { $toString: '$_id.ano' }
+      ] };
+    } else if (grupo === 'ano') {
+      groupBy = { ano: { $year: '$data' } };
+      format = { $toString: '$_id.ano' };
+    } else {
+      groupBy = {
+        ano: { $year: '$data' },
+        mes: { $month: '$data' },
+        dia: { $dayOfMonth: '$data' }
+      };
+      format = { $concat: [
+        { $toString: '$_id.dia' }, '/', { $toString: '$_id.mes' }, '/', { $toString: '$_id.ano' }
+      ] };
+    }
+    
+    const resultado = await Venda.aggregate([
+      { $match: matchQuery },
+      {
+        $group: {
+          _id: groupBy,
+          count: { $sum: 1 },
+          total: { $sum: '$total' },
+          totalAvista: { 
+            $sum: { 
+              $cond: [{ $eq: ['$tipoVenda', 'avista'] }, '$total', 0] 
+            } 
+          },
+          totalPrazo: { 
+            $sum: { 
+              $cond: [{ $eq: ['$tipoVenda', 'prazo'] }, '$total', 0] 
+            } 
+          }
+        }
+      },
+      { $sort: { '_id.ano': 1, '_id.mes': 1, '_id.dia': 1 } },
+      {
+        $project: {
+          periodo: format,
+          count: 1,
+          total: 1,
+          totalAvista: 1,
+          totalPrazo: 1
+        }
+      }
+    ]);
+    
+    res.json({
+      sucesso: true,
+      dados: resultado
+    });
+    
+  } catch (error) {
+    console.error('Erro ao buscar vendas por período:', error);
+    res.status(500).json({ 
+      sucesso: false, 
+      mensagem: 'Erro ao buscar vendas por período',
+      erro: error.message 
+    });
+  }
+};
+
+// ============================================
+// GET - Top clientes
+// ============================================
+exports.getTopClientes = async (req, res) => {
+  try {
+    const { empresaId } = req.params;
+    const { limit = 10 } = req.query;
+    
+    const resultado = await Venda.aggregate([
+      { $match: { empresaId: new mongoose.Types.ObjectId(empresaId) } },
+      {
+        $group: {
+          _id: { clienteId: '$clienteId', nome: '$cliente', nif: '$nifCliente' },
+          totalCompras: { $sum: 1 },
+          totalGasto: { $sum: '$total' },
+          totalPendente: { $sum: '$valorParcelasRestante' }
+        }
+      },
+      { $sort: { totalGasto: -1 } },
+      { $limit: parseInt(limit) },
+      {
+        $project: {
+          cliente: '$_id.nome',
+          nif: '$_id.nif',
+          clienteId: '$_id.clienteId',
+          totalCompras: 1,
+          totalGasto: 1,
+          totalPendente: 1,
+          ticketMedio: { $divide: ['$totalGasto', '$totalCompras'] }
+        }
+      }
+    ]);
+    
+    res.json({
+      sucesso: true,
+      dados: resultado
+    });
+    
+  } catch (error) {
+    console.error('Erro ao buscar top clientes:', error);
+    res.status(500).json({ 
+      sucesso: false, 
+      mensagem: 'Erro ao buscar top clientes',
+      erro: error.message 
+    });
+  }
+};
+
+// ============================================
+// GET - Top produtos/serviços mais vendidos
+// ============================================
+exports.getTopProdutos = async (req, res) => {
+  try {
+    const { empresaId } = req.params;
+    const { limit = 10, tipo = 'todos' } = req.query;
+    
+    const matchQuery = { empresaId: new mongoose.Types.ObjectId(empresaId) };
+    if (tipo !== 'todos') {
+      matchQuery['itens.tipo'] = tipo;
+    }
+    
+    const resultado = await Venda.aggregate([
+      { $match: matchQuery },
+      { $unwind: '$itens' },
+      { $match: tipo !== 'todos' ? { 'itens.tipo': tipo } : {} },
+      {
+        $group: {
+          _id: {
+            produtoId: '$itens.produtoId',
+            nome: '$itens.produtoOuServico',
+            tipo: '$itens.tipo'
+          },
+          quantidadeTotal: { $sum: '$itens.quantidade' },
+          valorTotal: { $sum: '$itens.total' },
+          numeroVendas: { $sum: 1 }
+        }
+      },
+      { $sort: { valorTotal: -1 } },
+      { $limit: parseInt(limit) },
+      {
+        $project: {
+          produto: '$_id.nome',
+          produtoId: '$_id.produtoId',
+          tipo: '$_id.tipo',
+          quantidadeTotal: 1,
+          valorTotal: 1,
+          numeroVendas: 1,
+          ticketMedio: { $divide: ['$valorTotal', '$numeroVendas'] }
+        }
+      }
+    ]);
+    
+    res.json({
+      sucesso: true,
+      dados: resultado
+    });
+    
+  } catch (error) {
+    console.error('Erro ao buscar top produtos:', error);
+    res.status(500).json({ 
+      sucesso: false, 
+      mensagem: 'Erro ao buscar top produtos',
+      erro: error.message 
+    });
+  }
+};
+
+// ============================================
+// GET - Dashboard (cards com indicadores)
+// ============================================
+exports.getDashboard = async (req, res) => {
+  try {
+    const { empresaId } = req.params;
+    const { ano = new Date().getFullYear(), mes = new Date().getMonth() + 1 } = req.query;
+    
+    const dataInicio = new Date(ano, mes - 1, 1);
+    const dataFim = new Date(ano, mes, 0);
+    
+    const vendasMes = await Venda.aggregate([
+      { 
+        $match: { 
+          empresaId: new mongoose.Types.ObjectId(empresaId),
+          data: { $gte: dataInicio, $lte: dataFim }
+        } 
+      },
+      {
+        $group: {
+          _id: null,
+          totalFaturado: { $sum: '$total' },
+          totalVendas: { $sum: 1 },
+          totalPago: { 
+            $sum: { 
+              $cond: [
+                { $eq: ['$tipoVenda', 'avista'] },
+                '$total',
+                { $add: ['$entrada', { $sum: '$parcelas.valorPago' }] }
+              ]
+            }
+          },
+          vendasAvista: { $sum: { $cond: [{ $eq: ['$tipoVenda', 'avista'] }, 1, 0] } },
+          vendasPrazo: { $sum: { $cond: [{ $eq: ['$tipoVenda', 'prazo'] }, 1, 0] } }
+        }
+      }
+    ]);
+    
+    const parcelasAVencer = await Venda.aggregate([
+      { 
+        $match: { 
+          empresaId: new mongoose.Types.ObjectId(empresaId),
+          tipoVenda: 'prazo',
+          'parcelas.status': 'pendente'
+        } 
+      },
+      { $unwind: '$parcelas' },
+      { $match: { 'parcelas.status': 'pendente' } },
+      {
+        $group: {
+          _id: null,
+          totalPendente: { $sum: { $subtract: ['$parcelas.valor', '$parcelas.valorPago'] } },
+          parcelasCount: { $sum: 1 },
+          parcelasAtrasadas: { 
+            $sum: { 
+              $cond: [{ $lt: ['$parcelas.dataVencimento', new Date()] }, 1, 0] 
+            } 
+          }
+        }
+      }
+    ]);
+    
+    const servicosPendentes = await Venda.countDocuments({
+      empresaId: new mongoose.Types.ObjectId(empresaId),
+      'itens.tipo': 'servico',
+      'itens.agendamento.status': { $in: ['agendado', 'em_andamento'] }
+    });
+    
+    res.json({
+      sucesso: true,
+      dados: {
+        mesAtual: {
+          faturamento: vendasMes[0]?.totalFaturado || 0,
+          totalVendas: vendasMes[0]?.totalVendas || 0,
+          totalRecebido: vendasMes[0]?.totalPago || 0,
+          vendasAvista: vendasMes[0]?.vendasAvista || 0,
+          vendasPrazo: vendasMes[0]?.vendasPrazo || 0
+        },
+        carteiraPendente: {
+          totalPendente: parcelasAVencer[0]?.totalPendente || 0,
+          parcelasCount: parcelasAVencer[0]?.parcelasCount || 0,
+          parcelasAtrasadas: parcelasAVencer[0]?.parcelasAtrasadas || 0
+        },
+        servicosPendentes: servicosPendentes
+      }
+    });
+    
+  } catch (error) {
+    console.error('Erro ao buscar dashboard:', error);
+    res.status(500).json({ 
+      sucesso: false, 
+      mensagem: 'Erro ao buscar dashboard',
+      erro: error.message 
+    });
+  }
+};
+
+// ============================================
+// GET - Fluxo de caixa (previsão de recebimentos)
+// ============================================
+exports.getFluxoCaixa = async (req, res) => {
+  try {
+    const { empresaId } = req.params;
+    const { meses = 6 } = req.query;
+    
+    const hoje = new Date();
+    const dataFim = new Date();
+    dataFim.setMonth(hoje.getMonth() + parseInt(meses));
+    
+    const parcelas = await Venda.aggregate([
+      { 
+        $match: { 
+          empresaId: new mongoose.Types.ObjectId(empresaId),
+          tipoVenda: 'prazo',
+          'parcelas.status': 'pendente'
+        } 
+      },
+      { $unwind: '$parcelas' },
+      { $match: { 'parcelas.status': 'pendente' } },
+      {
+        $project: {
+          valorPendente: { $subtract: ['$parcelas.valor', '$parcelas.valorPago'] },
+          dataVencimento: '$parcelas.dataVencimento',
+          cliente: '$cliente',
+          numeroFactura: '$numeroFactura'
+        }
+      }
+    ]);
+    
+    // Agrupar por mês
+    const previsao = {};
+    for (const parcela of parcelas) {
+      const data = new Date(parcela.dataVencimento);
+      if (data <= dataFim) {
+        const key = `${data.getFullYear()}-${data.getMonth() + 1}`;
+        if (!previsao[key]) {
+          previsao[key] = {
+            ano: data.getFullYear(),
+            mes: data.getMonth() + 1,
+            valorTotal: 0,
+            parcelas: []
+          };
+        }
+        previsao[key].valorTotal += parcela.valorPendente;
+        previsao[key].parcelas.push(parcela);
+      }
+    }
+    
+    const resultado = Object.values(previsao).sort((a, b) => {
+      if (a.ano !== b.ano) return a.ano - b.ano;
+      return a.mes - b.mes;
+    });
+    
+    res.json({
+      sucesso: true,
+      dados: resultado,
+      totalPrevisao: parcelas.reduce((sum, p) => sum + p.valorPendente, 0)
+    });
+    
+  } catch (error) {
+    console.error('Erro ao buscar fluxo de caixa:', error);
+    res.status(500).json({ 
+      sucesso: false, 
+      mensagem: 'Erro ao buscar fluxo de caixa',
+      erro: error.message 
+    });
+  }
+};
+
+// ============================================
+// GET - Previsão de recebimento
+// ============================================
+exports.getPrevisaoRecebimento = async (req, res) => {
+  try {
+    const { empresaId } = req.params;
+    const { dias = 30 } = req.query;
+    
+    const hoje = new Date();
+    const dataLimite = new Date();
+    dataLimite.setDate(hoje.getDate() + parseInt(dias));
+    
+    const parcelas = await Venda.aggregate([
+      { 
+        $match: { 
+          empresaId: new mongoose.Types.ObjectId(empresaId),
+          tipoVenda: 'prazo',
+          'parcelas.status': 'pendente'
+        } 
+      },
+      { $unwind: '$parcelas' },
+      { 
+        $match: { 
+          'parcelas.status': 'pendente',
+          'parcelas.dataVencimento': { $lte: dataLimite }
+        } 
+      },
+      {
+        $project: {
+          valorPendente: { $subtract: ['$parcelas.valor', '$parcelas.valorPago'] },
+          dataVencimento: '$parcelas.dataVencimento',
+          cliente: '$cliente',
+          numeroFactura: '$numeroFactura',
+          parcelaNumero: '$parcelas.numero'
+        }
+      },
+      { $sort: { dataVencimento: 1 } }
+    ]);
+    
+    const totalProximo = parcelas
+      .filter(p => new Date(p.dataVencimento) <= dataLimite)
+      .reduce((sum, p) => sum + p.valorPendente, 0);
+    
+    const totalAtrasado = parcelas
+      .filter(p => new Date(p.dataVencimento) < hoje)
+      .reduce((sum, p) => sum + p.valorPendente, 0);
+    
+    res.json({
+      sucesso: true,
+      dados: parcelas,
+      resumo: {
+        totalProximo: totalProximo,
+        totalAtrasado: totalAtrasado,
+        quantidadeParcelas: parcelas.length,
+        periodoDias: parseInt(dias)
+      }
+    });
+    
+  } catch (error) {
+    console.error('Erro ao buscar previsão de recebimento:', error);
+    res.status(500).json({ 
+      sucesso: false, 
+      mensagem: 'Erro ao buscar previsão de recebimento',
+      erro: error.message 
+    });
+  }
+};
+
+// ============================================
+// GET - Relatório de inadimplência
+// ============================================
+exports.getRelatorioInadimplencia = async (req, res) => {
+  try {
+    const { empresaId } = req.params;
+    const { diasAtraso = 30 } = req.query;
+    
+    const hoje = new Date();
+    const dataLimite = new Date();
+    dataLimite.setDate(hoje.getDate() - parseInt(diasAtraso));
+    
+    const vendas = await Venda.find({
+      empresaId,
+      tipoVenda: 'prazo',
+      status: { $in: ['parcialmente_paga', 'pendente'] }
+    }).populate('clienteId', 'nome nif telefone email');
+    
+    const inadimplentes = [];
+    for (const venda of vendas) {
+      const parcelasAtrasadas = venda.parcelas.filter(p => 
+        p.status === 'pendente' && new Date(p.dataVencimento) < dataLimite
+      );
+      
+      if (parcelasAtrasadas.length > 0) {
+        const valorAtrasado = parcelasAtrasadas.reduce((sum, p) => sum + (p.valor - (p.valorPago || 0)), 0);
+        const diasMaiorAtraso = Math.max(...parcelasAtrasadas.map(p => 
+          Math.floor((hoje - new Date(p.dataVencimento)) / (1000 * 60 * 60 * 24))
+        ));
+        
+        inadimplentes.push({
+          vendaId: venda._id,
+          numeroFactura: venda.numeroFactura,
+          cliente: venda.cliente,
+          clienteDetalhes: venda.clienteId,
+          totalVenda: venda.total,
+          valorAtrasado,
+          parcelasAtrasadas: parcelasAtrasadas.length,
+          diasMaiorAtraso,
+          parcelas: parcelasAtrasadas.map(p => ({
+            numero: p.numero,
+            valor: p.valor,
+            valorPago: p.valorPago || 0,
+            dataVencimento: p.dataVencimento,
+            diasAtraso: Math.floor((hoje - new Date(p.dataVencimento)) / (1000 * 60 * 60 * 24))
+          }))
+        });
+      }
+    }
+    
+    inadimplentes.sort((a, b) => b.diasMaiorAtraso - a.diasMaiorAtraso);
+    
+    res.json({
+      sucesso: true,
+      dados: inadimplentes,
+      resumo: {
+        totalInadimplentes: inadimplentes.length,
+        valorTotalAtrasado: inadimplentes.reduce((sum, i) => sum + i.valorAtrasado, 0),
+        mediaDiasAtraso: inadimplentes.length > 0 
+          ? Math.round(inadimplentes.reduce((sum, i) => sum + i.diasMaiorAtraso, 0) / inadimplentes.length)
+          : 0
+      }
+    });
+    
+  } catch (error) {
+    console.error('Erro ao buscar relatório de inadimplência:', error);
+    res.status(500).json({ 
+      sucesso: false, 
+      mensagem: 'Erro ao buscar relatório de inadimplência',
+      erro: error.message 
+    });
+  }
+};
+
+// ============================================
+// POST - Renegociar parcelas
+// ============================================
+exports.renegociarParcelas = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { novasParcelas, novaEntrada, novaDataPrimeiraParcela, justificativa } = req.body;
+    const usuario = req.user?.nome || req.user?.email || "Sistema";
+    
     const venda = await Venda.findById(id);
+    
     if (!venda) {
       return res.status(404).json({ 
         sucesso: false, 
         mensagem: 'Venda não encontrada' 
       });
     }
-
-    if (venda.status === 'cancelada') {
+    
+    if (venda.tipoVenda !== 'prazo') {
       return res.status(400).json({ 
         sucesso: false, 
-        mensagem: 'Venda já está cancelada' 
+        mensagem: 'Esta venda não é a prazo' 
       });
     }
-
-    // 🔧 RESTAURAR ESTOQUE APENAS PARA PRODUTOS
-    for (const item of venda.itens) {
-      if (item.tipo === 'produto' && item.produtoId) {
-        const produtoStock = await Stock.findOne({ 
-          _id: item.produtoId,
-          empresaId: venda.empresaId 
-        });
-        if (produtoStock) {
-          produtoStock.quantidade += item.quantidade;
-          await produtoStock.save();
-          console.log(`📦 Estoque restaurado para "${item.produtoOuServico}": +${item.quantidade}`);
-        }
-      } else {
-        console.log(`🛠️ Serviço "${item.produtoOuServico}" - estoque não alterado`);
-      }
-    }
-
-    // Remover registo bancário
-    await RegistoBancario.deleteOne({ documentoReferencia: venda._id.toString() });
-
-    // Cancelar factura correspondente
-    const factura = await Factura.findOne({ 
-      empresaId: venda.empresaId, 
-      numeroFactura: venda.numeroFactura 
+    
+    const saldoRestante = venda.getValorPendente ? venda.getValorPendente() : venda.valorParcelasRestante;
+    
+    // Registrar renegociação
+    venda.historicoRenegociacoes = venda.historicoRenegociacoes || [];
+    venda.historicoRenegociacoes.push({
+      data: new Date(),
+      usuario,
+      justificativa,
+      parcelasAnteriores: [...venda.parcelas],
+      novaEntrada: novaEntrada || venda.entrada,
+      novasParcelas: novasParcelas
     });
     
-    if (factura && factura.status !== 'cancelada') {
-      factura.status = 'cancelada';
-      await factura.save();
+    // Atualizar parcelas
+    if (novaEntrada !== undefined) {
+      venda.entrada = novaEntrada;
     }
-
-    venda.status = 'cancelada';
+    
+    if (novasParcelas && novasParcelas.length > 0) {
+      const novasParcelasFormatadas = novasParcelas.map((p, idx) => ({
+        numero: idx + 1,
+        valor: p.valor,
+        dataVencimento: new Date(p.dataVencimento),
+        status: 'pendente',
+        valorPago: 0,
+        juros: p.juros || 0
+      }));
+      
+      venda.parcelas = novasParcelasFormatadas;
+      venda.valorParcelasRestante = novasParcelasFormatadas.reduce((sum, p) => sum + p.valor, 0);
+      venda.numeroParcelas = novasParcelasFormatadas.length;
+    }
+    
+    if (novaDataPrimeiraParcela) {
+      venda.dataPrimeiraParcela = new Date(novaDataPrimeiraParcela);
+    }
+    
+    venda.status = 'pendente';
     await venda.save();
-
-    res.json({ 
-      sucesso: true, 
-      mensagem: `Venda Nº ${venda.numeroFactura} cancelada com sucesso` 
+    
+    res.json({
+      sucesso: true,
+      mensagem: 'Parcelas renegociadas com sucesso',
+      dados: {
+        venda,
+        saldoRestanteAnterior: saldoRestante,
+        novoSaldo: venda.valorParcelasRestante
+      }
     });
-
+    
   } catch (error) {
-    console.error('Erro ao cancelar venda:', error);
+    console.error('Erro ao renegociar parcelas:', error);
     res.status(500).json({ 
       sucesso: false, 
-      mensagem: 'Erro ao cancelar venda',
+      mensagem: 'Erro ao renegociar parcelas',
       erro: error.message 
     });
   }
 };
 
-// GET /api/vendas/exportar-saft/:empresaNif
-exports.exportarSAFT = async (req, res) => {
+// ============================================
+// POST - Pagar múltiplas parcelas
+// ============================================
+exports.pagarMultiplasParcelas = async (req, res) => {
   try {
-    const { empresaNif } = req.params;
-    const { dataInicio, dataFim } = req.query;
-    const usuarioEmpresaId = req.user?.empresaId;
+    const { id } = req.params;
+    const { parcelasNumeros, valorTotal, formaPagamento, contaBancaria } = req.body;
+    const usuario = req.user?.nome || req.user?.email || "Sistema";
     
-    const empresa = await Empresa.findOne({ nif: empresaNif });
-    if (!empresa) {
+    const venda = await Venda.findById(id);
+    
+    if (!venda) {
       return res.status(404).json({ 
         sucesso: false, 
-        mensagem: 'Empresa não encontrada' 
+        mensagem: 'Venda não encontrada' 
       });
     }
     
-    if (usuarioEmpresaId && empresa._id.toString() !== usuarioEmpresaId.toString()) {
-      return res.status(403).json({ 
+    if (venda.tipoVenda !== 'prazo') {
+      return res.status(400).json({ 
         sucesso: false, 
-        mensagem: 'Acesso negado' 
+        mensagem: 'Esta venda não é a prazo' 
       });
     }
     
-    const query = { empresaId: empresa._id, status: 'finalizada' };
-    if (dataInicio && dataFim) {
-      query.data = {
-        $gte: new Date(dataInicio),
-        $lte: new Date(dataFim)
-      };
+    const parcelasPagas = [];
+    let totalPago = 0;
+    
+    for (const parcelaNum of parcelasNumeros) {
+      const parcela = venda.parcelas.find(p => p.numero === parcelaNum);
+      
+      if (!parcela) {
+        return res.status(404).json({ 
+          sucesso: false, 
+          mensagem: `Parcela ${parcelaNum} não encontrada` 
+        });
+      }
+      
+      if (parcela.status === 'pago') {
+        return res.status(400).json({ 
+          sucesso: false, 
+          mensagem: `Parcela ${parcelaNum} já foi paga` 
+        });
+      }
+      
+      const valorDevido = parcela.valor - (parcela.valorPago || 0);
+      totalPago += valorDevido;
+      
+      parcela.valorPago = parcela.valor;
+      parcela.dataPagamento = new Date();
+      parcela.formaPagamento = formaPagamento || parcela.formaPagamento;
+      parcela.contaBancaria = contaBancaria || parcela.contaBancaria;
+      parcela.usuario = usuario;
+      parcela.status = 'pago';
+      
+      parcelasPagas.push(parcelaNum);
     }
     
-    const vendas = await Venda.find(query).sort({ data: 1 });
-    console.log(`Encontradas ${vendas.length} vendas para exportar`);
+    venda.valorParcelasRestante = venda.parcelas
+      .filter(p => p.status === 'pendente')
+      .reduce((sum, p) => sum + (p.valor - (p.valorPago || 0)), 0);
     
-    const escapeXml = (unsafe) => {
-      if (!unsafe) return '';
-      return unsafe
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&apos;');
-    };
+    const todasPagas = venda.parcelas.every(p => p.status === 'pago');
+    if (todasPagas) {
+      venda.status = 'finalizada';
+    } else if (venda.parcelas.some(p => p.status === 'pago')) {
+      venda.status = 'parcialmente_paga';
+    }
     
-    const dataGeracao = new Date();
-    let xml = `<?xml version="1.0" encoding="UTF-8"?>
-<AuditFile xmlns="urn:OECD:StandardAuditFile-Tax:PT_1.04_01">
-  <Header>
-    <AuditFileVersion>1.04_01</AuditFileVersion>
-    <Company>
-      <Name>${escapeXml(empresa.nome)}</Name>
-      <TaxRegistrationNumber>${empresa.nif}</TaxRegistrationNumber>
-      <Address>
-        <AddressDetail>${escapeXml(empresa.endereco || '')}</AddressDetail>
-        <City>${escapeXml(empresa.cidade || 'Luanda')}</City>
-        <Country>AO</Country>
-      </Address>
-    </Company>
-    <Period>
-      <StartDate>${dataInicio || new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0]}</StartDate>
-      <EndDate>${dataFim || new Date().toISOString().split('T')[0]}</EndDate>
-    </Period>
-    <FileGenerated>${dataGeracao.toISOString()}</FileGenerated>
-    <GenerationDate>${dataGeracao.toISOString().split('T')[0]}</GenerationDate>
-    <GenerationTime>${dataGeracao.toTimeString().split(' ')[0]}</GenerationTime>
-    <PrimaryUser>${escapeXml(empresa.contacto || 'Sistema')}</PrimaryUser>
-  </Header>
-  <SourceDocuments>
-    <SalesInvoices>`;
+    await venda.save();
     
-    vendas.forEach(venda => {
-      const dataVenda = new Date(venda.data);
-      xml += `
-      <Invoice>
-        <InvoiceNo>FT ${venda.numeroFactura}</InvoiceNo>
-        <InvoiceDate>${dataVenda.toISOString().split('T')[0]}</InvoiceDate>
-        <InvoiceType>FT</InvoiceType>
-        <Customer>
-          <CustomerTaxID>${escapeXml(venda.nifCliente)}</CustomerTaxID>
-          <CompanyName>${escapeXml(venda.cliente)}</CompanyName>
-        </Customer>`;
-      
-      venda.itens.forEach((item, idx) => {
-        xml += `
-        <Line>
-          <LineNumber>${idx + 1}</LineNumber>
-          <ProductCode>${escapeXml(item.codigoProduto || item.produtoOuServico)}</ProductCode>
-          <ProductDescription>${escapeXml(item.produtoOuServico)}</ProductDescription>
-          <Quantity>${item.quantidade}</Quantity>
-          <UnitPrice>${item.precoUnitario}</UnitPrice>
-          <TaxPointDate>${dataVenda.toISOString().split('T')[0]}</TaxPointDate>
-          <Description>${escapeXml(item.produtoOuServico)}</Description>
-          <Amount>${item.total}</Amount>
-          <Tax>
-            <TaxType>IVA</TaxType>
-            <TaxCountryRegion>AO</TaxCountryRegion>
-            <TaxCode>NOR</TaxCode>
-            <TaxPercentage>${item.taxaIVA || 14}</TaxPercentage>
-            <TaxAmount>${item.iva || (item.total * 0.14)}</TaxAmount>
-          </Tax>
-        </Line>`;
+    // Criar registo bancário do pagamento múltiplo
+    const empresa = await Empresa.findById(venda.empresaId);
+    if (empresa && formaPagamento !== 'Dinheiro' && contaBancaria) {
+      const registo = new RegistoBancario({
+        data: new Date(),
+        conta: contaBancaria,
+        descricao: `PAGAMENTO MÚLTIPLO - ${parcelasPagas.length} parcelas - Factura Nº ${venda.numeroFactura} - ${venda.cliente}`,
+        tipo: 'Receita - Parcelas',
+        valor: totalPago,
+        entradaSaida: 'entrada',
+        ano: new Date().getFullYear(),
+        mes: meses[new Date().getMonth()],
+        documentoReferencia: venda._id.toString(),
+        reconcilado: false,
+        empresaId: empresa._id
       });
-      
-      xml += `
-        <DocumentTotals>
-          <TaxPayable>${venda.totalIva || 0}</TaxPayable>
-          <NetTotal>${venda.subtotal - (venda.desconto || 0)}</NetTotal>
-          <GrossTotal>${venda.total}</GrossTotal>
-        </DocumentTotals>
-      </Invoice>`;
+      await registo.save();
+    }
+    
+    res.json({
+      sucesso: true,
+      mensagem: `${parcelasPagas.length} parcela(s) paga(s) com sucesso!`,
+      dados: {
+        venda,
+        parcelasPagas,
+        totalPago
+      }
     });
     
-    xml += `
-    </SalesInvoices>
-  </SourceDocuments>
-</AuditFile>`;
-    
-    res.setHeader('Content-Type', 'application/xml; charset=utf-8');
-    res.setHeader('Content-Disposition', `attachment; filename=saft_${empresaNif}_${new Date().toISOString().split('T')[0]}.xml`);
-    res.send(xml);
-    
   } catch (error) {
-    console.error('Erro ao exportar SAFT:', error);
+    console.error('Erro ao pagar múltiplas parcelas:', error);
     res.status(500).json({ 
       sucesso: false, 
-      mensagem: 'Erro ao exportar SAFT',
+      mensagem: 'Erro ao pagar múltiplas parcelas',
+      erro: error.message 
+    });
+  }
+};
+
+// ============================================
+// GET - Extrato do cliente
+// ============================================
+exports.getExtratoCliente = async (req, res) => {
+  try {
+    const { empresaId, clienteId } = req.params;
+    
+    const vendas = await Venda.find({
+      empresaId,
+      clienteId: new mongoose.Types.ObjectId(clienteId)
+    }).sort({ data: -1 });
+    
+    const extrato = [];
+    
+    for (const venda of vendas) {
+      // Adicionar entrada da venda
+      extrato.push({
+        data: venda.data,
+        tipo: 'VENDA',
+        descricao: `Factura Nº ${venda.numeroFactura}`,
+        valor: venda.total,
+        tipoVenda: venda.tipoVenda,
+        saldo: 0
+      });
+      
+      // Adicionar pagamentos de parcelas
+      if (venda.tipoVenda === 'prazo') {
+        for (const parcela of venda.parcelas) {
+          if (parcela.status === 'pago' && parcela.valorPago > 0) {
+            extrato.push({
+              data: parcela.dataPagamento || parcela.dataVencimento,
+              tipo: 'PAGAMENTO',
+              descricao: `Pagamento Parcela ${parcela.numero} - Factura Nº ${venda.numeroFactura}`,
+              valor: -parcela.valorPago,
+              tipoVenda: venda.tipoVenda,
+              saldo: 0
+            });
+          }
+        }
+      }
+    }
+    
+    // Ordenar por data
+    extrato.sort((a, b) => new Date(a.data) - new Date(b.data));
+    
+    // Calcular saldo corrente
+    let saldo = 0;
+    for (const item of extrato) {
+      saldo += item.valor;
+      item.saldo = saldo;
+    }
+    
+    // Calcular resumo
+    const resumo = {
+      totalCompras: vendas.reduce((sum, v) => sum + v.total, 0),
+      totalPago: vendas.reduce((sum, v) => {
+        if (v.tipoVenda === 'avista') return sum + v.total;
+        const pagoParcelas = v.parcelas.reduce((s, p) => s + (p.valorPago || 0), 0);
+        return sum + (v.entrada || 0) + pagoParcelas;
+      }, 0),
+      saldoDevedor: vendas.reduce((sum, v) => {
+        if (v.tipoVenda === 'avista') return sum;
+        return sum + (v.valorParcelasRestante || 0);
+      }, 0),
+      totalVendas: vendas.length
+    };
+    
+    res.json({
+      sucesso: true,
+      dados: extrato,
+      resumo
+    });
+    
+  } catch (error) {
+    console.error('Erro ao buscar extrato do cliente:', error);
+    res.status(500).json({ 
+      sucesso: false, 
+      mensagem: 'Erro ao buscar extrato do cliente',
+      erro: error.message 
+    });
+  }
+};
+
+// ============================================
+// GET - Exportar vendas a prazo
+// ============================================
+exports.exportarVendasPrazo = async (req, res) => {
+  try {
+    const { empresaId } = req.params;
+    const { formato = 'csv' } = req.query;
+    
+    const vendas = await Venda.find({
+      empresaId,
+      tipoVenda: 'prazo'
+    }).populate('clienteId', 'nome nif telefone');
+    
+    if (formato === 'csv') {
+      let csv = 'Factura,Cliente,NIF,Total,Entrada,ValorParcelas,ParcelasPagas,ParcelasPendentes,Status\n';
+      
+      for (const venda of vendas) {
+        const parcelasPagas = venda.parcelas.filter(p => p.status === 'pago').length;
+        const parcelasPendentes = venda.parcelas.filter(p => p.status === 'pendente').length;
+        
+        csv += `"${venda.numeroFactura}","${venda.cliente}","${venda.nifCliente}",${venda.total},${venda.entrada || 0},${venda.valorParcelasRestante},${parcelasPagas},${parcelasPendentes},"${venda.status}"\n`;
+      }
+      
+      res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+      res.setHeader('Content-Disposition', `attachment; filename=vendas_prazo_${new Date().toISOString().split('T')[0]}.csv`);
+      return res.send(csv);
+    }
+    
+    res.json({
+      sucesso: true,
+      dados: vendas
+    });
+    
+  } catch (error) {
+    console.error('Erro ao exportar vendas a prazo:', error);
+    res.status(500).json({ 
+      sucesso: false, 
+      mensagem: 'Erro ao exportar vendas a prazo',
+      erro: error.message 
+    });
+  }
+};
+
+// ============================================
+// GET - Exportar serviços agendados
+// ============================================
+exports.exportarServicosAgendados = async (req, res) => {
+  try {
+    const { empresaId } = req.params;
+    const { formato = 'csv' } = req.query;
+    
+    const vendas = await Venda.find({
+      empresaId,
+      'itens.tipo': 'servico',
+      'itens.agendamento': { $exists: true }
+    });
+    
+    const servicos = [];
+    for (const venda of vendas) {
+      for (const item of venda.itens) {
+        if (item.tipo === 'servico' && item.agendamento) {
+          servicos.push({
+            factura: venda.numeroFactura,
+            cliente: venda.cliente,
+            servico: item.produtoOuServico,
+            valor: item.total,
+            dataAgendamento: item.agendamento.dataInicio,
+            status: item.agendamento.status,
+            tecnico: item.agendamento.tecnicoResponsavel,
+            endereco: item.agendamento.enderecoServico
+          });
+        }
+      }
+    }
+    
+    if (formato === 'csv') {
+      let csv = 'Factura,Cliente,Serviço,Valor,Data Agendamento,Status,Técnico,Endereço\n';
+      
+      for (const servico of servicos) {
+        csv += `"${servico.factura}","${servico.cliente}","${servico.servico}",${servico.valor},"${new Date(servico.dataAgendamento).toLocaleString()}","${servico.status}","${servico.tecnico || ''}","${servico.endereco || ''}"\n`;
+      }
+      
+      res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+      res.setHeader('Content-Disposition', `attachment; filename=servicos_agendados_${new Date().toISOString().split('T')[0]}.csv`);
+      return res.send(csv);
+    }
+    
+    res.json({
+      sucesso: true,
+      dados: servicos
+    });
+    
+  } catch (error) {
+    console.error('Erro ao exportar serviços agendados:', error);
+    res.status(500).json({ 
+      sucesso: false, 
+      mensagem: 'Erro ao exportar serviços agendados',
+      erro: error.message 
+    });
+  }
+};
+
+// ============================================
+// GET - Exportar extrato do cliente
+// ============================================
+exports.exportarExtratoCliente = async (req, res) => {
+  try {
+    const { empresaId, clienteId } = req.params;
+    const { formato = 'csv' } = req.query;
+    
+    const cliente = await Cliente.findById(clienteId);
+    if (!cliente) {
+      return res.status(404).json({ 
+        sucesso: false, 
+        mensagem: 'Cliente não encontrado' 
+      });
+    }
+    
+    const vendas = await Venda.find({
+      empresaId,
+      clienteId: new mongoose.Types.ObjectId(clienteId)
+    }).sort({ data: 1 });
+    
+    const extrato = [];
+    for (const venda of vendas) {
+      extrato.push({
+        data: venda.data,
+        tipo: 'VENDA',
+        descricao: `Factura Nº ${venda.numeroFactura}`,
+        valor: venda.total,
+        tipoVenda: venda.tipoVenda
+      });
+      
+      if (venda.tipoVenda === 'prazo') {
+        for (const parcela of venda.parcelas) {
+          if (parcela.status === 'pago' && parcela.valorPago > 0) {
+            extrato.push({
+              data: parcela.dataPagamento || parcela.dataVencimento,
+              tipo: 'PAGAMENTO',
+              descricao: `Pagamento Parcela ${parcela.numero}`,
+              valor: -parcela.valorPago,
+              tipoVenda: venda.tipoVenda
+            });
+          }
+        }
+      }
+    }
+    
+    extrato.sort((a, b) => new Date(a.data) - new Date(b.data));
+    
+    let saldo = 0;
+    for (const item of extrato) {
+      saldo += item.valor;
+      item.saldo = saldo;
+    }
+    
+    if (formato === 'csv') {
+      let csv = 'Data,Tipo,Descrição,Valor,Saldo\n';
+      
+      for (const item of extrato) {
+        csv += `"${new Date(item.data).toLocaleDateString()}","${item.tipo}","${item.descricao}",${item.valor},${item.saldo}\n`;
+      }
+      
+      res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+      res.setHeader('Content-Disposition', `attachment; filename=extrato_${cliente.nome}_${new Date().toISOString().split('T')[0]}.csv`);
+      return res.send(csv);
+    }
+    
+    res.json({
+      sucesso: true,
+      dados: extrato,
+      cliente: {
+        nome: cliente.nome,
+        nif: cliente.nif
+      }
+    });
+    
+  } catch (error) {
+    console.error('Erro ao exportar extrato do cliente:', error);
+    res.status(500).json({ 
+      sucesso: false, 
+      mensagem: 'Erro ao exportar extrato do cliente',
       erro: error.message 
     });
   }

@@ -1,4 +1,4 @@
-// backend/routes/folhaSalarial.js - VERSAO RESTAURADA (COM CORRECAO DAS FALTAS APENAS)
+// backend/routes/folhaSalarial.js - COM LOGGER ADICIONADO
 const express = require('express');
 const router = express.Router();
 const FolhaSalarial = require('../models/FolhaSalarial');
@@ -10,6 +10,7 @@ const Gestor = require('../models/Gestor');
 const Pagamento = require('../models/Pagamento');
 const FolhaService = require('../services/folhaService');
 const { verifyToken } = require('../middlewares/auth');
+const { logMiddleware } = require('../middlewares/logger'); // <-- ADICIONADO
 
 router.use(verifyToken);
 
@@ -63,7 +64,6 @@ async function criarPagamentosFolha(folha, empresa, contaDebito, usuarioNome, da
     const totalLiquido = folha.totais?.totalLiquido || 0;
     const refSalario = `SAL-${anoSeq}${mesSeq}-${String(sequencial).padStart(4, '0')}`;
     
-    // Verificar se já existe pagamento com esta referência
     const existeSalario = await Pagamento.findOne({ referencia: refSalario, empresaId: folha.empresaId });
     
     if (!existeSalario) {
@@ -188,9 +188,9 @@ async function criarPagamentosFolha(folha, empresa, contaDebito, usuarioNome, da
 }
 
 // ============================================
-// POST - Calcular folha salarial
+// POST - Calcular folha salarial (COM LOGGER)
 // ============================================
-router.post('/calcular', async (req, res) => {
+router.post('/calcular', logMiddleware('folha-salarial-calcular'), async (req, res) => {
   try {
     console.log("=== INICIANDO CÁLCULO DA FOLHA ===");
     console.log("Body recebido:", JSON.stringify(req.body, null, 2));
@@ -314,7 +314,6 @@ router.post('/calcular', async (req, res) => {
         if (falta.justificada) continue;
         
         if (falta.tipoFalta === 'Falta Injustificada') {
-          // Usar diasFalta do modelo se existir, senão calcular
           if (falta.diasFalta && falta.diasFalta > 0) {
             diasFaltas += falta.diasFalta;
           } else {
@@ -352,7 +351,7 @@ router.post('/calcular', async (req, res) => {
       }
       
       const calculo = resultadoFolha.dados;
-      const inssEmpregador = calculo.inssEmpregador; // J� calculado corretamente pelo folhaService (0 para quem n�o contribui)
+      const inssEmpregador = calculo.inssEmpregador;
       
       funcionariosFolha.push({
         id: func._id,
@@ -416,29 +415,24 @@ router.post('/calcular', async (req, res) => {
     });
     
     const folhaData = {
-  empresaId,
-  empresaNome: empresa?.nome || 'Empresa',
-  empresaNif: empresa?.nif || '',
-  empresaGestor: nomeGestor || '',
-  mesReferencia: mesNum,
-  anoReferencia: anoNum,
-  funcionarios: funcionariosFolha,
-  totais,
-  regimeINSS: empresa?.isBaixosRendimentos ? 'Baixos Rendimentos (1.5% / 4%)' : 'Normal (3% / 8%)',
-  
-  // 🔥 CONFIGURAÇÕES INSS DA EMPRESA 🔥
-  isBaixosRendimentos: empresa?.isBaixosRendimentos || false,
-  inssColaboradorTaxa: empresa?.isBaixosRendimentos ? 1.5 : (empresa?.inssColaboradorTaxa ? empresa.inssColaboradorTaxa * 100 : 3),
-  inssEmpregadorTaxa: empresa?.isBaixosRendimentos ? 4 : (empresa?.inssEmpregadorTaxa ? empresa.inssEmpregadorTaxa * 100 : 8),
-  
-  // 🔥 CONFIGURAÇÕES IRT DA EMPRESA 🔥
-  irtTipoCalculo: empresa?.irtTipoCalculo || 'progressivo',
-  irtTaxaFixa: empresa?.irtTaxaFixa ? empresa.irtTaxaFixa * 100 : 6.5,
-  
-  status: 'rascunho',
-  processadoPor: req.user?.nome || req.user?.email,
-  updatedAt: new Date()
-};
+      empresaId,
+      empresaNome: empresa?.nome || 'Empresa',
+      empresaNif: empresa?.nif || '',
+      empresaGestor: nomeGestor || '',
+      mesReferencia: mesNum,
+      anoReferencia: anoNum,
+      funcionarios: funcionariosFolha,
+      totais,
+      regimeINSS: empresa?.isBaixosRendimentos ? 'Baixos Rendimentos (1.5% / 4%)' : 'Normal (3% / 8%)',
+      isBaixosRendimentos: empresa?.isBaixosRendimentos || false,
+      inssColaboradorTaxa: empresa?.isBaixosRendimentos ? 1.5 : (empresa?.inssColaboradorTaxa ? empresa.inssColaboradorTaxa * 100 : 3),
+      inssEmpregadorTaxa: empresa?.isBaixosRendimentos ? 4 : (empresa?.inssEmpregadorTaxa ? empresa.inssEmpregadorTaxa * 100 : 8),
+      irtTipoCalculo: empresa?.irtTipoCalculo || 'progressivo',
+      irtTaxaFixa: empresa?.irtTaxaFixa ? empresa.irtTaxaFixa * 100 : 6.5,
+      status: 'rascunho',
+      processadoPor: req.user?.nome || req.user?.email,
+      updatedAt: new Date()
+    };
     
     let folha;
     if (folhaExistente) {
@@ -540,9 +534,9 @@ router.get('/:id', async (req, res) => {
 });
 
 // ============================================
-// PUT - Finalizar folha e criar pagamento
+// PUT - Finalizar folha e criar pagamento (COM LOGGER)
 // ============================================
-router.put('/:id', async (req, res) => {
+router.put('/:id', logMiddleware('folha-salarial-finalizar'), async (req, res) => {
   try {
     const { id } = req.params;
     const { status, dataProcessamento, contaDebito, datasVencimento } = req.body;
@@ -610,11 +604,10 @@ router.put('/:id', async (req, res) => {
   }
 });
 
-
 // ============================================
-// DELETE - Excluir folha
+// DELETE - Excluir folha (COM LOGGER)
 // ============================================
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', logMiddleware('folha-salarial'), async (req, res) => {
   try {
     const folha = await FolhaSalarial.findById(req.params.id);
     if (!folha) {
@@ -652,9 +645,8 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
-
-// POST - Exportar ficheiro de pagamento bancário
-router.post('/exportar-pagamento/:id', async (req, res) => {
+// POST - Exportar ficheiro de pagamento bancário (COM LOGGER)
+router.post('/exportar-pagamento/:id', logMiddleware('folha-salarial-exportar'), async (req, res) => {
   try {
     const { id } = req.params;
     const { codigoBanco, empresaId } = req.body;
