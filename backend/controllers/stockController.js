@@ -1594,92 +1594,6 @@ exports.getDashboardStock = async (req, res) => {
 };
 
 
-// ============================================
-// ASSOCIAR PRODUTO AO FORNECEDOR AUTOMATICAMENTE
-// ============================================
-
-// POST - Registrar entrada com associação automática ao fornecedor
-exports.registrarEntradaComFornecedor = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { empresaId, quantidade, fornecedorId, numeroFactura, dataCompra } = req.body;
-    
-    if (!id || !mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({ 
-        sucesso: false, 
-        mensagem: "ID do produto inválido" 
-      });
-    }
-    
-    const produto = await Stock.findOne({ 
-      _id: id, 
-      empresaId: new mongoose.Types.ObjectId(empresaId) 
-    });
-    
-    if (!produto) {
-      return res.status(404).json({ 
-        sucesso: false, 
-        mensagem: "Produto não encontrado" 
-      });
-    }
-    
-    const quantidadeNum = parseInt(quantidade);
-    if (isNaN(quantidadeNum) || quantidadeNum <= 0) {
-      return res.status(400).json({ 
-        sucesso: false, 
-        mensagem: "Quantidade inválida" 
-      });
-    }
-    
-    // Registrar movimentação
-    await produto.registrarMovimentacao(
-      'entrada',
-      quantidadeNum,
-      `Compra do fornecedor ${fornecedorId} - Factura ${numeroFactura || 'N/A'}`,
-      req.user?.nome || "Sistema",
-      req.user?.id
-    );
-    
-    // Registrar associação com fornecedor no histórico
-    produto.ultimoFornecedor = fornecedorId;
-    produto.ultimaCompra = {
-      data: dataCompra || new Date(),
-      quantidade: quantidadeNum,
-      precoUnitario: produto.precoCompra,
-      numeroFactura: numeroFactura,
-      fornecedorId: fornecedorId
-    };
-    
-    // Atualizar preço médio se necessário
-    const valorTotalAntigo = produto.quantidade * produto.precoCompra;
-    const valorTotalNovo = quantidadeNum * produto.precoCompra;
-    const quantidadeTotal = produto.quantidade + quantidadeNum;
-    produto.precoCompraMedio = (valorTotalAntigo + valorTotalNovo) / quantidadeTotal;
-    
-    await produto.save();
-    
-    // Atualizar estatísticas do fornecedor
-    await atualizarEstatisticasFornecedor(fornecedorId, produto._id, quantidadeNum, produto.precoCompra);
-    
-    res.json({ 
-      sucesso: true, 
-      mensagem: `${quantidadeNum} unidade(s) adicionadas e associadas ao fornecedor`,
-      dados: {
-        produto: produto.produto,
-        quantidadeAtual: produto.quantidade,
-        fornecedorId,
-        precoMedio: produto.precoCompraMedio
-      }
-    });
-    
-  } catch (error) {
-    console.error('Erro ao registrar entrada com fornecedor:', error);
-    res.status(500).json({ 
-      sucesso: false, 
-      mensagem: error.message 
-    });
-  }
-};
 
 // Função para atualizar estatísticas do fornecedor
 async function atualizarEstatisticasFornecedor(fornecedorId, produtoId, quantidade, preco) {
@@ -1708,3 +1622,196 @@ async function atualizarEstatisticasFornecedor(fornecedorId, produtoId, quantida
     console.error('Erro ao atualizar estatísticas do fornecedor:', error);
   }
 }
+
+
+// backend/controllers/stockController.js
+
+// ============================================
+// 🆕 REGISTRAR COMPRA COM FORNECEDOR
+// ============================================
+exports.registrarEntradaComFornecedor = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { empresaId, quantidade, precoUnitario, fornecedorId, numeroFactura } = req.body;
+    
+    console.log('📦 Registrando compra com fornecedor:');
+    console.log('   Produto ID:', id);
+    console.log('   Empresa ID:', empresaId);
+    console.log('   Quantidade:', quantidade);
+    console.log('   Preço:', precoUnitario);
+    console.log('   Fornecedor ID:', fornecedorId);
+    
+    // Validações
+    if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ 
+        sucesso: false, 
+        mensagem: 'ID do produto inválido' 
+      });
+    }
+    
+    if (!empresaId || !mongoose.Types.ObjectId.isValid(empresaId)) {
+      return res.status(400).json({ 
+        sucesso: false, 
+        mensagem: 'Empresa inválida' 
+      });
+    }
+    
+    if (!fornecedorId || !mongoose.Types.ObjectId.isValid(fornecedorId)) {
+      return res.status(400).json({ 
+        sucesso: false, 
+        mensagem: 'Fornecedor inválido' 
+      });
+    }
+    
+    const quantidadeNum = parseInt(quantidade);
+    if (isNaN(quantidadeNum) || quantidadeNum <= 0) {
+      return res.status(400).json({ 
+        sucesso: false, 
+        mensagem: 'Quantidade inválida' 
+      });
+    }
+    
+    const precoNum = parseFloat(precoUnitario);
+    if (isNaN(precoNum) || precoNum <= 0) {
+      return res.status(400).json({ 
+        sucesso: false, 
+        mensagem: 'Preço unitário inválido' 
+      });
+    }
+    
+    // Buscar produto
+    const produto = await Stock.findOne({ 
+      _id: id, 
+      empresaId: new mongoose.Types.ObjectId(empresaId) 
+    });
+    
+    if (!produto) {
+      return res.status(404).json({ 
+        sucesso: false, 
+        mensagem: 'Produto não encontrado' 
+      });
+    }
+    
+    if (produto.tipo !== 'produto') {
+      return res.status(400).json({ 
+        sucesso: false, 
+        mensagem: 'Apenas produtos físicos podem ter compras registradas' 
+      });
+    }
+    
+    // Buscar fornecedor
+    const Fornecedor = require('../models/Fornecedor');
+    const fornecedor = await Fornecedor.findById(fornecedorId);
+    
+    if (!fornecedor) {
+      return res.status(404).json({ 
+        sucesso: false, 
+        mensagem: 'Fornecedor não encontrado' 
+      });
+    }
+    
+    // Registrar movimentação de entrada
+    const quantidadeAnterior = produto.quantidade;
+    produto.quantidade += quantidadeNum;
+    produto.precoCompra = precoNum;
+    produto.dataUltimaEntrada = new Date();
+    produto.ultimoFornecedor = fornecedorId;
+    produto.fornecedor = fornecedor.nome;
+    
+    // Adicionar ao histórico de movimentações
+    produto.historicoMovimentacoes = produto.historicoMovimentacoes || [];
+    produto.historicoMovimentacoes.push({
+      data: new Date(),
+      tipo: 'entrada',
+      quantidade: quantidadeNum,
+      quantidadeAnterior: quantidadeAnterior,
+      quantidadeNova: produto.quantidade,
+      motivo: `Compra do fornecedor ${fornecedor.nome} - Factura ${numeroFactura || 'N/A'}`,
+      usuario: req.user?.nome || "Sistema",
+      fornecedorId: fornecedorId,
+      precoUnitario: precoNum
+    });
+    
+    // Adicionar ao histórico de compras
+    produto.historicoCompras = produto.historicoCompras || [];
+    produto.historicoCompras.push({
+      data: new Date(),
+      fornecedorId: fornecedorId,
+      fornecedorNome: fornecedor.nome,
+      quantidade: quantidadeNum,
+      precoUnitario: precoNum,
+      valorTotal: quantidadeNum * precoNum,
+      numeroFactura: numeroFactura || '',
+      usuario: req.user?.nome || "Sistema"
+    });
+    
+    // Adicionar fornecedor à lista de fornecedores associados
+    const fornecedorExistente = produto.fornecedoresAssociados?.find(
+      f => f.fornecedorId && f.fornecedorId.toString() === fornecedorId.toString()
+    );
+    
+    if (fornecedorExistente) {
+      fornecedorExistente.ultimaCompra = new Date();
+      fornecedorExistente.ultimoPreco = precoNum;
+      fornecedorExistente.quantidadeTotal += quantidadeNum;
+    } else {
+      produto.fornecedoresAssociados = produto.fornecedoresAssociados || [];
+      produto.fornecedoresAssociados.push({
+        fornecedorId: fornecedorId,
+        fornecedorNome: fornecedor.nome,
+        ultimaCompra: new Date(),
+        ultimoPreco: precoNum,
+        quantidadeTotal: quantidadeNum
+      });
+    }
+    
+    await produto.save();
+    
+    // Registrar também no fornecedor (associação reversa)
+    try {
+      await fornecedor.registrarCompra(
+        produto._id, 
+        quantidadeNum, 
+        precoNum, 
+        numeroFactura, 
+        req.user?.nome || "Sistema"
+      );
+    } catch (err) {
+      console.error('Erro ao registrar no fornecedor:', err.message);
+    }
+    
+    console.log(`✅ Compra registrada: +${quantidadeNum} de ${produto.produto} (${precoNum} Kz/un)`);
+    console.log(`   Fornecedor: ${fornecedor.nome}`);
+    console.log(`   Novo estoque: ${produto.quantidade}`);
+    
+    res.json({
+      sucesso: true,
+      mensagem: `Compra de ${quantidadeNum} unidade(s) de "${produto.produto}" registrada com sucesso!`,
+      dados: {
+        produto: {
+          _id: produto._id,
+          nome: produto.produto,
+          quantidadeAnterior: quantidadeAnterior,
+          quantidadeNova: produto.quantidade
+        },
+        fornecedor: {
+          _id: fornecedor._id,
+          nome: fornecedor.nome
+        },
+        compra: {
+          quantidade: quantidadeNum,
+          precoUnitario: precoNum,
+          valorTotal: quantidadeNum * precoNum,
+          numeroFactura: numeroFactura
+        }
+      }
+    });
+    
+  } catch (error) {
+    console.error('❌ Erro ao registrar compra com fornecedor:', error);
+    res.status(500).json({ 
+      sucesso: false, 
+      mensagem: 'Erro interno ao registrar compra: ' + error.message 
+    });
+  }
+};
