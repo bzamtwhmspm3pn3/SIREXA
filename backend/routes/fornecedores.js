@@ -8,67 +8,230 @@ const Stock = require('../models/Stock');
 const Pagamento = require('../models/Pagamento');
 const { verifyToken } = require('../middlewares/auth');
 
-// Aplicar autenticação em todas as rotas
 router.use(verifyToken);
 
 // ============================================
-// FUNÇÃO PARA CRIAR PRODUTO NO STOCK
+// FUNÇÃO PARA GERAR PAGAMENTO DE COMPRA DE MERCADORIA
+// ============================================
+async function gerarPagamentoCompra(fornecedor, produtoInfo, quantidade, precoCompra, usuario) {
+  try {
+    const subtotal = quantidade * precoCompra;
+    const taxaIVA = fornecedor.fiscal?.taxaIVA || 14;
+    const valorIVA = (subtotal * taxaIVA) / 100;
+    const valorTotal = subtotal + valorIVA;
+
+    let taxaRetencao = 0;
+    let valorRetencao = 0;
+    
+    if (fornecedor.fiscal?.retencaoFonte) {
+      taxaRetencao = fornecedor.fiscal?.taxaRetencao || 0;
+      if (taxaRetencao === 0 && fornecedor.fiscal?.tipoRetencao === 'Renda') {
+        taxaRetencao = 15;
+      } else if (taxaRetencao === 0 && fornecedor.fiscal?.tipoRetencao === 'Serviços') {
+        taxaRetencao = 6.5;
+      }
+      valorRetencao = (valorTotal * taxaRetencao) / 100;
+    }
+
+    const valorLiquido = valorTotal - valorRetencao;
+    const mesReferencia = new Date().toISOString().slice(0, 7);
+
+    const pagamento = new Pagamento({
+      tipo: 'Fornecedor',
+      origemId: fornecedor._id,
+      beneficiario: fornecedor.nome,
+      nifBeneficiario: fornecedor.nif,
+      valor: valorTotal,
+      valorLiquido: valorLiquido,
+      valorRetencao: valorRetencao,
+      taxaRetencao: taxaRetencao,
+      valorIva: valorIVA,
+      taxaIva: taxaIVA,
+      dataVencimento: new Date(),
+      status: 'pendente',
+      descricao: `Compra de ${quantidade} ${produtoInfo.unidadeMedida || 'Unidade'}(s) de ${produtoInfo.produto}`,
+      usuario: usuario,
+      empresaId: fornecedor.empresaId,
+      detalhesPagamento: {
+        contaBancaria: fornecedor.pagamento?.iban || '',
+        modalidade: fornecedor.pagamento?.formaPagamento || 'Transferência',
+        mesReferencia: mesReferencia,
+        itens: [{
+          descricao: produtoInfo.produto,
+          quantidade: quantidade,
+          precoUnitario: precoCompra,
+          subtotal: subtotal,
+          iva: valorIVA,
+          retencao: valorRetencao,
+          total: valorTotal
+        }]
+      }
+    });
+    
+    await pagamento.save();
+    console.log(`💰 Pagamento de compra gerado: ${pagamento._id} - Valor: ${valorTotal} Kz`);
+    return pagamento;
+  } catch (error) {
+    console.error('❌ Erro ao gerar pagamento de compra:', error.message);
+    return null;
+  }
+}
+
+// ============================================
+// FUNÇÃO PARA CRIAR/ATUALIZAR PRODUTO NO STOCK
 // ============================================
 async function criarProdutoNoStock(fornecedor, produtoInfo, empresaId, usuario) {
   try {
-    // Verificar se o produto já existe para este fornecedor
-    const produtoExistente = await Stock.findOne({
+    const quantidade = produtoInfo.quantidade || 0;
+    const precoCompra = produtoInfo.precoCompra || 0;
+    
+    if (!produtoInfo.produto) {
+      console.log('⚠️ Produto sem nome, ignorando...');
+      return null;
+    }
+    
+    let produtoExistente = await Stock.findOne({
       produto: produtoInfo.produto,
       empresaId: new mongoose.Types.ObjectId(empresaId),
       fornecedorId: fornecedor._id
     });
 
+    let produtoCriado;
+    
     if (produtoExistente) {
-      // Atualizar produto existente
-      produtoExistente.precoCompra = produtoInfo.precoCompra || produtoExistente.precoCompra;
+      const novaQuantidade = (produtoExistente.quantidade || 0) + quantidade;
+      const valorTotalAntigo = (produtoExistente.precoCompra || 0) * (produtoExistente.quantidade || 0);
+      const valorTotalNovo = precoCompra * quantidade;
+      const novoPrecoMedio = novaQuantidade > 0 ? (valorTotalAntigo + valorTotalNovo) / novaQuantidade : precoCompra;
+      
+      produtoExistente.precoCompra = novoPrecoMedio;
       produtoExistente.precoVenda = produtoInfo.precoVenda || produtoExistente.precoVenda;
-      produtoExistente.quantidade += produtoInfo.quantidade || 0;
-      produtoExistente.dataValidade = produtoInfo.dataValidade || produtoExistente.dataValidade;
+      produtoExistente.quantidade = novaQuantidade;
+      if (produtoInfo.dataValidade) produtoExistente.dataValidade = new Date(produtoInfo.dataValidade);
+      if (produtoInfo.numeroLote) produtoExistente.numeroLote = produtoInfo.numeroLote;
+      if (produtoInfo.armazem) produtoExistente.armazem = produtoInfo.armazem;
       produtoExistente.ultimoFornecedor = fornecedor._id;
       produtoExistente.updatedAt = new Date();
       await produtoExistente.save();
-      console.log(`📦 Produto atualizado no stock: ${produtoExistente.produto}`);
-      return produtoExistente;
+      
+      console.log(`📦 Produto atualizado: ${produtoExistente.produto} - Nova quantidade: ${novaQuantidade}`);
+      produtoCriado = produtoExistente;
+    } else {
+      const produto = new Stock({
+        produto: produtoInfo.produto,
+        empresaId: new mongoose.Types.ObjectId(empresaId),
+        tipo: 'produto',
+        codigoBarras: produtoInfo.codigoBarras || '',
+        codigoInterno: produtoInfo.codigoInterno || '',
+        categoria: produtoInfo.categoria || 'Geral',
+        marca: produtoInfo.marca || '',
+        unidadeMedida: produtoInfo.unidadeMedida || 'Unidade',
+        precoCompra: precoCompra,
+        precoVenda: produtoInfo.precoVenda || 0,
+        quantidade: quantidade,
+        quantidadeMinima: produtoInfo.quantidadeMinima || 5,
+        dataValidade: produtoInfo.dataValidade ? new Date(produtoInfo.dataValidade) : null,
+        armazem: produtoInfo.armazem || 'Principal',
+        numeroLote: produtoInfo.numeroLote || '',
+        taxaIVA: produtoInfo.taxaIVA || 14,
+        fornecedorId: fornecedor._id,
+        fornecedor: fornecedor.nome,
+        ultimoFornecedor: fornecedor._id,
+        ativo: true,
+        criadoPor: usuario,
+        observacoes: produtoInfo.observacoes || ''
+      });
+      
+      await produto.save();
+      console.log(`📦 Produto criado: ${produto.produto}`);
+      produtoCriado = produto;
     }
-
-    // Criar novo produto
-    const produto = new Stock({
-      produto: produtoInfo.produto,
-      empresaId: new mongoose.Types.ObjectId(empresaId),
-      tipo: 'produto',
-      codigoBarras: produtoInfo.codigoBarras || '',
-      codigoInterno: produtoInfo.codigoInterno || '',
-      categoria: produtoInfo.categoria || 'Geral',
-      marca: produtoInfo.marca || '',
-      unidadeMedida: produtoInfo.unidadeMedida || 'Unidade',
-      precoCompra: produtoInfo.precoCompra || 0,
-      precoVenda: produtoInfo.precoVenda || 0,
-      quantidade: produtoInfo.quantidade || 0,
-      quantidadeMinima: produtoInfo.quantidadeMinima || 5,
-      dataValidade: produtoInfo.dataValidade || null,
-      armazem: produtoInfo.armazem || 'Principal',
-      numeroLote: produtoInfo.numeroLote || '',
-      taxaIVA: produtoInfo.taxaIVA || 14,
-      fornecedorId: fornecedor._id,
-      fornecedor: fornecedor.nome,
-      ultimoFornecedor: fornecedor._id,
-      ativo: true,
-      criadoPor: usuario,
-      observacoes: produtoInfo.observacoes || ''
-    });
     
-    await produto.save();
-    console.log(`📦 Produto criado no stock: ${produto.produto}`);
-    return produto;
+    // Gerar pagamento se houver quantidade e preço
+    if (quantidade > 0 && precoCompra > 0) {
+      const pagamento = await gerarPagamentoCompra(fornecedor, produtoInfo, quantidade, precoCompra, usuario);
+      
+      if (pagamento) {
+        if (!fornecedor.itensFornecidos) fornecedor.itensFornecidos = [];
+        fornecedor.itensFornecidos.push({
+          tipo: 'mercadoria',
+          descricao: `Compra de ${quantidade} ${produtoInfo.unidadeMedida || 'Unidade'}(s) de ${produtoInfo.produto}`,
+          valor: precoCompra,
+          valorTotal: pagamento.valor,
+          produto: produtoInfo.produto,
+          quantidade: quantidade,
+          unidadeMedida: produtoInfo.unidadeMedida || 'Unidade',
+          precoCompra: precoCompra,
+          precoVenda: produtoInfo.precoVenda || 0,
+          dataRegisto: new Date(),
+          usuario: usuario,
+          pagamentoId: pagamento._id
+        });
+        
+        fornecedor.estatisticasCompras = {
+          totalCompras: (fornecedor.estatisticasCompras?.totalCompras || 0) + 1,
+          totalGasto: (fornecedor.estatisticasCompras?.totalGasto || 0) + pagamento.valor,
+          ultimaCompra: new Date(),
+          quantidadeTotalProdutos: (fornecedor.estatisticasCompras?.quantidadeTotalProdutos || 0) + quantidade
+        };
+        
+        await fornecedor.save();
+      }
+    }
+    
+    return produtoCriado;
   } catch (error) {
-    console.error(`❌ Erro ao criar produto no stock:`, error.message);
+    console.error(`❌ Erro ao processar produto:`, error.message);
     return null;
   }
+}
+
+// ============================================
+// FUNÇÃO PARA CALCULAR PRÓXIMO PAGAMENTO DE CONTRATO
+// ============================================
+function calcularProximoPagamento(contrato, dataReferencia = new Date()) {
+  if (!contrato.modalidadePagamento || contrato.modalidadePagamento === 'Único') {
+    return null;
+  }
+  
+  const dataRef = new Date(dataReferencia);
+  const modalidade = contrato.modalidadePagamento;
+  const diaPagamento = contrato.diaPagamento || 15;
+
+  let proximoPagamento = new Date(dataRef);
+
+  switch (modalidade) {
+    case 'Diário': proximoPagamento.setDate(dataRef.getDate() + 1); break;
+    case 'Semanal': proximoPagamento.setDate(dataRef.getDate() + 7); break;
+    case 'Quinzenal': proximoPagamento.setDate(dataRef.getDate() + 15); break;
+    case 'Mensal':
+      proximoPagamento.setDate(diaPagamento);
+      if (proximoPagamento <= dataRef) proximoPagamento.setMonth(proximoPagamento.getMonth() + 1);
+      break;
+    case 'Bimestral':
+      proximoPagamento.setDate(diaPagamento);
+      if (proximoPagamento <= dataRef) proximoPagamento.setMonth(proximoPagamento.getMonth() + 2);
+      break;
+    case 'Trimestral':
+      proximoPagamento.setDate(diaPagamento);
+      if (proximoPagamento <= dataRef) proximoPagamento.setMonth(proximoPagamento.getMonth() + 3);
+      break;
+    case 'Semestral':
+      proximoPagamento.setDate(diaPagamento);
+      if (proximoPagamento <= dataRef) proximoPagamento.setMonth(proximoPagamento.getMonth() + 6);
+      break;
+    case 'Anual':
+      proximoPagamento.setDate(diaPagamento);
+      if (proximoPagamento <= dataRef) proximoPagamento.setFullYear(proximoPagamento.getFullYear() + 1);
+      break;
+    default: proximoPagamento = null;
+  }
+
+  if (proximoPagamento && contrato.dataFim && new Date(proximoPagamento) > new Date(contrato.dataFim)) {
+    return null;
+  }
+
+  return proximoPagamento;
 }
 
 // ============================================
@@ -81,13 +244,9 @@ async function gerarPagamentoContrato(fornecedor, contrato, usuario) {
     
     let taxaRetencao = 0;
     if (fornecedor.fiscal?.retencaoFonte) {
-      if (fornecedor.fiscal.taxaRetencao > 0) {
-        taxaRetencao = fornecedor.fiscal.taxaRetencao;
-      } else if (fornecedor.fiscal.tipoRetencao === 'Renda') {
-        taxaRetencao = 15;
-      } else if (fornecedor.fiscal.tipoRetencao === 'Serviços') {
-        taxaRetencao = 6.5;
-      }
+      taxaRetencao = fornecedor.fiscal?.taxaRetencao || 
+        (fornecedor.fiscal?.tipoRetencao === 'Renda' ? 15 : 
+         fornecedor.fiscal?.tipoRetencao === 'Serviços' ? 6.5 : 0);
     }
     
     const valorRetencao = (contrato.valor * taxaRetencao) / 100;
@@ -110,83 +269,18 @@ async function gerarPagamentoContrato(fornecedor, contrato, usuario) {
       detalhesPagamento: {
         contaBancaria: fornecedor.pagamento?.iban || '',
         modalidade: fornecedor.pagamento?.formaPagamento || 'Transferência',
-        mesReferencia: mesReferencia
+        mesReferencia: mesReferencia,
+        contratoId: contrato._id
       }
     });
     
     await pagamento.save();
-    console.log(`💰 Pagamento gerado: ${pagamento._id}`);
+    console.log(`💰 Pagamento de contrato gerado: ${pagamento._id}`);
     return pagamento;
   } catch (error) {
-    console.error('❌ Erro ao gerar pagamento:', error.message);
+    console.error('❌ Erro ao gerar pagamento de contrato:', error.message);
     return null;
   }
-}
-
-// ============================================
-// FUNÇÃO PARA CALCULAR PRÓXIMO PAGAMENTO
-// ============================================
-function calcularProximoPagamento(contrato, dataReferencia = new Date()) {
-  if (!contrato.modalidadePagamento || contrato.modalidadePagamento === 'Único') {
-    return null;
-  }
-  
-  const dataRef = new Date(dataReferencia);
-  const modalidade = contrato.modalidadePagamento;
-  const diaPagamento = contrato.diaPagamento || 15;
-
-  let proximoPagamento = new Date(dataRef);
-
-  switch (modalidade) {
-    case 'Diário':
-      proximoPagamento.setDate(dataRef.getDate() + 1);
-      break;
-    case 'Semanal':
-      proximoPagamento.setDate(dataRef.getDate() + 7);
-      break;
-    case 'Quinzenal':
-      proximoPagamento.setDate(dataRef.getDate() + 15);
-      break;
-    case 'Mensal':
-      proximoPagamento.setDate(diaPagamento);
-      if (proximoPagamento <= dataRef) {
-        proximoPagamento.setMonth(proximoPagamento.getMonth() + 1);
-      }
-      break;
-    case 'Bimestral':
-      proximoPagamento.setDate(diaPagamento);
-      if (proximoPagamento <= dataRef) {
-        proximoPagamento.setMonth(proximoPagamento.getMonth() + 2);
-      }
-      break;
-    case 'Trimestral':
-      proximoPagamento.setDate(diaPagamento);
-      if (proximoPagamento <= dataRef) {
-        proximoPagamento.setMonth(proximoPagamento.getMonth() + 3);
-      }
-      break;
-    case 'Semestral':
-      proximoPagamento.setDate(diaPagamento);
-      if (proximoPagamento <= dataRef) {
-        proximoPagamento.setMonth(proximoPagamento.getMonth() + 6);
-      }
-      break;
-    case 'Anual':
-      proximoPagamento.setDate(diaPagamento);
-      if (proximoPagamento <= dataRef) {
-        proximoPagamento.setFullYear(proximoPagamento.getFullYear() + 1);
-      }
-      break;
-    default:
-      proximoPagamento = null;
-  }
-
-  // Verificar se a data calculada é posterior à data de fim do contrato
-  if (proximoPagamento && contrato.dataFim && new Date(proximoPagamento) > new Date(contrato.dataFim)) {
-    return null;
-  }
-
-  return proximoPagamento;
 }
 
 // ============================================
@@ -199,7 +293,6 @@ router.get('/', async (req, res) => {
     const { status, tipoFornecedor, busca, empresaId } = req.query;
     const query = {};
     
-    // Usar empresaId do query ou do usuário logado
     const empresaIdFinal = empresaId || req.user?.empresaId;
     if (!empresaIdFinal) {
       return res.status(400).json({ mensagem: 'Empresa não identificada' });
@@ -215,8 +308,7 @@ router.get('/', async (req, res) => {
       query.$or = [
         { nome: { $regex: busca, $options: 'i' } },
         { nif: { $regex: busca, $options: 'i' } },
-        { email: { $regex: busca, $options: 'i' } },
-        { contato: { $regex: busca, $options: 'i' } }
+        { email: { $regex: busca, $options: 'i' } }
       ];
     }
 
@@ -240,7 +332,6 @@ router.get('/:id', async (req, res) => {
       return res.status(404).json({ mensagem: 'Fornecedor não encontrado' });
     }
     
-    // Verificar acesso do usuário
     const empresaUsuario = req.user?.empresaId;
     if (empresaUsuario && fornecedor.empresaId.toString() !== empresaUsuario.toString()) {
       return res.status(403).json({ mensagem: 'Acesso negado a este fornecedor' });
@@ -253,7 +344,7 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// POST - Criar novo fornecedor
+// POST - Criar novo fornecedor (COM INTEGRAÇÃO DE MERCADORIA)
 router.post('/', async (req, res) => {
   try {
     const { 
@@ -262,13 +353,11 @@ router.post('/', async (req, res) => {
       pagamento, status, observacoes, contato, telefone, email, endereco 
     } = req.body;
 
-    // Validação de empresaId
     const empresaIdFinal = empresaId || req.user?.empresaId;
     if (!empresaIdFinal) {
       return res.status(400).json({ mensagem: 'empresaId é obrigatório' });
     }
     
-    // Validação de campos obrigatórios
     if (!nome || !nome.trim()) {
       return res.status(400).json({ mensagem: 'Nome do fornecedor é obrigatório' });
     }
@@ -323,7 +412,7 @@ router.post('/', async (req, res) => {
     let produtoCriado = null;
     let pagamentosGerados = [];
     
-    // 🔥 INTEGRAÇÃO AUTOMÁTICA PARA MERCADORIA
+    // INTEGRAÇÃO PARA MERCADORIA
     if ((tipoFornecedor === 'mercadoria' || tipoServico === 'mercadoria') && produtoInfo && produtoInfo.produto) {
       console.log(`📦 Processando produto para stock...`);
       produtoCriado = await criarProdutoNoStock(fornecedor, produtoInfo, empresaIdFinal, req.user?.nome || 'Sistema');
@@ -335,7 +424,7 @@ router.post('/', async (req, res) => {
       }
     }
     
-    // 🔥 INTEGRAÇÃO AUTOMÁTICA PARA CONTRATOS
+    // INTEGRAÇÃO PARA CONTRATOS
     if (contratos && contratos.length > 0) {
       console.log(`📄 Processando ${contratos.length} contratos...`);
       for (const contrato of contratos) {
@@ -367,11 +456,253 @@ router.post('/', async (req, res) => {
   }
 });
 
+// ============================================
+// ROTA PARA REGISTRAR NOVA ENTRADA (ADICIONAR QUANTIDADE)
+// ============================================
+
+router.post('/:id/adicionar-quantidade', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { 
+      quantidade,
+      precoCompra,
+      precoVenda,
+      dataCompra,
+      numeroLote,
+      dataValidade,
+      armazem,
+      observacoes,
+      pagamentoImediato = false
+    } = req.body;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ sucesso: false, mensagem: 'ID inválido' });
+    }
+
+    const fornecedor = await Fornecedor.findById(id);
+    if (!fornecedor) {
+      return res.status(404).json({ sucesso: false, mensagem: 'Fornecedor não encontrado' });
+    }
+
+    if (fornecedor.tipoFornecedor !== 'mercadoria') {
+      return res.status(400).json({ 
+        sucesso: false, 
+        mensagem: 'Este fornecedor não é do tipo mercadoria.' 
+      });
+    }
+
+    if (!quantidade || quantidade <= 0) {
+      return res.status(400).json({ sucesso: false, mensagem: 'Quantidade é obrigatória e deve ser maior que zero' });
+    }
+    if (!precoCompra || precoCompra <= 0) {
+      return res.status(400).json({ sucesso: false, mensagem: 'Preço de compra é obrigatório' });
+    }
+
+    const produtoNome = fornecedor.produtoInfo?.produto;
+    if (!produtoNome) {
+      return res.status(400).json({ 
+        sucesso: false, 
+        mensagem: 'Produto não configurado para este fornecedor.' 
+      });
+    }
+
+    let produtoStock = await Stock.findOne({
+      produto: produtoNome,
+      empresaId: fornecedor.empresaId,
+      fornecedorId: fornecedor._id
+    });
+
+    if (!produtoStock) {
+      return res.status(404).json({ 
+        sucesso: false, 
+        mensagem: 'Produto não encontrado no stock.' 
+      });
+    }
+
+    // Calcular valores
+    const subtotal = quantidade * precoCompra;
+    const taxaIVA = fornecedor.fiscal?.taxaIVA || 14;
+    const valorIVA = (subtotal * taxaIVA) / 100;
+    const valorTotal = subtotal + valorIVA;
+
+    let taxaRetencao = 0;
+    let valorRetencao = 0;
+    
+    if (fornecedor.fiscal?.retencaoFonte) {
+      taxaRetencao = fornecedor.fiscal?.taxaRetencao || 0;
+      if (taxaRetencao === 0 && fornecedor.fiscal?.tipoRetencao === 'Renda') {
+        taxaRetencao = 15;
+      } else if (taxaRetencao === 0 && fornecedor.fiscal?.tipoRetencao === 'Serviços') {
+        taxaRetencao = 6.5;
+      }
+      valorRetencao = (valorTotal * taxaRetencao) / 100;
+    }
+
+    const valorLiquido = valorTotal - valorRetencao;
+
+    // ATUALIZAR PRODUTO
+    const novaQuantidade = (produtoStock.quantidade || 0) + quantidade;
+    const valorTotalAntigo = (produtoStock.precoCompra || 0) * (produtoStock.quantidade || 0);
+    const valorTotalNovo = precoCompra * quantidade;
+    const novoPrecoMedio = novaQuantidade > 0 ? (valorTotalAntigo + valorTotalNovo) / novaQuantidade : precoCompra;
+    
+    produtoStock.quantidade = novaQuantidade;
+    produtoStock.precoCompra = novoPrecoMedio;
+    if (precoVenda) produtoStock.precoVenda = precoVenda;
+    if (numeroLote) produtoStock.numeroLote = numeroLote;
+    if (dataValidade) produtoStock.dataValidade = new Date(dataValidade);
+    if (armazem) produtoStock.armazem = armazem;
+    produtoStock.updatedAt = new Date();
+    await produtoStock.save();
+
+    // REGISTRAR ITEM FORNECIDO
+    const mesReferencia = new Date().toISOString().slice(0, 7);
+    
+    const pagamento = new Pagamento({
+      tipo: 'Fornecedor',
+      origemId: fornecedor._id,
+      beneficiario: fornecedor.nome,
+      nifBeneficiario: fornecedor.nif,
+      valor: valorTotal,
+      valorLiquido: valorLiquido,
+      valorRetencao: valorRetencao,
+      taxaRetencao: taxaRetencao,
+      valorIva: valorIVA,
+      taxaIva: taxaIVA,
+      dataVencimento: dataCompra ? new Date(dataCompra) : new Date(),
+      status: pagamentoImediato ? 'Pago' : 'pendente',
+      descricao: `Compra de ${quantidade} ${produtoStock.unidadeMedida}(s) de ${produtoNome}`,
+      usuario: req.user?.nome || 'Sistema',
+      empresaId: fornecedor.empresaId,
+      detalhesPagamento: {
+        contaBancaria: fornecedor.pagamento?.iban || '',
+        modalidade: fornecedor.pagamento?.formaPagamento || 'Transferência',
+        mesReferencia: mesReferencia,
+        itens: [{
+          descricao: produtoNome,
+          quantidade: quantidade,
+          precoUnitario: precoCompra,
+          subtotal: subtotal,
+          iva: valorIVA,
+          retencao: valorRetencao,
+          total: valorTotal
+        }]
+      }
+    });
+    
+    await pagamento.save();
+
+    // ATUALIZAR FORNECEDOR
+    if (!fornecedor.itensFornecidos) fornecedor.itensFornecidos = [];
+    fornecedor.itensFornecidos.push({
+      tipo: 'mercadoria',
+      descricao: `Compra de ${quantidade} ${produtoStock.unidadeMedida}(s) de ${produtoNome}`,
+      valor: precoCompra,
+      valorTotal: valorTotal,
+      produto: produtoNome,
+      quantidade: quantidade,
+      unidadeMedida: produtoStock.unidadeMedida,
+      precoCompra: precoCompra,
+      precoVenda: precoVenda || produtoStock.precoVenda,
+      dataRegisto: dataCompra ? new Date(dataCompra) : new Date(),
+      usuario: req.user?.nome || 'Sistema',
+      observacoes: observacoes || '',
+      pagamentoId: pagamento._id
+    });
+
+    fornecedor.estatisticasCompras = {
+      totalCompras: (fornecedor.estatisticasCompras?.totalCompras || 0) + 1,
+      totalGasto: (fornecedor.estatisticasCompras?.totalGasto || 0) + valorTotal,
+      ultimaCompra: new Date(),
+      quantidadeTotalProdutos: (fornecedor.estatisticasCompras?.quantidadeTotalProdutos || 0) + quantidade
+    };
+
+    await fornecedor.save();
+
+    res.json({
+      sucesso: true,
+      mensagem: `✅ Compra registrada com sucesso!`,
+      dados: {
+        produto: {
+          _id: produtoStock._id,
+          nome: produtoStock.produto,
+          quantidadeAtual: produtoStock.quantidade,
+          precoMedio: produtoStock.precoCompra
+        },
+        compra: {
+          quantidade,
+          precoUnitario: precoCompra,
+          subtotal,
+          iva: valorIVA,
+          total: valorTotal,
+          retencao: valorRetencao,
+          liquido: valorLiquido
+        },
+        pagamento: {
+          _id: pagamento._id,
+          status: pagamento.status,
+          dataVencimento: pagamento.dataVencimento
+        }
+      }
+    });
+    
+  } catch (error) {
+    console.error('❌ Erro ao registrar compra:', error);
+    res.status(500).json({ 
+      sucesso: false, 
+      mensagem: 'Erro ao registrar compra', 
+      erro: error.message 
+    });
+  }
+});
+
+// ============================================
+// ROTA PARA LISTAR PAGAMENTOS DO FORNECEDOR
+// ============================================
+
+router.get('/:id/pagamentos', async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ mensagem: 'ID inválido' });
+    }
+    
+    const fornecedor = await Fornecedor.findById(id);
+    if (!fornecedor) {
+      return res.status(404).json({ mensagem: 'Fornecedor não encontrado' });
+    }
+    
+    const pagamentos = await Pagamento.find({
+      tipo: 'Fornecedor',
+      origemId: id,
+      empresaId: fornecedor.empresaId
+    }).sort({ dataVencimento: -1 });
+    
+    res.json({
+      fornecedor: {
+        _id: fornecedor._id,
+        nome: fornecedor.nome,
+        nif: fornecedor.nif
+      },
+      pagamentos,
+      resumo: {
+        totalPendente: pagamentos.filter(p => p.status === 'pendente').reduce((sum, p) => sum + p.valor, 0),
+        totalPago: pagamentos.filter(p => p.status === 'Pago').reduce((sum, p) => sum + p.valor, 0),
+        totalGeral: pagamentos.reduce((sum, p) => sum + p.valor, 0)
+      }
+    });
+  } catch (error) {
+    console.error('Erro ao listar pagamentos:', error);
+    res.status(500).json({ mensagem: 'Erro ao listar pagamentos', erro: error.message });
+  }
+});
+
 // PUT - Atualizar fornecedor
 router.put('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { nif, itens, ...atualizacoes } = req.body;
+    const { nif, ...atualizacoes } = req.body;
 
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return res.status(400).json({ mensagem: 'ID inválido' });
@@ -382,7 +713,6 @@ router.put('/:id', async (req, res) => {
       return res.status(404).json({ mensagem: 'Fornecedor não encontrado' });
     }
     
-    // Verificar acesso
     const empresaUsuario = req.user?.empresaId;
     if (empresaUsuario && fornecedor.empresaId.toString() !== empresaUsuario.toString()) {
       return res.status(403).json({ mensagem: 'Acesso negado a este fornecedor' });
@@ -398,11 +728,6 @@ router.put('/:id', async (req, res) => {
         return res.status(400).json({ mensagem: 'Já existe um fornecedor com este NIF nesta empresa' });
       }
       atualizacoes.nif = nif;
-    }
-    
-    // Converter itens para itensFornecidos
-    if (itens && !atualizacoes.itensFornecidos) {
-      atualizacoes.itensFornecidos = itens;
     }
 
     Object.assign(fornecedor, atualizacoes);
@@ -436,13 +761,11 @@ router.delete('/:id', async (req, res) => {
       return res.status(404).json({ mensagem: 'Fornecedor não encontrado' });
     }
     
-    // Verificar acesso
     const empresaUsuario = req.user?.empresaId;
     if (empresaUsuario && fornecedor.empresaId.toString() !== empresaUsuario.toString()) {
       return res.status(403).json({ mensagem: 'Acesso negado a este fornecedor' });
     }
     
-    // Soft delete - apenas desativa
     fornecedor.status = 'Inativo';
     fornecedor.atualizadoPor = req.user?.nome || 'Sistema';
     await fornecedor.save();
@@ -455,372 +778,6 @@ router.delete('/:id', async (req, res) => {
   } catch (error) {
     console.error('Erro ao excluir fornecedor:', error);
     res.status(500).json({ mensagem: 'Erro ao excluir fornecedor', erro: error.message });
-  }
-});
-
-// ============================================
-// CRUD DE ITENS FORNECIDOS
-// ============================================
-
-// GET - Listar itens de um fornecedor
-router.get('/:id/itens', async (req, res) => {
-  try {
-    const { id } = req.params;
-    
-    const fornecedor = await Fornecedor.findById(id);
-    if (!fornecedor) {
-      return res.status(404).json({ mensagem: 'Fornecedor não encontrado' });
-    }
-    
-    res.json({ sucesso: true, dados: fornecedor.itensFornecidos || [] });
-  } catch (error) {
-    res.status(500).json({ mensagem: error.message });
-  }
-});
-
-// POST - Adicionar item
-router.post('/:id/itens', async (req, res) => {
-  try {
-    const { id } = req.params;
-    const item = req.body;
-    
-    const fornecedor = await Fornecedor.findById(id);
-    if (!fornecedor) {
-      return res.status(404).json({ mensagem: 'Fornecedor não encontrado' });
-    }
-    
-    if (!fornecedor.itensFornecidos) fornecedor.itensFornecidos = [];
-    fornecedor.itensFornecidos.push({ 
-      ...item, 
-      usuario: req.user?.nome || 'Sistema', 
-      dataRegisto: new Date() 
-    });
-    await fornecedor.save();
-    
-    res.json({ sucesso: true, mensagem: 'Item adicionado com sucesso', item });
-  } catch (error) {
-    res.status(500).json({ mensagem: error.message });
-  }
-});
-
-// PUT - Atualizar item
-router.put('/:id/itens/:itemId', async (req, res) => {
-  try {
-    const { id, itemId } = req.params;
-    const updates = req.body;
-    
-    const fornecedor = await Fornecedor.findById(id);
-    if (!fornecedor) {
-      return res.status(404).json({ mensagem: 'Fornecedor não encontrado' });
-    }
-    
-    const itemIndex = fornecedor.itensFornecidos.findIndex(i => i._id.toString() === itemId);
-    if (itemIndex === -1) {
-      return res.status(404).json({ mensagem: 'Item não encontrado' });
-    }
-    
-    Object.assign(fornecedor.itensFornecidos[itemIndex], updates);
-    await fornecedor.save();
-    
-    res.json({ sucesso: true, mensagem: 'Item atualizado com sucesso' });
-  } catch (error) {
-    res.status(500).json({ mensagem: error.message });
-  }
-});
-
-// DELETE - Remover item
-router.delete('/:id/itens/:itemId', async (req, res) => {
-  try {
-    const { id, itemId } = req.params;
-    
-    const fornecedor = await Fornecedor.findById(id);
-    if (!fornecedor) {
-      return res.status(404).json({ mensagem: 'Fornecedor não encontrado' });
-    }
-    
-    fornecedor.itensFornecidos = fornecedor.itensFornecidos.filter(i => i._id.toString() !== itemId);
-    await fornecedor.save();
-    
-    res.json({ sucesso: true, mensagem: 'Item removido com sucesso' });
-  } catch (error) {
-    res.status(500).json({ mensagem: error.message });
-  }
-});
-
-// ============================================
-// CRUD DE CONTRATOS
-// ============================================
-
-// GET - Listar contratos de um fornecedor
-router.get('/:id/contratos', async (req, res) => {
-  try {
-    const { id } = req.params;
-    
-    const fornecedor = await Fornecedor.findById(id);
-    if (!fornecedor) {
-      return res.status(404).json({ mensagem: 'Fornecedor não encontrado' });
-    }
-    
-    res.json({ sucesso: true, dados: fornecedor.contratos || [] });
-  } catch (error) {
-    res.status(500).json({ mensagem: error.message });
-  }
-});
-
-// POST - Adicionar contrato
-router.post('/:id/contratos', async (req, res) => {
-  try {
-    const { id } = req.params;
-    const contrato = req.body;
-
-    const fornecedor = await Fornecedor.findById(id);
-    if (!fornecedor) {
-      return res.status(404).json({ mensagem: 'Fornecedor não encontrado' });
-    }
-
-    if (!contrato.descricao || !contrato.valor || !contrato.dataInicio || !contrato.dataFim) {
-      return res.status(400).json({ mensagem: 'Campos obrigatórios do contrato não preenchidos' });
-    }
-
-    const proximoPagamento = calcularProximoPagamento(contrato);
-
-    fornecedor.contratos = fornecedor.contratos || [];
-    fornecedor.contratos.push({ ...contrato, proximoPagamento });
-    
-    // Atualizar próximo pagamento geral do fornecedor
-    const hoje = new Date();
-    const pagamentosFuturos = fornecedor.contratos
-      .filter(c => c.proximoPagamento && new Date(c.proximoPagamento) > hoje)
-      .map(c => new Date(c.proximoPagamento))
-      .sort((a, b) => a - b);
-    
-    fornecedor.proximoPagamento = pagamentosFuturos[0] || null;
-    
-    await fornecedor.save();
-
-    // Gerar pagamento para o novo contrato
-    const pagamento = await gerarPagamentoContrato(fornecedor, contrato, req.user?.nome || 'Sistema');
-
-    res.json({
-      sucesso: true,
-      mensagem: 'Contrato adicionado com sucesso',
-      contrato: fornecedor.contratos[fornecedor.contratos.length - 1],
-      pagamento
-    });
-  } catch (error) {
-    console.error('Erro ao adicionar contrato:', error);
-    res.status(500).json({ mensagem: 'Erro ao adicionar contrato', erro: error.message });
-  }
-});
-
-// PUT - Atualizar contrato
-router.put('/:id/contratos/:contratoId', async (req, res) => {
-  try {
-    const { id, contratoId } = req.params;
-    const updates = req.body;
-    
-    const fornecedor = await Fornecedor.findById(id);
-    if (!fornecedor) {
-      return res.status(404).json({ mensagem: 'Fornecedor não encontrado' });
-    }
-    
-    const contratoIndex = fornecedor.contratos.findIndex(c => c._id.toString() === contratoId);
-    if (contratoIndex === -1) {
-      return res.status(404).json({ mensagem: 'Contrato não encontrado' });
-    }
-    
-    Object.assign(fornecedor.contratos[contratoIndex], updates);
-    
-    // Recalcular próximo pagamento do contrato atualizado
-    if (updates.valor || updates.modalidadePagamento || updates.diaPagamento) {
-      fornecedor.contratos[contratoIndex].proximoPagamento = calcularProximoPagamento(fornecedor.contratos[contratoIndex]);
-    }
-    
-    await fornecedor.save();
-    
-    res.json({ sucesso: true, mensagem: 'Contrato atualizado com sucesso' });
-  } catch (error) {
-    res.status(500).json({ mensagem: error.message });
-  }
-});
-
-// DELETE - Remover contrato
-router.delete('/:id/contratos/:contratoId', async (req, res) => {
-  try {
-    const { id, contratoId } = req.params;
-    
-    const fornecedor = await Fornecedor.findById(id);
-    if (!fornecedor) {
-      return res.status(404).json({ mensagem: 'Fornecedor não encontrado' });
-    }
-    
-    const contratoIndex = fornecedor.contratos.findIndex(c => c._id.toString() === contratoId);
-    if (contratoIndex === -1) {
-      return res.status(404).json({ mensagem: 'Contrato não encontrado' });
-    }
-    
-    fornecedor.contratos.splice(contratoIndex, 1);
-    
-    // Recalcular próximo pagamento geral
-    const hoje = new Date();
-    const pagamentosFuturos = fornecedor.contratos
-      .filter(c => c.proximoPagamento && new Date(c.proximoPagamento) > hoje)
-      .map(c => new Date(c.proximoPagamento))
-      .sort((a, b) => a - b);
-    
-    fornecedor.proximoPagamento = pagamentosFuturos[0] || null;
-    await fornecedor.save();
-    
-    res.json({ sucesso: true, mensagem: 'Contrato removido com sucesso' });
-  } catch (error) {
-    console.error('Erro ao excluir contrato:', error);
-    res.status(500).json({ mensagem: error.message });
-  }
-});
-
-// ============================================
-// ROTA DE PAGAMENTOS
-// ============================================
-
-// GET - Listar pagamentos de um fornecedor
-router.get('/:id/pagamentos', async (req, res) => {
-  try {
-    const { id } = req.params;
-    
-    const fornecedor = await Fornecedor.findById(id);
-    if (!fornecedor) {
-      return res.status(404).json({ mensagem: 'Fornecedor não encontrado' });
-    }
-    
-    const pagamentos = await Pagamento.find({
-      tipo: 'Fornecedor',
-      origemId: id,
-      empresaId: fornecedor.empresaId
-    }).sort({ dataVencimento: -1 });
-    
-    res.json({
-      fornecedor: {
-        _id: fornecedor._id,
-        nome: fornecedor.nome,
-        nif: fornecedor.nif
-      },
-      pagamentos
-    });
-  } catch (error) {
-    console.error('Erro ao listar pagamentos:', error);
-    res.status(500).json({ mensagem: 'Erro ao listar pagamentos', erro: error.message });
-  }
-});
-
-// POST - Gerar pagamento para um contrato específico
-router.post('/:id/contratos/:contratoId/gerar-pagamento', async (req, res) => {
-  try {
-    const { id, contratoId } = req.params;
-    
-    const fornecedor = await Fornecedor.findById(id);
-    if (!fornecedor) {
-      return res.status(404).json({ sucesso: false, mensagem: 'Fornecedor não encontrado' });
-    }
-    
-    const contrato = fornecedor.contratos.find(c => c._id.toString() === contratoId);
-    if (!contrato) {
-      return res.status(404).json({ sucesso: false, mensagem: 'Contrato não encontrado' });
-    }
-    
-    const pagamento = await gerarPagamentoContrato(fornecedor, contrato, req.user?.nome || 'Sistema - Manual');
-    
-    if (pagamento) {
-      res.json({
-        sucesso: true,
-        mensagem: `Pagamento gerado com sucesso`,
-        pagamento
-      });
-    } else {
-      res.status(500).json({ sucesso: false, mensagem: 'Erro ao gerar pagamento' });
-    }
-  } catch (error) {
-    console.error('Erro ao gerar pagamento:', error);
-    res.status(500).json({ sucesso: false, mensagem: error.message });
-  }
-});
-
-// POST - Gerar pagamentos automáticos
-router.post('/gerar-pagamentos', async (req, res) => {
-  try {
-    const { empresaId } = req.body;
-    const query = { status: 'Ativo' };
-    if (empresaId) query.empresaId = empresaId;
-    
-    const fornecedores = await Fornecedor.find(query);
-    let pagamentosGerados = 0;
-    
-    for (const fornecedor of fornecedores) {
-      for (const contrato of fornecedor.contratos || []) {
-        const dataFim = new Date(contrato.dataFim);
-        if (dataFim < new Date()) continue;
-        if (contrato.modalidadePagamento === 'Único') continue;
-        
-        const hoje = new Date();
-        const mesReferencia = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`;
-        
-        const pagamentoExistente = await Pagamento.findOne({
-          tipo: 'Fornecedor',
-          origemId: fornecedor._id,
-          'detalhesPagamento.mesReferencia': mesReferencia
-        });
-        
-        if (!pagamentoExistente && contrato.proximoPagamento) {
-          const pagamento = await gerarPagamentoContrato(fornecedor, contrato, 'Sistema - Automático');
-          if (pagamento) pagamentosGerados++;
-        }
-      }
-    }
-    
-    res.json({ sucesso: true, mensagem: `${pagamentosGerados} pagamentos gerados`, pagamentosGerados });
-  } catch (error) {
-    console.error('Erro ao gerar pagamentos:', error);
-    res.status(500).json({ mensagem: 'Erro ao gerar pagamentos', erro: error.message });
-  }
-});
-
-// ============================================
-// ROTAS DE ESTATÍSTICAS
-// ============================================
-
-// GET - Estatísticas do fornecedor
-router.get('/:id/estatisticas', async (req, res) => {
-  try {
-    const { id } = req.params;
-    
-    const fornecedor = await Fornecedor.findById(id);
-    if (!fornecedor) {
-      return res.status(404).json({ mensagem: 'Fornecedor não encontrado' });
-    }
-    
-    const pagamentos = await Pagamento.find({ tipo: 'Fornecedor', origemId: id });
-    const totalPago = pagamentos.filter(p => p.status === 'Pago').reduce((sum, p) => sum + p.valor, 0);
-    const totalPendente = pagamentos.filter(p => p.status === 'pendente').reduce((sum, p) => sum + p.valor, 0);
-    
-    res.json({
-      fornecedor: {
-        _id: fornecedor._id,
-        nome: fornecedor.nome,
-        nif: fornecedor.nif,
-        tipoFornecedor: fornecedor.tipoFornecedor,
-        status: fornecedor.status
-      },
-      estatisticas: {
-        totalCompras: fornecedor.estatisticasCompras?.totalCompras || 0,
-        totalGasto: fornecedor.estatisticasCompras?.totalGasto || 0,
-        totalPago,
-        totalPendente,
-        itensFornecidos: fornecedor.itensFornecidos?.length || 0,
-        contratosAtivos: fornecedor.contratos?.filter(c => new Date(c.dataFim) > new Date()).length || 0
-      },
-      ultimosPagamentos: pagamentos.slice(0, 10)
-    });
-  } catch (error) {
-    res.status(500).json({ mensagem: error.message });
   }
 });
 

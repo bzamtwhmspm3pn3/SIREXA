@@ -9,7 +9,7 @@ import {
   Calendar, DollarSign, Clock, Edit, FileText, Award,
   Landmark, AlertCircle, Printer, Download, Eye, User,
   Package, Wrench, Fuel, Computer, Globe, Home, Percent,
-  Wallet, TrendingUp
+  Wallet, TrendingUp, Layers, Box, ShoppingBag
 } from "lucide-react";
 
 const VisualizarFornecedor = () => {
@@ -140,6 +140,13 @@ const VisualizarFornecedor = () => {
     return fornecedor.contratos.reduce((sum, c) => sum + (c.valor || 0), 0);
   };
 
+  const calcularValorTotalEstoque = () => {
+    if (!fornecedor?.produtoInfo) return 0;
+    const quantidade = fornecedor.produtoInfo.quantidade || 0;
+    const precoCompra = fornecedor.produtoInfo.precoCompra || 0;
+    return quantidade * precoCompra;
+  };
+
   const imprimir = () => {
     window.print();
   };
@@ -179,8 +186,11 @@ const VisualizarFornecedor = () => {
   const tipoInfo = getIconForTipo(fornecedor.tipoFornecedor);
   const valorTotalItens = calcularValorTotalItens();
   const valorTotalContratos = calcularValorTotalContratos();
+  const valorTotalEstoque = calcularValorTotalEstoque();
   const hasItens = (fornecedor.itensFornecidos?.length > 0) || (fornecedor.itens?.length > 0);
   const itensExibicao = fornecedor.itensFornecidos || fornecedor.itens || [];
+  const isMercadoria = fornecedor.tipoFornecedor === "mercadoria";
+  const temProdutoInfo = isMercadoria && fornecedor.produtoInfo && fornecedor.produtoInfo.produto;
 
   return (
     <Layout title={`Fornecedor - ${fornecedor.nome}`} showBackButton={true} backToRoute="/fornecedores">
@@ -301,13 +311,98 @@ const VisualizarFornecedor = () => {
               </div>
             </div>
 
-            {/* Itens Fornecidos */}
+            {/* PRODUTO ATUAL - Para fornecedores do tipo mercadoria */}
+            {temProdutoInfo && (
+              <div className="bg-gradient-to-br from-gray-800/90 to-gray-900/90 backdrop-blur-sm rounded-2xl border border-gray-700/50 overflow-hidden">
+                <div className="bg-gradient-to-r from-green-600/20 to-emerald-600/20 px-6 py-4 border-b border-gray-700">
+                  <div className="flex items-center gap-2">
+                    <ShoppingBag className="w-5 h-5 text-green-400" />
+                    <h2 className="text-lg font-bold text-white">Produto Atual</h2>
+                  </div>
+                </div>
+                <div className="p-6">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="bg-gray-700/30 rounded-xl p-3 text-center">
+                      <p className="text-xs text-gray-400">Produto</p>
+                      <p className="text-white font-medium text-sm break-words">{fornecedor.produtoInfo.produto}</p>
+                    </div>
+                    <div className="bg-gray-700/30 rounded-xl p-3 text-center">
+                      <p className="text-xs text-gray-400">Código Barras</p>
+                      <p className="text-white text-sm">{fornecedor.produtoInfo.codigoBarras || "—"}</p>
+                    </div>
+                    <div className="bg-gray-700/30 rounded-xl p-3 text-center">
+                      <p className="text-xs text-gray-400">Código Interno</p>
+                      <p className="text-white text-sm">{fornecedor.produtoInfo.codigoInterno || "—"}</p>
+                    </div>
+                    <div className="bg-gray-700/30 rounded-xl p-3 text-center">
+                      <p className="text-xs text-gray-400">Categoria</p>
+                      <p className="text-white text-sm">{fornecedor.produtoInfo.categoria || "Geral"}</p>
+                    </div>
+                    <div className="bg-gray-700/30 rounded-xl p-3 text-center">
+                      <p className="text-xs text-gray-400">Marca</p>
+                      <p className="text-white text-sm">{fornecedor.produtoInfo.marca || "—"}</p>
+                    </div>
+                    <div className="bg-gray-700/30 rounded-xl p-3 text-center">
+                      <p className="text-xs text-gray-400">Unidade</p>
+                      <p className="text-white text-sm">{fornecedor.produtoInfo.unidadeMedida || "Unidade"}</p>
+                    </div>
+                    <div className="bg-gray-700/30 rounded-xl p-3 text-center">
+                      <p className="text-xs text-gray-400">Quantidade</p>
+                      <p className="text-blue-400 font-bold text-lg">{fornecedor.produtoInfo.quantidade || 0}</p>
+                    </div>
+                    <div className="bg-gray-700/30 rounded-xl p-3 text-center">
+                      <p className="text-xs text-gray-400">Quantidade Mínima</p>
+                      <p className="text-yellow-400 text-sm">{fornecedor.produtoInfo.quantidadeMinima || 5}</p>
+                    </div>
+                    <div className="bg-gray-700/30 rounded-xl p-3 text-center">
+                      <p className="text-xs text-gray-400">Preço Compra</p>
+                      <p className="text-green-400 text-sm">{formatarMoeda(fornecedor.produtoInfo.precoCompra)}</p>
+                    </div>
+                    <div className="bg-gray-700/30 rounded-xl p-3 text-center">
+                      <p className="text-xs text-gray-400">Preço Venda</p>
+                      <p className="text-blue-400 text-sm">{formatarMoeda(fornecedor.produtoInfo.precoVenda)}</p>
+                    </div>
+                    <div className="bg-gray-700/30 rounded-xl p-3 text-center">
+                      <p className="text-xs text-gray-400">Data Validade</p>
+                      <p className="text-white text-sm">{formatarData(fornecedor.produtoInfo.dataValidade)}</p>
+                    </div>
+                    <div className="bg-gray-700/30 rounded-xl p-3 text-center">
+                      <p className="text-xs text-gray-400">Armazém</p>
+                      <p className="text-white text-sm">{fornecedor.produtoInfo.armazem || "Principal"}</p>
+                    </div>
+                    <div className="bg-gray-700/30 rounded-xl p-3 text-center">
+                      <p className="text-xs text-gray-400">Nº Lote</p>
+                      <p className="text-white text-sm">{fornecedor.produtoInfo.numeroLote || "—"}</p>
+                    </div>
+                    <div className="bg-gray-700/30 rounded-xl p-3 text-center">
+                      <p className="text-xs text-gray-400">IVA</p>
+                      <p className="text-white text-sm">{fornecedor.produtoInfo.taxaIVA || 14}%</p>
+                    </div>
+                    <div className="bg-gray-800/70 rounded-xl p-3 text-center col-span-2 md:col-span-4">
+                      <p className="text-xs text-gray-400">Valor Total do Estoque</p>
+                      <p className="text-purple-400 font-bold text-xl">{formatarMoeda(valorTotalEstoque)}</p>
+                      <p className="text-xs text-gray-500 mt-1">
+                        {fornecedor.produtoInfo.quantidade || 0} × {formatarMoeda(fornecedor.produtoInfo.precoCompra)}
+                      </p>
+                    </div>
+                  </div>
+                  {fornecedor.produtoInfo.observacoes && (
+                    <div className="mt-4 p-3 bg-gray-700/30 rounded-xl">
+                      <p className="text-xs text-gray-400 mb-1">Observações do Produto</p>
+                      <p className="text-gray-300 text-sm">{fornecedor.produtoInfo.observacoes}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Itens Fornecidos (Histórico de Compras) */}
             {hasItens && (
               <div className="bg-gradient-to-br from-gray-800/90 to-gray-900/90 backdrop-blur-sm rounded-2xl border border-gray-700/50 overflow-hidden">
                 <div className="bg-gradient-to-r from-yellow-600/20 to-orange-600/20 px-6 py-4 border-b border-gray-700">
                   <div className="flex items-center gap-2">
-                    <Package className="w-5 h-5 text-yellow-400" />
-                    <h2 className="text-lg font-bold text-white">Itens Fornecidos ({itensExibicao.length})</h2>
+                    <Layers className="w-5 h-5 text-yellow-400" />
+                    <h2 className="text-lg font-bold text-white">Histórico de Compras ({itensExibicao.length})</h2>
                   </div>
                 </div>
                 <div className="p-6 space-y-3">
@@ -321,6 +416,11 @@ const VisualizarFornecedor = () => {
                           <p className="text-emerald-400 font-bold mt-1">
                             {formatarMoeda(item.valorTotal || item.valor || item.valorMensal)}
                           </p>
+                          {item.dataRegisto && (
+                            <p className="text-xs text-gray-400 mt-1">
+                              📅 {formatarData(item.dataRegisto)}
+                            </p>
+                          )}
                         </div>
                         {item.quantidade && (
                           <span className="text-xs px-2 py-1 bg-blue-500/20 text-blue-400 rounded-full">
@@ -331,10 +431,13 @@ const VisualizarFornecedor = () => {
                       {item.unidadeMedida && (
                         <p className="text-xs text-gray-400 mt-2">Unidade: {item.unidadeMedida}</p>
                       )}
+                      {item.precoCompra && (
+                        <p className="text-xs text-gray-400 mt-1">Preço Unitário: {formatarMoeda(item.precoCompra)}</p>
+                      )}
                     </div>
                   ))}
                   <div className="pt-3 border-t border-gray-600 flex justify-between items-center">
-                    <span className="text-gray-400">Total em Itens:</span>
+                    <span className="text-gray-400">Total Gasto em Compras:</span>
                     <span className="text-emerald-400 font-bold text-lg">{formatarMoeda(valorTotalItens)}</span>
                   </div>
                 </div>
@@ -405,16 +508,20 @@ const VisualizarFornecedor = () => {
             )}
 
             {/* Resumo Financeiro */}
-            {(valorTotalItens > 0 || valorTotalContratos > 0) && (
+            {(valorTotalItens > 0 || valorTotalContratos > 0 || valorTotalEstoque > 0) && (
               <div className="bg-gradient-to-r from-blue-600/10 to-purple-600/10 rounded-2xl border border-blue-500/30 p-6">
                 <div className="flex items-center gap-2 mb-4">
                   <TrendingUp className="w-5 h-5 text-blue-400" />
                   <h2 className="text-lg font-bold text-white">Resumo Financeiro</h2>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="text-center p-3 bg-gray-800/50 rounded-lg">
-                    <p className="text-gray-400 text-sm">Total em Itens</p>
-                    <p className="text-green-400 font-bold text-xl">{formatarMoeda(valorTotalItens)}</p>
+                    <p className="text-gray-400 text-sm">Valor em Estoque</p>
+                    <p className="text-green-400 font-bold text-xl">{formatarMoeda(valorTotalEstoque)}</p>
+                  </div>
+                  <div className="text-center p-3 bg-gray-800/50 rounded-lg">
+                    <p className="text-gray-400 text-sm">Total Gasto em Compras</p>
+                    <p className="text-blue-400 font-bold text-xl">{formatarMoeda(valorTotalItens)}</p>
                   </div>
                   <div className="text-center p-3 bg-gray-800/50 rounded-lg">
                     <p className="text-gray-400 text-sm">Total em Contratos</p>

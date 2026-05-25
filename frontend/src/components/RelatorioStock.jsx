@@ -1,12 +1,44 @@
-// src/components/RelatorioStock.jsx
+// src/components/RelatorioStock.jsx - PDF CORRIGIDO (sem cards com contorno)
 import React, { useState, useEffect } from "react";
 import { 
   X, Download, Printer, Package, TrendingUp, AlertTriangle, 
   Calendar, DollarSign, FileText, Loader2, CheckCircle,
-  Building2, User, Wrench
+  Building2, User, Box, Wrench
 } from "lucide-react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+
+// Função para limpar caracteres especiais
+const limparTexto = (texto) => {
+  if (!texto) return "-";
+  let str = String(texto);
+  const mapa = {
+    'ç': 'c', 'Ç': 'C', 'ã': 'a', 'Ã': 'A', 'õ': 'o', 'Õ': 'O',
+    'á': 'a', 'Á': 'A', 'à': 'a', 'È': 'E', 'â': 'a', 'Â': 'A',
+    'é': 'e', 'É': 'E', 'è': 'e', 'È': 'E', 'ê': 'e', 'Ê': 'E',
+    'í': 'i', 'Í': 'I', 'ì': 'i', 'Ì': 'I', 'î': 'i', 'Î': 'I',
+    'ó': 'o', 'Ó': 'O', 'ò': 'o', 'Ò': 'O', 'ô': 'o', 'Ô': 'O',
+    'ú': 'u', 'Ú': 'U', 'ù': 'u', 'Ù': 'U', 'û': 'u', 'Û': 'U',
+    'ü': 'u', 'Ü': 'U', 'ñ': 'n', 'Ñ': 'N', 'Ø': 'O', 'ø': 'o',
+    'æ': 'ae', 'Æ': 'AE', 'ß': 'ss', '°': ' graus', '€': 'EUR',
+    '©': '(c)', '®': '(r)', '™': '(tm)', '°': ' graus'
+  };
+  Object.keys(mapa).forEach(key => { str = str.split(key).join(mapa[key]); });
+  str = str.replace(/[^\x20-\x7E]/g, '');
+  if (str.length > 35) str = str.substring(0, 32) + "...";
+  return str || "-";
+};
+
+const formatarMoeda = (valor) => {
+  if (!valor && valor !== 0) return "0 Kz";
+  return new Intl.NumberFormat('pt-AO').format(valor) + " Kz";
+};
+
+const formatarData = (data) => {
+  if (!data) return "-";
+  try { return new Date(data).toLocaleDateString('pt-PT'); } 
+  catch { return "-"; }
+};
 
 const RelatorioStock = ({ produtos = [], servicos = [], onClose, empresaId }) => {
   const [exportando, setExportando] = useState(false);
@@ -14,11 +46,10 @@ const RelatorioStock = ({ produtos = [], servicos = [], onClose, empresaId }) =>
   const [empresa, setEmpresa] = useState(null);
   const [usuario, setUsuario] = useState(null);
   const [carregando, setCarregando] = useState(true);
+  const [abaAtiva, setAbaAtiva] = useState("produtos");
 
-  // Garantir que produtos e serviços são arrays
   const produtosArray = Array.isArray(produtos) ? produtos : [];
   const servicosArray = Array.isArray(servicos) ? servicos : [];
-  const todosItens = [...produtosArray, ...servicosArray];
 
   useEffect(() => {
     carregarDados();
@@ -30,41 +61,19 @@ const RelatorioStock = ({ produtos = [], servicos = [], onClose, empresaId }) =>
       const idEmpresa = empresaId || localStorage.getItem("empresaId");
       const token = localStorage.getItem("token");
       
-      console.log("=== CARREGANDO DADOS ===");
-      console.log("empresaId:", idEmpresa);
-      console.log("produtos recebidos:", produtosArray.length);
-      console.log("serviços recebidos:", servicosArray.length);
-      
       if (idEmpresa && token) {
         const response = await fetch(`https://sirexa-api.onrender.com/api/empresa/${idEmpresa}`, {
-          headers: { 
-            "Authorization": `Bearer ${token}`,
-            "Content-Type": "application/json"
-          }
+          headers: { "Authorization": `Bearer ${token}` }
         });
-        
         if (response.ok) {
           const data = await response.json();
           setEmpresa(data.dados || data);
-        } else {
-          const empresaNome = localStorage.getItem("empresaNome");
-          if (empresaNome) {
-            setEmpresa({ nome: empresaNome });
-          }
         }
       }
-      
       const userStr = localStorage.getItem("user");
-      if (userStr) {
-        const user = JSON.parse(userStr);
-        setUsuario(user);
-      }
-      
-    } catch (error) {
-      console.error("Erro ao carregar dados:", error);
-    } finally {
-      setCarregando(false);
-    }
+      if (userStr) setUsuario(JSON.parse(userStr));
+    } catch (error) { console.error("Erro:", error); }
+    finally { setCarregando(false); }
   };
 
   const mostrarMensagem = (texto, tipo) => {
@@ -72,358 +81,192 @@ const RelatorioStock = ({ produtos = [], servicos = [], onClose, empresaId }) =>
     setTimeout(() => setMensagem({ texto: "", tipo: "" }), 3000);
   };
 
-  const formatarMoeda = (valor) => {
-    if (!valor && valor !== 0) return "—";
-    return new Intl.NumberFormat('pt-AO', { 
-      style: 'currency', 
-      currency: 'AOA',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0
-    }).format(valor);
-  };
-
-  const formatarData = (data) => {
-    if (!data) return "—";
-    try {
-      return new Date(data).toLocaleDateString('pt-PT', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric'
-      });
-    } catch {
-      return "—";
+  const stats = {
+    produtos: {
+      total: produtosArray.length,
+      quantidade: produtosArray.reduce((acc, p) => acc + (p?.quantidade || 0), 0),
+      valor: produtosArray.reduce((acc, p) => acc + ((p?.quantidade || 0) * (p?.precoVenda || 0)), 0),
+      baixoEstoque: produtosArray.filter(p => (p?.quantidade || 0) <= (p?.quantidadeMinima || 5)).length,
+    },
+    servicos: {
+      total: servicosArray.length,
+      valor: servicosArray.reduce((acc, s) => acc + (s?.precoVenda || 0), 0),
+      comAgendamento: servicosArray.filter(s => s?.requerAgendamento === true).length
     }
   };
 
-  const formatarDataHora = (data) => {
-    if (!data) return "—";
-    try {
-      return new Date(data).toLocaleString('pt-PT', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-      });
-    } catch {
-      return "—";
-    }
-  };
-
-  const imprimir = () => {
-    window.print();
-  };
-
-  // Estatísticas para PRODUTOS
-  const statsProdutos = {
-    total: produtosArray.length,
-    totalQuantidade: produtosArray.reduce((acc, p) => acc + (p?.quantidade || 0), 0),
-    valorTotalCompra: produtosArray.reduce((acc, p) => acc + ((p?.quantidade || 0) * (p?.precoCompra || 0)), 0),
-    valorTotalVenda: produtosArray.reduce((acc, p) => acc + ((p?.quantidade || 0) * (p?.precoVenda || 0)), 0),
-    lucroTotal: produtosArray.reduce((acc, p) => acc + ((p?.quantidade || 0) * ((p?.precoVenda || 0) - (p?.precoCompra || 0))), 0),
-    produtosBaixoEstoque: produtosArray.filter(p => (p?.quantidade || 0) <= (p?.quantidadeMinima || 5)).length,
-    produtosVencidos: produtosArray.filter(p => {
-      if (!p?.dataValidade) return false;
-      try {
-        return new Date(p.dataValidade) < new Date();
-      } catch {
-        return false;
-      }
-    }).length,
-    produtosProximosVencer: produtosArray.filter(p => {
-      if (!p?.dataValidade) return false;
-      try {
-        const dias = Math.ceil((new Date(p.dataValidade) - new Date()) / (1000 * 60 * 60 * 24));
-        return dias <= 30 && dias > 0;
-      } catch {
-        return false;
-      }
-    }).length
-  };
-
-  // Estatísticas para SERVIÇOS
-  const statsServicos = {
-    total: servicosArray.length,
-    valorTotalVenda: servicosArray.reduce((acc, s) => acc + (s?.precoVenda || 0), 0),
-    duracaoMedia: servicosArray.length > 0
-      ? servicosArray.reduce((acc, s) => acc + (s?.duracaoEstimada || 0), 0) / servicosArray.length
-      : 0,
-    requerAgendamento: servicosArray.filter(s => s?.requerAgendamento === true).length
-  };
-
-  // Estatísticas GERAIS
-  const statsGerais = {
-    totalItens: todosItens.length,
-    valorTotalVenda: statsProdutos.valorTotalVenda + statsServicos.valorTotalVenda,
-    totalProdutos: statsProdutos.total,
-    totalServicos: statsServicos.total
-  };
-
-  const margemMedia = statsProdutos.total > 0 
+  const margemMedia = produtosArray.length > 0 
     ? (produtosArray.reduce((acc, p) => {
-        if (p?.precoCompra > 0) {
+        if (p?.precoCompra > 0) 
           return acc + ((p.precoVenda - p.precoCompra) / p.precoCompra * 100);
-        }
         return acc;
-      }, 0) / statsProdutos.total).toFixed(1)
+      }, 0) / produtosArray.length).toFixed(1)
     : 0;
 
-  const categorias = [...new Set(todosItens.map(p => p?.categoria).filter(Boolean))];
-  const categoriasCount = categorias.map(cat => ({
-    nome: cat,
-    quantidade: todosItens.filter(p => p?.categoria === cat).length,
-    valor: todosItens.filter(p => p?.categoria === cat).reduce((acc, p) => {
-      const qtd = p?.tipo === 'produto' ? (p?.quantidade || 0) : 1;
-      return acc + (qtd * (p?.precoVenda || 0));
-    }, 0)
-  })).sort((a, b) => b.valor - a.valor);
-
-  const exportarPDFProfissional = async () => {
-    if (todosItens.length === 0) {
-      mostrarMensagem("Nenhum item para exportar", "erro");
+  const exportarPDF = async () => {
+    if (produtosArray.length === 0 && servicosArray.length === 0) {
+      mostrarMensagem("Nenhum dado para exportar", "erro");
       return;
     }
     
     setExportando(true);
-    mostrarMensagem("Gerando PDF profissional...", "info");
+    mostrarMensagem("Gerando PDF...", "info");
     
     try {
-      const doc = new jsPDF({
-        orientation: 'landscape',
-        unit: 'mm',
-        format: 'a4'
-      });
-      
+      const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
       const dataAtual = new Date();
-      const dataFormatada = dataAtual.toISOString().slice(0, 10).replace(/-/g, "");
-      const numeroRelatorio = `${dataFormatada}-STK-${String(Math.floor(Math.random() * 999) + 1).padStart(3, "0")}`;
+      const nomeEmpresa = limparTexto(empresa?.nome || localStorage.getItem("empresaNome") || "Empresa");
       
-      const nomeEmpresa = empresa?.nome || localStorage.getItem("empresaNome") || "Empresa";
-      const nifEmpresa = empresa?.nif || "---";
-      const emailEmpresa = empresa?.email || "---";
-      const telefoneEmpresa = empresa?.telefone || "---";
-      const enderecoEmpresa = empresa?.endereco || "---";
-      
-      let yPos = 20;
-
-      // CABEÇALHO
+      // CABECALHO
       doc.setFillColor(37, 99, 235);
       doc.rect(14, 10, 40, 40, 'F');
       doc.setTextColor(255, 255, 255);
-      doc.setFontSize(24);
+      doc.setFontSize(20);
       doc.setFont("helvetica", "bold");
-      doc.text(nomeEmpresa.charAt(0).toUpperCase(), 30, 35);
-      doc.setFontSize(10);
-      doc.text("G", 38, 35);
-      doc.setFontSize(8);
-      doc.text("est", 28, 42);
+      doc.text("S", 30, 33);
+      doc.setFontSize(14);
+      doc.text("G", 36, 33);
       
       doc.setTextColor(37, 99, 235);
       doc.setFontSize(14);
-      doc.setFont("helvetica", "bold");
       doc.text(nomeEmpresa, 60, 20);
       
       doc.setTextColor(100, 100, 100);
       doc.setFontSize(9);
-      doc.setFont("helvetica", "normal");
-      doc.text(`NIF: ${nifEmpresa}`, 60, 28);
-      doc.text(`Email: ${emailEmpresa}`, 60, 34);
-      doc.text(`Telefone: ${telefoneEmpresa}`, 60, 40);
-      doc.text(`Endereço: ${enderecoEmpresa}`, 60, 46);
+      doc.text(`NIF: ${empresa?.nif || "---"}`, 60, 28);
+      doc.text(`Data: ${dataAtual.toLocaleDateString('pt-PT')}`, 60, 34);
       
-      doc.setFontSize(9);
-      doc.setTextColor(37, 99, 235);
-      doc.text(`Nº: ${numeroRelatorio}`, 250, 20, { align: "right" });
-      doc.text(`Data: ${dataAtual.toLocaleString("pt-AO")}`, 250, 26, { align: "right" });
-
-      yPos = 55;
       doc.setFontSize(18);
-      doc.setFont("helvetica", "bold");
       doc.setTextColor(0, 0, 0);
-      doc.text("RELATÓRIO DE STOCK E SERVIÇOS", 14, yPos);
+      doc.text("RELATORIO DE STOCK", 14, 55);
       
-      yPos += 8;
-      doc.setFontSize(12);
-      doc.setFont("helvetica", "normal");
-      doc.setTextColor(80, 80, 80);
-      doc.text("Relatório Analítico de Inventário e Serviços", 14, yPos);
+      // RESUMO EM TEXTO (sem cards com contorno)
+      let yPos = 70;
       
-      yPos += 12;
-
-      // RESPONSÁVEL
-      doc.setFillColor(240, 248, 255);
-      doc.rect(14, yPos - 3, 270, 18, 'F');
-      doc.setFontSize(9);
-      doc.setFont("helvetica", "bold");
-      doc.setTextColor(37, 99, 235);
-      doc.text("RESPONSÁVEL PELA EXPORTAÇÃO", 14, yPos);
-      doc.setFont("helvetica", "normal");
-      doc.setTextColor(0, 0, 0);
-      doc.text(`${usuario?.nome || "Usuário"}`, 14, yPos + 6);
-      doc.text(`Cargo: ${usuario?.cargo || "Técnico"}`, 100, yPos + 6);
-      doc.text(`Email: ${usuario?.email || "---"}`, 180, yPos + 6);
-      yPos += 20;
-
-      // RESUMO EXECUTIVO
       doc.setFontSize(11);
       doc.setFont("helvetica", "bold");
       doc.setTextColor(37, 99, 235);
       doc.text("RESUMO EXECUTIVO", 14, yPos);
-      yPos += 5;
+      yPos += 6;
       
-      const cardWidth = 65;
-      const cardHeight = 30;
-      const cards = [
-        { label: "Total de Itens", value: statsGerais.totalItens.toString(), color: [37, 99, 235] },
-        { label: "Produtos", value: statsGerais.totalProdutos.toString(), color: [34, 197, 94] },
-        { label: "Serviços", value: statsGerais.totalServicos.toString(), color: [139, 92, 246] },
-        { label: "Valor Total", value: formatarMoeda(statsGerais.valorTotalVenda), color: [16, 185, 129] }
-      ];
+      doc.setFontSize(10);
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(0, 0, 0);
+      doc.text(`Total de Produtos: ${stats.produtos.total}`, 14, yPos);
+      doc.text(`Quantidade em Stock: ${stats.produtos.quantidade} unidades`, 14, yPos + 5);
+      doc.text(`Valor Total em Stock: ${formatarMoeda(stats.produtos.valor)}`, 14, yPos + 10);
+      doc.text(`Margem Media: ${margemMedia}%`, 14, yPos + 15);
+      doc.text(`Produtos com Baixo Estoque: ${stats.produtos.baixoEstoque}`, 14, yPos + 20);
       
-      cards.forEach((card, idx) => {
-        const x = 14 + (idx * (cardWidth + 5));
-        doc.setFillColor(card.color[0], card.color[1], card.color[2], 0.1);
-        doc.rect(x, yPos, cardWidth, cardHeight, 'F');
-        doc.setDrawColor(card.color[0], card.color[1], card.color[2]);
-        doc.rect(x, yPos, cardWidth, cardHeight, 'S');
-        doc.setFontSize(8);
-        doc.setTextColor(100, 100, 100);
-        doc.text(card.label, x + 5, yPos + 8);
-        doc.setFontSize(12);
-        doc.setFont("helvetica", "bold");
-        doc.setTextColor(card.color[0], card.color[1], card.color[2]);
-        doc.text(card.value, x + 5, yPos + 22);
-      });
+      doc.text(`Total de Servicos: ${stats.servicos.total}`, 100, yPos);
+      doc.text(`Faturamento Potencial: ${formatarMoeda(stats.servicos.valor)}`, 100, yPos + 5);
+      doc.text(`Servicos com Agendamento: ${stats.servicos.comAgendamento}`, 100, yPos + 10);
       
-      yPos += cardHeight + 10;
-
-      // LISTA DE PRODUTOS
+      yPos += 35;
+      
+      // TABELA DE PRODUTOS
       if (produtosArray.length > 0) {
+        if (yPos > 250) { doc.addPage(); yPos = 20; }
+        
         doc.setFontSize(11);
         doc.setFont("helvetica", "bold");
         doc.setTextColor(37, 99, 235);
-        doc.text("PRODUTOS", 14, yPos);
-        yPos += 5;
+        doc.text("LISTA DE PRODUTOS", 14, yPos);
+        yPos += 6;
         
         const produtosData = produtosArray.map(p => [
-          "📦",
-          p?.produto?.substring(0, 25) || "—",
-          p?.codigoBarras || "—",
+          limparTexto(p?.produto),
           (p?.quantidade || 0).toLocaleString(),
           formatarMoeda(p?.precoCompra),
           formatarMoeda(p?.precoVenda),
           p?.precoCompra > 0 ? `${((p.precoVenda - p.precoCompra) / p.precoCompra * 100).toFixed(1)}%` : "0%",
           formatarData(p?.dataValidade),
-          p?.categoria?.substring(0, 12) || "Geral"
+          limparTexto(p?.categoria) || "Geral"
         ]);
         
         autoTable(doc, {
           startY: yPos,
-          head: [["", "Produto", "Código", "Qtd", "Compra", "Venda", "Margem", "Validade", "Categoria"]],
+          head: [["Produto", "Qtd", "Compra", "Venda", "Margem", "Validade", "Categoria"]],
           body: produtosData,
           theme: "striped",
-          styles: { fontSize: 7, cellPadding: 3 },
+          styles: { fontSize: 8, cellPadding: 3 },
           headStyles: { fillColor: [37, 99, 235], textColor: [255, 255, 255], fontStyle: "bold" },
           alternateRowStyles: { fillColor: [240, 248, 255] },
           margin: { left: 14, right: 14 },
           columnStyles: {
-            0: { cellWidth: 8, halign: "center" },
-            1: { cellWidth: 42 },
-            2: { cellWidth: 22 },
-            3: { cellWidth: 15, halign: "right" },
-            4: { cellWidth: 22, halign: "right" },
-            5: { cellWidth: 22, halign: "right" },
-            6: { cellWidth: 18, halign: "right" },
-            7: { cellWidth: 22, halign: "center" },
-            8: { cellWidth: 22 }
+            0: { cellWidth: 45 },
+            1: { cellWidth: 18, halign: "right" },
+            2: { cellWidth: 28, halign: "right" },
+            3: { cellWidth: 28, halign: "right" },
+            4: { cellWidth: 20, halign: "right" },
+            5: { cellWidth: 22, halign: "center" },
+            6: { cellWidth: 22 }
           }
         });
         yPos = doc.lastAutoTable.finalY + 10;
       }
-
-      // LISTA DE SERVIÇOS
+      
+      // TABELA DE SERVICOS
       if (servicosArray.length > 0) {
+        if (yPos > 250) { doc.addPage(); yPos = 20; }
+        
         doc.setFontSize(11);
         doc.setFont("helvetica", "bold");
         doc.setTextColor(139, 92, 246);
-        doc.text("SERVIÇOS", 14, yPos);
-        yPos += 5;
+        doc.text("LISTA DE SERVICOS", 14, yPos);
+        yPos += 6;
         
         const servicosData = servicosArray.map(s => [
-          "🛠️",
-          s?.produto?.substring(0, 25) || "—",
+          limparTexto(s?.produto),
           formatarMoeda(s?.precoVenda),
-          s?.duracaoEstimada ? `${s.duracaoEstimada} ${s.unidadeTempo || 'horas'}` : "—",
-          s?.executadoPor || "—",
-          s?.requerAgendamento ? "Sim" : "Não",
-          s?.localExecucao || "—",
-          s?.categoria?.substring(0, 12) || "Geral"
+          s?.duracaoEstimada ? `${s.duracaoEstimada} ${s.unidadeTempo === 'horas' ? 'h' : s.unidadeTempo === 'dias' ? 'd' : 'min'}` : "-",
+          s?.requerAgendamento ? "Sim" : "Nao",
+          limparTexto(s?.executadoPor) || "-",
+          limparTexto(s?.categoria) || "Servicos"
         ]);
         
         autoTable(doc, {
           startY: yPos,
-          head: [["", "Serviço", "Preço", "Duração", "Executado Por", "Agendamento", "Local", "Categoria"]],
+          head: [["Servico", "Preco", "Duracao", "Agendamento", "Executado Por", "Categoria"]],
           body: servicosData,
           theme: "striped",
-          styles: { fontSize: 7, cellPadding: 3 },
+          styles: { fontSize: 8, cellPadding: 3 },
           headStyles: { fillColor: [139, 92, 246], textColor: [255, 255, 255], fontStyle: "bold" },
-          alternateRowStyles: { fillColor: [245, 240, 255] },
+          alternateRowStyles: { fillColor: [245, 243, 255] },
           margin: { left: 14, right: 14 },
           columnStyles: {
-            0: { cellWidth: 8, halign: "center" },
-            1: { cellWidth: 45 },
-            2: { cellWidth: 25, halign: "right" },
-            3: { cellWidth: 25, halign: "center" },
-            4: { cellWidth: 35 },
-            5: { cellWidth: 20, halign: "center" },
-            6: { cellWidth: 30 },
-            7: { cellWidth: 25 }
+            0: { cellWidth: 45 },
+            1: { cellWidth: 28, halign: "right" },
+            2: { cellWidth: 20, halign: "center" },
+            3: { cellWidth: 22, halign: "center" },
+            4: { cellWidth: 30 },
+            5: { cellWidth: 25 }
           }
         });
-        yPos = doc.lastAutoTable.finalY + 10;
       }
-
-      // ANÁLISE POR CATEGORIA
-      if (categoriasCount.length > 0 && yPos < 180) {
-        doc.setFontSize(11);
-        doc.setFont("helvetica", "bold");
-        doc.setTextColor(37, 99, 235);
-        doc.text("ANÁLISE POR CATEGORIA", 14, yPos);
-        yPos += 5;
-        
-        const categoriasData = categoriasCount.map(cat => [
-          cat.nome,
-          cat.quantidade.toString(),
-          formatarMoeda(cat.valor),
-          statsGerais.valorTotalVenda > 0 ? `${((cat.valor / statsGerais.valorTotalVenda) * 100).toFixed(1)}%` : "0%"
-        ]);
-        
-        autoTable(doc, {
-          startY: yPos,
-          head: [["Categoria", "Itens", "Valor Total", "% do Total"]],
-          body: categoriasData,
-          theme: "striped",
-          styles: { fontSize: 9, cellPadding: 4 },
-          headStyles: { fillColor: [37, 99, 235], textColor: [255, 255, 255], fontStyle: "bold" },
-          alternateRowStyles: { fillColor: [240, 248, 255] },
-          margin: { left: 14, right: 14 }
-        });
-      }
-
-      doc.save(`relatorio_stock_${nomeEmpresa.replace(/\s/g, '_')}_${numeroRelatorio}.pdf`);
-      mostrarMensagem("✅ PDF gerado com sucesso!", "sucesso");
       
-      setTimeout(() => onClose(), 2000);
+      // RODAPE
+      const pageCount = doc.internal.getNumberOfPages();
+      for (let i = 1; i <= pageCount; i++) {
+        doc.setPage(i);
+        doc.setFontSize(8);
+        doc.setTextColor(100, 100, 100);
+        doc.text(`${nomeEmpresa} - Relatorio de Stock | Pagina ${i} de ${pageCount}`, 14, 287);
+      }
+      
+      doc.save(`relatorio_stock_${nomeEmpresa.replace(/\s/g, '_')}.pdf`);
+      mostrarMensagem("PDF gerado com sucesso!", "sucesso");
+      setTimeout(() => onClose(), 1500);
       
     } catch (error) {
-      console.error("Erro ao gerar PDF:", error);
-      mostrarMensagem("Erro ao gerar PDF. Tente novamente.", "erro");
+      console.error("Erro:", error);
+      mostrarMensagem("Erro ao gerar PDF", "erro");
     } finally {
       setExportando(false);
     }
   };
 
-  const nomeEmpresa = empresa?.nome || localStorage.getItem("empresaNome") || "Empresa";
+  const nomeEmpresa = limparTexto(empresa?.nome || localStorage.getItem("empresaNome") || "Empresa");
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 overflow-y-auto">
@@ -441,108 +284,153 @@ const RelatorioStock = ({ produtos = [], servicos = [], onClose, empresaId }) =>
         </div>
       )}
 
-      <div className="bg-gray-800 rounded-2xl w-full max-w-5xl max-h-[90vh] overflow-hidden flex flex-col">
-        <div className="sticky top-0 bg-gradient-to-r from-blue-600/20 to-purple-600/20 px-6 py-4 border-b border-gray-700">
+      <div className="bg-gray-900 rounded-2xl w-full max-w-5xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl">
+        {/* Header */}
+        <div className="sticky top-0 bg-gradient-to-r from-blue-800 to-indigo-900 px-6 py-4">
           <div className="flex justify-between items-center">
-            <div className="flex items-center gap-3">
-              <div className="bg-blue-600 p-2 rounded-lg">
-                <FileText className="text-white" size={20} />
+            <div className="flex items-center gap-4">
+              <div className="bg-white/10 p-3 rounded-xl">
+                <FileText className="text-white" size={24} />
               </div>
               <div>
-                <h2 className="text-xl font-bold text-white">Relatório de Stock e Serviços</h2>
-                <p className="text-sm text-gray-400">
-                  {statsGerais.totalProdutos} produtos • {statsGerais.totalServicos} serviços • {new Date().toLocaleDateString('pt-PT')}
-                </p>
-                <p className="text-xs text-blue-400 mt-1">Empresa: {nomeEmpresa}</p>
+                <h2 className="text-2xl font-bold text-white">Relatorio de Stock</h2>
+                <p className="text-blue-200 text-sm">{stats.produtos.total} produtos • {stats.servicos.total} servicos</p>
+                <p className="text-blue-300 text-xs mt-1">Empresa: {nomeEmpresa}</p>
               </div>
             </div>
             <div className="flex gap-2">
-              <button onClick={imprimir} className="p-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition print:hidden">
-                <Printer size={20} className="text-gray-300" />
+              <button onClick={() => window.print()} className="px-3 py-2 bg-white/10 hover:bg-white/20 rounded-lg transition text-white flex items-center gap-2">
+                <Printer size={18} /> Imprimir
               </button>
-              <button onClick={exportarPDFProfissional} disabled={exportando} className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 rounded-lg transition disabled:opacity-50 print:hidden">
-                {exportando ? <><Loader2 size={18} className="animate-spin" /> Gerando...</> : <><Download size={18} /> Exportar PDF</>}
+              <button onClick={exportarPDF} disabled={exportando} className="px-3 py-2 bg-green-600 hover:bg-green-700 rounded-lg transition text-white flex items-center gap-2 disabled:opacity-50">
+                {exportando ? <Loader2 size={18} className="animate-spin" /> : <Download size={18} />}
+                {exportando ? "Gerando..." : "Exportar PDF"}
               </button>
-              <button onClick={onClose} className="p-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition print:hidden">
-                <X size={20} className="text-gray-300" />
+              <button onClick={onClose} className="px-3 py-2 bg-white/10 hover:bg-white/20 rounded-lg transition text-white">
+                <X size={18} />
               </button>
             </div>
           </div>
         </div>
 
         <div className="flex-1 overflow-y-auto p-6">
-          <div className="bg-white rounded-xl shadow-lg overflow-hidden">
-            <div className="bg-gradient-to-r from-blue-900 to-indigo-900 p-8 text-white">
-              <div className="flex items-center gap-4">
-                <div className="w-20 h-20 rounded-xl bg-white/10 flex items-center justify-center">
-                  <Building2 className="w-10 h-10 text-white" />
-                </div>
-                <div>
-                  <h1 className="text-3xl font-bold">Relatório de Stock e Serviços</h1>
-                  <p className="text-blue-200">Análise completa do inventário e serviços</p>
-                  <p className="text-sm text-blue-300 mt-2">Empresa: {nomeEmpresa}</p>
-                </div>
-              </div>
+          {carregando ? (
+            <div className="flex items-center justify-center h-64">
+              <Loader2 className="animate-spin text-blue-400" size={40} />
             </div>
-            <div className="p-8">
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-                <div className="text-center">
-                  <p className="text-gray-500 text-sm">Produtos</p>
-                  <p className="text-2xl font-bold text-gray-800">{statsGerais.totalProdutos}</p>
+          ) : (
+            <>
+              {/* Cards de Estatisticas */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                <div className="bg-gradient-to-br from-blue-500 to-blue-700 rounded-xl p-5 text-white shadow-lg">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <p className="text-blue-100 text-sm">Total de Produtos</p>
+                      <p className="text-3xl font-bold mt-1">{stats.produtos.total}</p>
+                    </div>
+                    <div className="bg-white/20 p-2 rounded-lg"><Package size={24} /></div>
+                  </div>
                 </div>
-                <div className="text-center">
-                  <p className="text-gray-500 text-sm">Serviços</p>
-                  <p className="text-2xl font-bold text-purple-600">{statsGerais.totalServicos}</p>
+                <div className="bg-gradient-to-br from-green-500 to-green-700 rounded-xl p-5 text-white shadow-lg">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <p className="text-green-100 text-sm">Valor em Stock</p>
+                      <p className="text-xl font-bold mt-1">{formatarMoeda(stats.produtos.valor)}</p>
+                      <p className="text-green-200 text-xs mt-1">Margem: {margemMedia}%</p>
+                    </div>
+                    <div className="bg-white/20 p-2 rounded-lg"><TrendingUp size={24} /></div>
+                  </div>
                 </div>
-                <div className="text-center">
-                  <p className="text-gray-500 text-sm">Valor Total</p>
-                  <p className="text-2xl font-bold text-green-600">{formatarMoeda(statsGerais.valorTotalVenda)}</p>
+                <div className="bg-gradient-to-br from-yellow-500 to-yellow-700 rounded-xl p-5 text-white shadow-lg">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <p className="text-yellow-100 text-sm">Alertas</p>
+                      <p className="text-3xl font-bold mt-1">{stats.produtos.baixoEstoque}</p>
+                      <p className="text-yellow-200 text-xs mt-1">Baixo Estoque</p>
+                    </div>
+                    <div className="bg-white/20 p-2 rounded-lg"><AlertTriangle size={24} /></div>
+                  </div>
                 </div>
-                <div className="text-center">
-                  <p className="text-gray-500 text-sm">Margem Média</p>
-                  <p className="text-2xl font-bold text-blue-600">{margemMedia}%</p>
+                <div className="bg-gradient-to-br from-purple-500 to-purple-700 rounded-xl p-5 text-white shadow-lg">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <p className="text-purple-100 text-sm">Servicos</p>
+                      <p className="text-3xl font-bold mt-1">{stats.servicos.total}</p>
+                      <p className="text-purple-200 text-xs mt-1">{stats.servicos.comAgendamento} com agendamento</p>
+                    </div>
+                    <div className="bg-white/20 p-2 rounded-lg"><Wrench size={24} /></div>
+                  </div>
                 </div>
               </div>
 
-              {carregando ? (
-                <div className="text-center py-8">
-                  <Loader2 className="animate-spin mx-auto text-blue-600" size={32} />
-                  <p className="text-gray-500 mt-2">Carregando dados...</p>
+              {/* Abas */}
+              <div className="border-b border-gray-700 mb-6">
+                <div className="flex gap-1">
+                  <button onClick={() => setAbaAtiva("produtos")} className={`px-6 py-2 rounded-t-lg font-medium transition-all ${abaAtiva === "produtos" ? "bg-blue-600 text-white" : "text-gray-400 hover:text-gray-200 hover:bg-gray-800"}`}>
+                    <Package size={16} className="inline mr-2" /> Produtos ({stats.produtos.total})
+                  </button>
+                  <button onClick={() => setAbaAtiva("servicos")} className={`px-6 py-2 rounded-t-lg font-medium transition-all ${abaAtiva === "servicos" ? "bg-purple-600 text-white" : "text-gray-400 hover:text-gray-200 hover:bg-gray-800"}`}>
+                    <Wrench size={16} className="inline mr-2" /> Servicos ({stats.servicos.total})
+                  </button>
                 </div>
-              ) : (
-                <>
-                  <div className="bg-blue-50 rounded-lg p-4 mb-6">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Building2 size={18} className="text-blue-600" />
-                      <h3 className="font-semibold text-blue-800">Informações da Empresa</h3>
-                    </div>
-                    <div className="grid grid-cols-2 gap-2 text-sm">
-                      <p className="text-gray-600"><strong>Nome:</strong> {nomeEmpresa}</p>
-                      <p className="text-gray-600"><strong>NIF:</strong> {empresa?.nif || "---"}</p>
-                      <p className="text-gray-600"><strong>Email:</strong> {empresa?.email || "---"}</p>
-                      <p className="text-gray-600"><strong>Telefone:</strong> {empresa?.telefone || "---"}</p>
-                    </div>
-                  </div>
+              </div>
 
-                  <div className="bg-gray-50 rounded-lg p-4">
-                    <div className="flex items-center gap-2 mb-2">
-                      <User size={18} className="text-purple-600" />
-                      <h3 className="font-semibold text-purple-800">Responsável pela Exportação</h3>
-                    </div>
-                    <div className="grid grid-cols-2 gap-2 text-sm">
-                      <p className="text-gray-600"><strong>Nome:</strong> {usuario?.nome || "---"}</p>
-                      <p className="text-gray-600"><strong>Cargo:</strong> {usuario?.cargo || "Técnico"}</p>
-                      <p className="text-gray-600 col-span-2"><strong>Email:</strong> {usuario?.email || "---"}</p>
-                    </div>
-                  </div>
-                </>
+              {/* Lista de PRODUTOS em Cards */}
+              {abaAtiva === "produtos" && (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {produtosArray.map((p, idx) => {
+                    const isBaixoEstoque = (p?.quantidade || 0) <= (p?.quantidadeMinima || 5);
+                    return (
+                      <div key={idx} className="bg-gray-800 rounded-xl overflow-hidden border border-gray-700 hover:border-blue-500 transition-all">
+                        <div className="p-4">
+                          <div className="flex justify-between items-start mb-3">
+                            <div className="flex items-center gap-2">
+                              <div className={`p-2 rounded-lg ${isBaixoEstoque ? 'bg-yellow-500/20' : 'bg-blue-500/20'}`}>
+                                <Package size={16} className={isBaixoEstoque ? 'text-yellow-400' : 'text-blue-400'} />
+                              </div>
+                              <h3 className="font-semibold text-white">{p?.produto}</h3>
+                            </div>
+                            {isBaixoEstoque && <span className="text-xs bg-yellow-500/20 text-yellow-400 px-2 py-1 rounded-full">Baixo Estoque</span>}
+                          </div>
+                          <div className="space-y-2 text-sm">
+                            <div className="flex justify-between"><span className="text-gray-400">Quantidade:</span><span className="text-white">{p?.quantidade || 0}</span></div>
+                            <div className="flex justify-between"><span className="text-gray-400">Preco Venda:</span><span className="text-green-400">{formatarMoeda(p?.precoVenda)}</span></div>
+                            <div className="flex justify-between"><span className="text-gray-400">Margem:</span><span className="text-blue-400">{p?.precoCompra > 0 ? `${((p.precoVenda - p.precoCompra) / p.precoCompra * 100).toFixed(1)}%` : "0%"}</span></div>
+                            <div className="flex justify-between"><span className="text-gray-400">Categoria:</span><span className="text-gray-300">{p?.categoria || "Geral"}</span></div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               )}
 
-              <p className="text-center text-gray-500 py-8">
-                Clique em "Exportar PDF" para gerar o relatório completo.
-              </p>
-            </div>
-          </div>
+              {/* Lista de SERVICOS em Cards */}
+              {abaAtiva === "servicos" && (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {servicosArray.map((s, idx) => (
+                    <div key={idx} className="bg-gray-800 rounded-xl overflow-hidden border border-gray-700 hover:border-purple-500 transition-all">
+                      <div className="p-4">
+                        <div className="flex justify-between items-start mb-3">
+                          <div className="flex items-center gap-2">
+                            <div className="p-2 rounded-lg bg-purple-500/20"><Wrench size={16} className="text-purple-400" /></div>
+                            <h3 className="font-semibold text-white">{s?.produto}</h3>
+                          </div>
+                          {s?.requerAgendamento && <span className="text-xs bg-yellow-500/20 text-yellow-400 px-2 py-1 rounded-full">Agendamento</span>}
+                        </div>
+                        <div className="space-y-2 text-sm">
+                          <div className="flex justify-between"><span className="text-gray-400">Preco:</span><span className="text-purple-400">{formatarMoeda(s?.precoVenda)}</span></div>
+                          <div className="flex justify-between"><span className="text-gray-400">Duracao:</span><span className="text-gray-300">{s?.duracaoEstimada ? `${s.duracaoEstimada} ${s.unidadeTempo || 'horas'}` : "-"}</span></div>
+                          <div className="flex justify-between"><span className="text-gray-400">Agendamento:</span><span className="text-gray-300">{s?.requerAgendamento ? "Sim" : "Nao"}</span></div>
+                          <div className="flex justify-between"><span className="text-gray-400">Categoria:</span><span className="text-gray-300">{s?.categoria || "Servicos"}</span></div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
         </div>
       </div>
 
