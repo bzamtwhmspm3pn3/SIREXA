@@ -305,14 +305,12 @@ exports.criarFornecedor = async (req, res) => {
 // ============================================
 exports.listarFornecedores = async (req, res) => {
   try {
-    // 🔥 USAR empresaAtual do security.js ou fallback
-    const empresaId = req.empresaAtual || req.query.empresaId || req.user?.empresaId;
+    const empresaId = req.empresaAtual || req.user?.empresaId;
     
     if (!empresaId) {
       return res.status(400).json({ mensagem: 'Empresa não identificada' });
     }
     
-    const { tipoFornecedor, status, busca } = req.query;
     const query = { empresaId: new mongoose.Types.ObjectId(empresaId) };
     
     if (tipoFornecedor) query.tipoFornecedor = tipoFornecedor;
