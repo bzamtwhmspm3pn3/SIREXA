@@ -1,3 +1,4 @@
+// backend/models/Fornecedor.js
 const mongoose = require("mongoose");
 
 // =============================================
@@ -148,11 +149,12 @@ const fornecedorSchema = new mongoose.Schema(
     endereco: { type: String, default: "" },
     contato: { type: String, default: "" },
     
-    // NOVO: Tipo e natureza do fornecedor
+    // CORRIGIDO: Tipo e natureza do fornecedor - AGORA OPCIONAL com default
     tipoFornecedor: { 
       type: String, 
       enum: ['mercadoria', 'manutencao', 'abastecimento', 'equipamento', 'servicoProfissional', 'renda', 'internet', 'servicoGeral'],
-      required: true 
+      required: false,  // ← ALTERADO PARA false (compatibilidade com dados antigos)
+      default: 'servicoGeral'  // ← VALOR PADRÃO
     },
     natureza: { type: String }, // Produto Físico, Serviço Recorrente, etc
     
@@ -254,7 +256,62 @@ fornecedorSchema.methods.associarItem = async function(itemData, usuario) {
   }
 };
 
-// Índices
+// Registrar compra de produto (para compatibilidade)
+fornecedorSchema.methods.registrarCompra = async function(produtoId, quantidade, precoUnitario, numeroFactura, usuario) {
+  try {
+    const Stock = mongoose.model('Stock');
+    const produto = await Stock.findById(produtoId);
+    
+    if (!produto) {
+      return { sucesso: false, erro: 'Produto não encontrado' };
+    }
+    
+    // Atualizar stock
+    produto.quantidade += quantidade;
+    produto.precoCompra = precoUnitario;
+    produto.ultimoFornecedor = this._id;
+    produto.dataUltimaEntrada = new Date();
+    
+    produto.historicoMovimentacoes = produto.historicoMovimentacoes || [];
+    produto.historicoMovimentacoes.push({
+      data: new Date(),
+      tipo: 'entrada',
+      quantidade: quantidade,
+      quantidadeAnterior: produto.quantidade - quantidade,
+      quantidadeNova: produto.quantidade,
+      motivo: `Compra do fornecedor ${this.nome}`,
+      usuario: usuario,
+      fornecedorId: this._id,
+      precoUnitario: precoUnitario,
+      numeroFactura: numeroFactura
+    });
+    
+    await produto.save();
+    
+    // Atualizar estatísticas do fornecedor
+    const valorTotal = quantidade * precoUnitario;
+    this.estatisticasCompras.totalCompras = (this.estatisticasCompras.totalCompras || 0) + 1;
+    this.estatisticasCompras.totalGasto = (this.estatisticasCompras.totalGasto || 0) + valorTotal;
+    this.estatisticasCompras.ultimaCompra = new Date();
+    this.estatisticasCompras.quantidadeTotalProdutos = (this.estatisticasCompras.quantidadeTotalProdutos || 0) + quantidade;
+    await this.save();
+    
+    return { 
+      sucesso: true, 
+      produto, 
+      valorTotal,
+      estatisticas: this.estatisticasCompras 
+    };
+    
+  } catch (error) {
+    console.error(`❌ Erro ao registrar compra:`, error.message);
+    return { sucesso: false, erro: error.message };
+  }
+};
+
+// =============================================
+// ÍNDICES
+// =============================================
 fornecedorSchema.index({ empresaId: 1, nif: 1 }, { unique: true });
 fornecedorSchema.index({ empresaId: 1, tipoFornecedor: 1 });
 fornecedorSchema.index({ nome: 1 });

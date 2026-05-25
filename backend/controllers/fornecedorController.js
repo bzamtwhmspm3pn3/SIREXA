@@ -1,3 +1,4 @@
+// backend/controllers/fornecedorController.js
 const mongoose = require('mongoose');
 const Fornecedor = require('../models/Fornecedor');
 const Empresa = require('../models/Empresa');
@@ -198,7 +199,6 @@ async function processarEquipamento(fornecedor, item, empresaId, usuario) {
 
 async function processarServico(fornecedor, item, empresaId, usuario) {
   try {
-    // Criar pagamento para o serviço
     const pagamento = new Pagamento({
       tipo: 'Fornecedor',
       origemId: fornecedor._id,
@@ -227,7 +227,7 @@ async function processarServico(fornecedor, item, empresaId, usuario) {
 }
 
 // ============================================
-// CONTROLLER PRINCIPAL
+// CONTROLLER PRINCIPAL - CORRIGIDO
 // ============================================
 
 exports.criarFornecedor = async (req, res) => {
@@ -240,21 +240,21 @@ exports.criarFornecedor = async (req, res) => {
     const usuario = req.user?.nome || req.user?.email || 'Sistema';
     
     // Validações
-    if (!empresaId) return res.status(400).json({ sucesso: false, mensagem: 'empresaId é obrigatório' });
-    if (!nome) return res.status(400).json({ sucesso: false, mensagem: 'Nome do fornecedor é obrigatório' });
-    if (!nif) return res.status(400).json({ sucesso: false, mensagem: 'NIF é obrigatório' });
-    if (!tipoFornecedor) return res.status(400).json({ sucesso: false, mensagem: 'Tipo de fornecedor é obrigatório' });
+    if (!empresaId) return res.status(400).json({ mensagem: 'empresaId é obrigatório', erro: 'campo_faltando' });
+    if (!nome) return res.status(400).json({ mensagem: 'Nome do fornecedor é obrigatório', erro: 'campo_faltando' });
+    if (!nif) return res.status(400).json({ mensagem: 'NIF é obrigatório', erro: 'campo_faltando' });
+    if (!tipoFornecedor) return res.status(400).json({ mensagem: 'Tipo de fornecedor é obrigatório', erro: 'campo_faltando' });
     
     const empresa = await Empresa.findById(empresaId);
-    if (!empresa) return res.status(404).json({ sucesso: false, mensagem: 'Empresa não encontrada' });
+    if (!empresa) return res.status(404).json({ mensagem: 'Empresa não encontrada', erro: 'nao_encontrado' });
     
     const nifExistente = await Fornecedor.findOne({ nif, empresaId });
-    if (nifExistente) return res.status(400).json({ sucesso: false, mensagem: 'Já existe um fornecedor com este NIF' });
+    if (nifExistente) return res.status(400).json({ mensagem: 'Já existe um fornecedor com este NIF', erro: 'duplicado' });
     
     // Criar fornecedor
     const fornecedor = new Fornecedor({
       nome, nif, empresaId, empresaNome: empresa.nome,
-      tipoFornecedor, natureza,
+      tipoFornecedor, natureza: natureza || '',
       fiscal: {
         suportaIVA: fiscal?.suportaIVA !== false,
         taxaIVA: fiscal?.taxaIVA || 14,
@@ -287,18 +287,23 @@ exports.criarFornecedor = async (req, res) => {
       }
     }
     
+    // CORREÇÃO: Retornar o objeto diretamente (não dentro de dados)
+    const fornecedorObj = fornecedor.toObject();
     res.status(201).json({
-      sucesso: true,
-      mensagem: `Fornecedor ${fornecedor.nome} cadastrado com sucesso!`,
-      dados: { fornecedor, processamento: resultados }
+      _id: fornecedorObj._id,
+      ...fornecedorObj,
+      processamento: resultados
     });
     
   } catch (error) {
     console.error('❌ Erro ao criar fornecedor:', error);
-    res.status(500).json({ sucesso: false, mensagem: error.message });
+    res.status(500).json({ mensagem: error.message, erro: error.message });
   }
 };
 
+// ============================================
+// LISTAR FORNECEDORES - CORRIGIDO
+// ============================================
 exports.listarFornecedores = async (req, res) => {
   try {
     const { empresaId, tipoFornecedor, status, busca } = req.query;
@@ -316,23 +321,34 @@ exports.listarFornecedores = async (req, res) => {
     }
     
     const fornecedores = await Fornecedor.find(query).sort({ nome: 1 });
-    res.json({ sucesso: true, dados: fornecedores });
+    // CORREÇÃO: Retornar array diretamente
+    res.json(fornecedores);
+    
   } catch (error) {
     console.error('Erro ao listar fornecedores:', error);
-    res.status(500).json({ sucesso: false, mensagem: error.message });
+    res.status(500).json({ mensagem: error.message, erro: error.message });
   }
 };
 
+// ============================================
+// BUSCAR FORNECEDOR POR ID - CORRIGIDO
+// ============================================
 exports.getFornecedorById = async (req, res) => {
   try {
     const fornecedor = await Fornecedor.findById(req.params.id);
-    if (!fornecedor) return res.status(404).json({ sucesso: false, mensagem: 'Fornecedor não encontrado' });
-    res.json({ sucesso: true, dados: fornecedor });
+    if (!fornecedor) {
+      return res.status(404).json({ mensagem: 'Fornecedor não encontrado', erro: 'nao_encontrado' });
+    }
+    // CORREÇÃO: Retornar o objeto diretamente
+    res.json(fornecedor);
   } catch (error) {
-    res.status(500).json({ sucesso: false, mensagem: error.message });
+    res.status(500).json({ mensagem: error.message, erro: error.message });
   }
 };
 
+// ============================================
+// ATUALIZAR FORNECEDOR - CORRIGIDO
+// ============================================
 exports.atualizarFornecedor = async (req, res) => {
   try {
     const { id } = req.params;
@@ -340,70 +356,103 @@ exports.atualizarFornecedor = async (req, res) => {
     const usuario = req.user?.nome || 'Sistema';
     
     const fornecedor = await Fornecedor.findById(id);
-    if (!fornecedor) return res.status(404).json({ sucesso: false, mensagem: 'Fornecedor não encontrado' });
+    if (!fornecedor) {
+      return res.status(404).json({ mensagem: 'Fornecedor não encontrado', erro: 'nao_encontrado' });
+    }
+    
+    // CORREÇÃO: Garantir tipoFornecedor se não existir (fallback para dados antigos)
+    if (!fornecedor.tipoFornecedor && atualizacoes.tipoFornecedor) {
+      fornecedor.tipoFornecedor = atualizacoes.tipoFornecedor;
+    } else if (!fornecedor.tipoFornecedor) {
+      fornecedor.tipoFornecedor = 'servicoGeral'; // fallback padrão
+    }
     
     if (nif && nif !== fornecedor.nif) {
       const nifExistente = await Fornecedor.findOne({ nif, empresaId: fornecedor.empresaId, _id: { $ne: id } });
-      if (nifExistente) return res.status(400).json({ sucesso: false, mensagem: 'NIF já existe' });
+      if (nifExistente) {
+        return res.status(400).json({ mensagem: 'NIF já existe', erro: 'duplicado' });
+      }
       atualizacoes.nif = nif;
+    }
+    
+    // CORREÇÃO: Converter itens para itensFornecidos se veio do frontend
+    if (atualizacoes.itens && !atualizacoes.itensFornecidos) {
+      atualizacoes.itensFornecidos = atualizacoes.itens;
+      delete atualizacoes.itens;
     }
     
     Object.assign(fornecedor, atualizacoes);
     fornecedor.atualizadoPor = usuario;
     await fornecedor.save();
     
-    res.json({ sucesso: true, mensagem: `Fornecedor ${fornecedor.nome} atualizado`, dados: fornecedor });
+    // CORREÇÃO: Retornar o objeto diretamente
+    res.json(fornecedor);
+    
   } catch (error) {
-    res.status(500).json({ sucesso: false, mensagem: error.message });
+    console.error('Erro ao atualizar fornecedor:', error);
+    res.status(500).json({ mensagem: error.message, erro: error.message });
   }
 };
 
+// ============================================
+// EXCLUIR/DESATIVAR FORNECEDOR
+// ============================================
 exports.excluirFornecedor = async (req, res) => {
   try {
     const fornecedor = await Fornecedor.findById(req.params.id);
-    if (!fornecedor) return res.status(404).json({ sucesso: false, mensagem: 'Fornecedor não encontrado' });
+    if (!fornecedor) {
+      return res.status(404).json({ mensagem: 'Fornecedor não encontrado', erro: 'nao_encontrado' });
+    }
     
     fornecedor.status = 'Inativo';
     await fornecedor.save();
     
-    res.json({ sucesso: true, mensagem: `Fornecedor ${fornecedor.nome} desativado` });
+    res.json({ mensagem: `Fornecedor ${fornecedor.nome} desativado`, _id: fornecedor._id });
   } catch (error) {
-    res.status(500).json({ sucesso: false, mensagem: error.message });
+    res.status(500).json({ mensagem: error.message, erro: error.message });
   }
 };
 
+// ============================================
+// ESTATÍSTICAS DO FORNECEDOR
+// ============================================
 exports.getEstatisticasFornecedor = async (req, res) => {
   try {
     const fornecedor = await Fornecedor.findById(req.params.id);
-    if (!fornecedor) return res.status(404).json({ sucesso: false, mensagem: 'Fornecedor não encontrado' });
+    if (!fornecedor) {
+      return res.status(404).json({ mensagem: 'Fornecedor não encontrado', erro: 'nao_encontrado' });
+    }
     
     const pagamentos = await Pagamento.find({ tipo: 'Fornecedor', origemId: fornecedor._id });
     const totalPago = pagamentos.filter(p => p.status === 'Pago').reduce((sum, p) => sum + p.valor, 0);
     const totalPendente = pagamentos.filter(p => p.status === 'pendente').reduce((sum, p) => sum + p.valor, 0);
     
     res.json({
-      sucesso: true,
-      dados: {
-        fornecedor: { _id: fornecedor._id, nome: fornecedor.nome, nif: fornecedor.nif, tipoFornecedor: fornecedor.tipoFornecedor, status: fornecedor.status },
-        estatisticas: {
-          totalCompras: fornecedor.estatisticasCompras?.totalCompras || 0,
-          totalGasto: fornecedor.estatisticasCompras?.totalGasto || 0,
-          totalPago, totalPendente,
-          itensFornecidos: fornecedor.itensFornecidos?.length || 0,
-          contratosAtivos: fornecedor.contratos?.filter(c => new Date(c.dataFim) > new Date()).length || 0
-        },
-        ultimosPagamentos: pagamentos.slice(0, 10)
-      }
+      fornecedor: {
+        _id: fornecedor._id,
+        nome: fornecedor.nome,
+        nif: fornecedor.nif,
+        tipoFornecedor: fornecedor.tipoFornecedor,
+        status: fornecedor.status
+      },
+      estatisticas: {
+        totalCompras: fornecedor.estatisticasCompras?.totalCompras || 0,
+        totalGasto: fornecedor.estatisticasCompras?.totalGasto || 0,
+        totalPago,
+        totalPendente,
+        itensFornecidos: fornecedor.itensFornecidos?.length || 0,
+        contratosAtivos: fornecedor.contratos?.filter(c => new Date(c.dataFim) > new Date()).length || 0
+      },
+      ultimosPagamentos: pagamentos.slice(0, 10)
     });
   } catch (error) {
-    res.status(500).json({ sucesso: false, mensagem: error.message });
+    res.status(500).json({ mensagem: error.message, erro: error.message });
   }
 };
 
 // ============================================
-// NOVOS MÉTODOS PARA O FORNECEDOR CONTROLLER
+// TOP FORNECEDORES
 // ============================================
-
 exports.getTopFornecedores = async (req, res) => {
   try {
     const { empresaId, limit = 10 } = req.query;
@@ -413,28 +462,34 @@ exports.getTopFornecedores = async (req, res) => {
     const fornecedores = await Fornecedor.find(query)
       .sort({ 'estatisticasCompras.totalGasto': -1 })
       .limit(parseInt(limit))
-      .select('nome nif tipoServico estatisticasCompras');
+      .select('nome nif tipoFornecedor estatisticasCompras');
     
-    res.json({ sucesso: true, dados: fornecedores });
+    res.json(fornecedores);
   } catch (error) {
-    res.status(500).json({ sucesso: false, mensagem: error.message });
+    res.status(500).json({ mensagem: error.message, erro: error.message });
   }
 };
 
+// ============================================
+// FORNECEDORES POR TIPO
+// ============================================
 exports.getFornecedoresPorTipo = async (req, res) => {
   try {
     const { tipoFornecedor } = req.params;
     const { empresaId } = req.query;
-    const query = { tipoServico: tipoFornecedor, status: 'Ativo' };
+    const query = { tipoFornecedor, status: 'Ativo' };
     if (empresaId) query.empresaId = new mongoose.Types.ObjectId(empresaId);
     
     const fornecedores = await Fornecedor.find(query).sort({ nome: 1 });
-    res.json({ sucesso: true, dados: fornecedores });
+    res.json(fornecedores);
   } catch (error) {
-    res.status(500).json({ sucesso: false, mensagem: error.message });
+    res.status(500).json({ mensagem: error.message, erro: error.message });
   }
 };
 
+// ============================================
+// CONTRATOS A VENCER
+// ============================================
 exports.getContratosAVencer = async (req, res) => {
   try {
     const { empresaId, dias = 30 } = req.query;
@@ -449,12 +504,15 @@ exports.getContratosAVencer = async (req, res) => {
     if (empresaId) query.empresaId = new mongoose.Types.ObjectId(empresaId);
     
     const fornecedores = await Fornecedor.find(query).select('nome nif contratos');
-    res.json({ sucesso: true, dados: fornecedores });
+    res.json(fornecedores);
   } catch (error) {
-    res.status(500).json({ sucesso: false, mensagem: error.message });
+    res.status(500).json({ mensagem: error.message, erro: error.message });
   }
 };
 
+// ============================================
+// ADICIONAR ITEM
+// ============================================
 exports.adicionarItem = async (req, res) => {
   try {
     const { id } = req.params;
@@ -463,19 +521,22 @@ exports.adicionarItem = async (req, res) => {
     
     const fornecedor = await Fornecedor.findById(id);
     if (!fornecedor) {
-      return res.status(404).json({ sucesso: false, mensagem: 'Fornecedor não encontrado' });
+      return res.status(404).json({ mensagem: 'Fornecedor não encontrado', erro: 'nao_encontrado' });
     }
     
     if (!fornecedor.itensFornecidos) fornecedor.itensFornecidos = [];
     fornecedor.itensFornecidos.push(item);
     await fornecedor.save();
     
-    res.json({ sucesso: true, mensagem: 'Item adicionado com sucesso' });
+    res.json({ mensagem: 'Item adicionado com sucesso', item });
   } catch (error) {
-    res.status(500).json({ sucesso: false, mensagem: error.message });
+    res.status(500).json({ mensagem: error.message, erro: error.message });
   }
 };
 
+// ============================================
+// ATUALIZAR ITEM
+// ============================================
 exports.atualizarItem = async (req, res) => {
   try {
     const { id, itemId } = req.params;
@@ -483,41 +544,47 @@ exports.atualizarItem = async (req, res) => {
     
     const fornecedor = await Fornecedor.findById(id);
     if (!fornecedor) {
-      return res.status(404).json({ sucesso: false, mensagem: 'Fornecedor não encontrado' });
+      return res.status(404).json({ mensagem: 'Fornecedor não encontrado', erro: 'nao_encontrado' });
     }
     
     const itemIndex = fornecedor.itensFornecidos.findIndex(i => i._id.toString() === itemId);
     if (itemIndex === -1) {
-      return res.status(404).json({ sucesso: false, mensagem: 'Item não encontrado' });
+      return res.status(404).json({ mensagem: 'Item não encontrado', erro: 'nao_encontrado' });
     }
     
     Object.assign(fornecedor.itensFornecidos[itemIndex], updates);
     await fornecedor.save();
     
-    res.json({ sucesso: true, mensagem: 'Item atualizado com sucesso' });
+    res.json({ mensagem: 'Item atualizado com sucesso', item: fornecedor.itensFornecidos[itemIndex] });
   } catch (error) {
-    res.status(500).json({ sucesso: false, mensagem: error.message });
+    res.status(500).json({ mensagem: error.message, erro: error.message });
   }
 };
 
+// ============================================
+// REMOVER ITEM
+// ============================================
 exports.removerItem = async (req, res) => {
   try {
     const { id, itemId } = req.params;
     
     const fornecedor = await Fornecedor.findById(id);
     if (!fornecedor) {
-      return res.status(404).json({ sucesso: false, mensagem: 'Fornecedor não encontrado' });
+      return res.status(404).json({ mensagem: 'Fornecedor não encontrado', erro: 'nao_encontrado' });
     }
     
     fornecedor.itensFornecidos = fornecedor.itensFornecidos.filter(i => i._id.toString() !== itemId);
     await fornecedor.save();
     
-    res.json({ sucesso: true, mensagem: 'Item removido com sucesso' });
+    res.json({ mensagem: 'Item removido com sucesso' });
   } catch (error) {
-    res.status(500).json({ sucesso: false, mensagem: error.message });
+    res.status(500).json({ mensagem: error.message, erro: error.message });
   }
 };
 
+// ============================================
+// ADICIONAR CONTRATO
+// ============================================
 exports.adicionarContrato = async (req, res) => {
   try {
     const { id } = req.params;
@@ -525,18 +592,21 @@ exports.adicionarContrato = async (req, res) => {
     
     const fornecedor = await Fornecedor.findById(id);
     if (!fornecedor) {
-      return res.status(404).json({ sucesso: false, mensagem: 'Fornecedor não encontrado' });
+      return res.status(404).json({ mensagem: 'Fornecedor não encontrado', erro: 'nao_encontrado' });
     }
     
     fornecedor.contratos.push(contrato);
     await fornecedor.save();
     
-    res.json({ sucesso: true, mensagem: 'Contrato adicionado com sucesso' });
+    res.json({ mensagem: 'Contrato adicionado com sucesso', contrato });
   } catch (error) {
-    res.status(500).json({ sucesso: false, mensagem: error.message });
+    res.status(500).json({ mensagem: error.message, erro: error.message });
   }
 };
 
+// ============================================
+// ATUALIZAR CONTRATO
+// ============================================
 exports.atualizarContrato = async (req, res) => {
   try {
     const { id, contratoId } = req.params;
@@ -544,56 +614,61 @@ exports.atualizarContrato = async (req, res) => {
     
     const fornecedor = await Fornecedor.findById(id);
     if (!fornecedor) {
-      return res.status(404).json({ sucesso: false, mensagem: 'Fornecedor não encontrado' });
+      return res.status(404).json({ mensagem: 'Fornecedor não encontrado', erro: 'nao_encontrado' });
     }
     
     const contratoIndex = fornecedor.contratos.findIndex(c => c._id.toString() === contratoId);
     if (contratoIndex === -1) {
-      return res.status(404).json({ sucesso: false, mensagem: 'Contrato não encontrado' });
+      return res.status(404).json({ mensagem: 'Contrato não encontrado', erro: 'nao_encontrado' });
     }
     
     Object.assign(fornecedor.contratos[contratoIndex], updates);
     await fornecedor.save();
     
-    res.json({ sucesso: true, mensagem: 'Contrato atualizado com sucesso' });
+    res.json({ mensagem: 'Contrato atualizado com sucesso', contrato: fornecedor.contratos[contratoIndex] });
   } catch (error) {
-    res.status(500).json({ sucesso: false, mensagem: error.message });
+    res.status(500).json({ mensagem: error.message, erro: error.message });
   }
 };
 
+// ============================================
+// REMOVER CONTRATO
+// ============================================
 exports.removerContrato = async (req, res) => {
   try {
     const { id, contratoId } = req.params;
     
     const fornecedor = await Fornecedor.findById(id);
     if (!fornecedor) {
-      return res.status(404).json({ sucesso: false, mensagem: 'Fornecedor não encontrado' });
+      return res.status(404).json({ mensagem: 'Fornecedor não encontrado', erro: 'nao_encontrado' });
     }
     
     fornecedor.contratos = fornecedor.contratos.filter(c => c._id.toString() !== contratoId);
     await fornecedor.save();
     
-    res.json({ sucesso: true, mensagem: 'Contrato removido com sucesso' });
+    res.json({ mensagem: 'Contrato removido com sucesso' });
   } catch (error) {
-    res.status(500).json({ sucesso: false, mensagem: error.message });
+    res.status(500).json({ mensagem: error.message, erro: error.message });
   }
 };
 
+// ============================================
+// GERAR PAGAMENTO DO CONTRATO
+// ============================================
 exports.gerarPagamentoContrato = async (req, res) => {
   try {
     const { id, contratoId } = req.params;
     
     const fornecedor = await Fornecedor.findById(id);
     if (!fornecedor) {
-      return res.status(404).json({ sucesso: false, mensagem: 'Fornecedor não encontrado' });
+      return res.status(404).json({ mensagem: 'Fornecedor não encontrado', erro: 'nao_encontrado' });
     }
     
     const contrato = fornecedor.contratos.find(c => c._id.toString() === contratoId);
     if (!contrato) {
-      return res.status(404).json({ sucesso: false, mensagem: 'Contrato não encontrado' });
+      return res.status(404).json({ mensagem: 'Contrato não encontrado', erro: 'nao_encontrado' });
     }
     
-    const Pagamento = require('../models/Pagamento');
     const pagamento = new Pagamento({
       tipo: 'Fornecedor',
       origemId: fornecedor._id,
@@ -609,26 +684,34 @@ exports.gerarPagamentoContrato = async (req, res) => {
     
     await pagamento.save();
     
-    res.json({ sucesso: true, mensagem: 'Pagamento gerado com sucesso', dados: pagamento });
+    res.json({ mensagem: 'Pagamento gerado com sucesso', pagamento });
   } catch (error) {
-    res.status(500).json({ sucesso: false, mensagem: error.message });
+    res.status(500).json({ mensagem: error.message, erro: error.message });
   }
 };
 
+// ============================================
+// PRODUTOS FORNECIDOS
+// ============================================
 exports.getProdutosFornecidos = async (req, res) => {
   try {
     const { id } = req.params;
     const fornecedor = await Fornecedor.findById(id);
     if (!fornecedor) {
-      return res.status(404).json({ sucesso: false, mensagem: 'Fornecedor não encontrado' });
+      return res.status(404).json({ mensagem: 'Fornecedor não encontrado', erro: 'nao_encontrado' });
     }
     
-    res.json({ sucesso: true, dados: fornecedor.produtosFornecidos || [] });
+    // Buscar produtos no stock deste fornecedor
+    const produtos = await Stock.find({ fornecedorId: fornecedor._id });
+    res.json(produtos);
   } catch (error) {
-    res.status(500).json({ sucesso: false, mensagem: error.message });
+    res.status(500).json({ mensagem: error.message, erro: error.message });
   }
 };
 
+// ============================================
+// REGISTRAR COMPRA DE PRODUTO
+// ============================================
 exports.registrarCompraProduto = async (req, res) => {
   try {
     const { id } = req.params;
@@ -637,21 +720,56 @@ exports.registrarCompraProduto = async (req, res) => {
     
     const fornecedor = await Fornecedor.findById(id);
     if (!fornecedor) {
-      return res.status(404).json({ sucesso: false, mensagem: 'Fornecedor não encontrado' });
+      return res.status(404).json({ mensagem: 'Fornecedor não encontrado', erro: 'nao_encontrado' });
     }
     
-    if (!fornecedor.registrarCompra) {
-      return res.status(501).json({ sucesso: false, mensagem: 'Método registrarCompra não implementado' });
+    const produto = await Stock.findById(produtoId);
+    if (!produto) {
+      return res.status(404).json({ mensagem: 'Produto não encontrado', erro: 'nao_encontrado' });
     }
     
-    const resultado = await fornecedor.registrarCompra(produtoId, quantidade, precoUnitario, numeroFactura, usuario);
+    // Atualizar stock
+    produto.quantidade += quantidade;
+    produto.precoCompra = precoUnitario;
+    produto.ultimoFornecedor = fornecedor._id;
+    produto.dataUltimaEntrada = new Date();
     
-    if (resultado.sucesso) {
-      res.json({ sucesso: true, mensagem: 'Compra registrada com sucesso', dados: resultado });
-    } else {
-      res.status(400).json({ sucesso: false, mensagem: resultado.erro });
-    }
+    produto.historicoMovimentacoes = produto.historicoMovimentacoes || [];
+    produto.historicoMovimentacoes.push({
+      data: new Date(),
+      tipo: 'entrada',
+      quantidade: quantidade,
+      quantidadeAnterior: produto.quantidade - quantidade,
+      quantidadeNova: produto.quantidade,
+      motivo: `Compra do fornecedor ${fornecedor.nome}`,
+      usuario: usuario,
+      fornecedorId: fornecedor._id,
+      precoUnitario: precoUnitario,
+      numeroFactura: numeroFactura
+    });
+    
+    await produto.save();
+    
+    // Atualizar estatísticas do fornecedor
+    const valorTotal = quantidade * precoUnitario;
+    fornecedor.estatisticasCompras = fornecedor.estatisticasCompras || {};
+    fornecedor.estatisticasCompras.totalCompras = (fornecedor.estatisticasCompras.totalCompras || 0) + 1;
+    fornecedor.estatisticasCompras.totalGasto = (fornecedor.estatisticasCompras.totalGasto || 0) + valorTotal;
+    fornecedor.estatisticasCompras.ultimaCompra = new Date();
+    await fornecedor.save();
+    
+    res.json({
+      mensagem: 'Compra registrada com sucesso',
+      produto,
+      fornecedor: {
+        _id: fornecedor._id,
+        nome: fornecedor.nome,
+        totalGasto: fornecedor.estatisticasCompras.totalGasto
+      }
+    });
+    
   } catch (error) {
-    res.status(500).json({ sucesso: false, mensagem: error.message });
+    console.error('Erro ao registrar compra:', error);
+    res.status(500).json({ mensagem: error.message, erro: error.message });
   }
 };
