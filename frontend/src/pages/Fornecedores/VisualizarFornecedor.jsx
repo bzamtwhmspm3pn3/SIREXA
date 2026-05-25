@@ -7,15 +7,21 @@ import {
   ArrowLeft, Truck, Building2, Mail, Phone, MapPin, 
   Briefcase, CreditCard, Hash, CheckCircle, XCircle,
   Calendar, DollarSign, Clock, Edit, FileText, Award,
-  Landmark, AlertCircle, Printer, Download, Eye, User
+  Landmark, AlertCircle, Printer, Download, Eye, User,
+  Package, Wrench, Fuel, Computer, Globe, Home, Percent,
+  Wallet, TrendingUp
 } from "lucide-react";
 
 const VisualizarFornecedor = () => {
+  const { role, user } = useAuth();
   const [fornecedor, setFornecedor] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [empresaNome, setEmpresaNome] = useState("");
   const [mensagem, setMensagem] = useState({ texto: "", tipo: "" });
   const navigate = useNavigate();
   const { id } = useParams();
+
+  const BASE_URL = "https://sirexa-api.onrender.com";
 
   useEffect(() => {
     carregarFornecedor();
@@ -29,11 +35,31 @@ const VisualizarFornecedor = () => {
   const carregarFornecedor = async () => {
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch(`https://sirexa-api.onrender.com/api/fornecedores/${id}`, {
+      const response = await fetch(`${BASE_URL}/api/fornecedores/${id}`, {
         headers: { "Authorization": `Bearer ${token}` }
       });
+      
+      if (!response.ok) {
+        throw new Error(`Erro ${response.status}`);
+      }
+      
       const data = await response.json();
       setFornecedor(data);
+      
+      // Carregar nome da empresa se tiver empresaId
+      if (data.empresaId) {
+        try {
+          const empresaResponse = await fetch(`${BASE_URL}/api/empresa/${data.empresaId}`, {
+            headers: { "Authorization": `Bearer ${token}` }
+          });
+          if (empresaResponse.ok) {
+            const empresaData = await empresaResponse.json();
+            setEmpresaNome(empresaData.nome || empresaData.dados?.nome || "");
+          }
+        } catch (err) {
+          console.error("Erro ao carregar empresa:", err);
+        }
+      }
     } catch (error) {
       console.error("Erro:", error);
       mostrarMensagem("Erro ao carregar fornecedor", "erro");
@@ -43,7 +69,7 @@ const VisualizarFornecedor = () => {
   };
 
   const formatarMoeda = (valor) => {
-    if (!valor) return "—";
+    if (!valor && valor !== 0) return "—";
     return new Intl.NumberFormat('pt-AO', { 
       style: 'currency', 
       currency: 'AOA',
@@ -89,8 +115,37 @@ const VisualizarFornecedor = () => {
     }
   };
 
+  const getIconForTipo = (tipoFornecedor) => {
+    const tiposConfig = {
+      mercadoria: { icon: Package, cor: "blue", label: "📦 Mercadoria/Produto" },
+      renda: { icon: Home, cor: "green", label: "🏠 Renda (Aluguer)" },
+      servicoProfissional: { icon: Briefcase, cor: "indigo", label: "👔 Serviço Profissional" },
+      internet: { icon: Globe, cor: "cyan", label: "🌐 Internet/Telecom" },
+      manutencao: { icon: Wrench, cor: "orange", label: "🔧 Manutenção" },
+      abastecimento: { icon: Fuel, cor: "yellow", label: "⛽ Abastecimento" },
+      equipamento: { icon: Computer, cor: "purple", label: "🖥️ Equipamento" },
+      servicoGeral: { icon: FileText, cor: "gray", label: "📝 Outro Serviço" }
+    };
+    return tiposConfig[tipoFornecedor] || { icon: Truck, cor: "gray", label: "Fornecedor" };
+  };
+
+  const calcularValorTotalItens = () => {
+    if (!fornecedor?.itensFornecidos?.length && !fornecedor?.itens?.length) return 0;
+    const itens = fornecedor.itensFornecidos || fornecedor.itens || [];
+    return itens.reduce((sum, item) => sum + (item.valorTotal || item.valor || item.valorMensal || 0), 0);
+  };
+
+  const calcularValorTotalContratos = () => {
+    if (!fornecedor?.contratos?.length) return 0;
+    return fornecedor.contratos.reduce((sum, c) => sum + (c.valor || 0), 0);
+  };
+
   const imprimir = () => {
     window.print();
+  };
+
+  const exportarPDF = () => {
+    navigate(`/fornecedores/relatorio/${fornecedor._id}`);
   };
 
   if (loading) {
@@ -121,6 +176,12 @@ const VisualizarFornecedor = () => {
     );
   }
 
+  const tipoInfo = getIconForTipo(fornecedor.tipoFornecedor);
+  const valorTotalItens = calcularValorTotalItens();
+  const valorTotalContratos = calcularValorTotalContratos();
+  const hasItens = (fornecedor.itensFornecidos?.length > 0) || (fornecedor.itens?.length > 0);
+  const itensExibicao = fornecedor.itensFornecidos || fornecedor.itens || [];
+
   return (
     <Layout title={`Fornecedor - ${fornecedor.nome}`} showBackButton={true} backToRoute="/fornecedores">
       {/* Toast Notification */}
@@ -135,7 +196,7 @@ const VisualizarFornecedor = () => {
         </div>
       )}
 
-      <div className="max-w-5xl mx-auto">
+      <div className="max-w-5xl mx-auto pb-8">
         {/* Cabeçalho */}
         <div className="bg-gradient-to-br from-gray-800/90 to-gray-900/90 backdrop-blur-sm rounded-2xl border border-gray-700/50 shadow-xl overflow-hidden mb-6">
           <div className="bg-gradient-to-r from-blue-600/20 to-purple-600/20 p-6">
@@ -147,9 +208,9 @@ const VisualizarFornecedor = () => {
                 <div>
                   <h1 className="text-2xl md:text-3xl font-bold text-white">{fornecedor.nome}</h1>
                   <p className="text-gray-400 mt-1">NIF: {fornecedor.nif}</p>
-                  {fornecedor.tipoServico && (
+                  {fornecedor.tipoFornecedor && (
                     <p className="text-sm text-blue-400 mt-1 flex items-center gap-1">
-                      <Award className="w-4 h-4" /> {fornecedor.tipoServico}
+                      <Award className="w-4 h-4" /> {tipoInfo.label}
                     </p>
                   )}
                 </div>
@@ -168,6 +229,27 @@ const VisualizarFornecedor = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Coluna da Esquerda - Informações Principais */}
           <div className="lg:col-span-2 space-y-6">
+            {/* Empresa */}
+            {empresaNome && (
+              <div className="bg-gradient-to-br from-gray-800/90 to-gray-900/90 backdrop-blur-sm rounded-2xl border border-gray-700/50 overflow-hidden">
+                <div className="bg-gradient-to-r from-blue-600/20 to-cyan-600/20 px-6 py-4 border-b border-gray-700">
+                  <div className="flex items-center gap-2">
+                    <Building2 className="w-5 h-5 text-blue-400" />
+                    <h2 className="text-lg font-bold text-white">Empresa</h2>
+                  </div>
+                </div>
+                <div className="p-6">
+                  <div className="flex items-center gap-3 p-3 bg-gray-700/30 rounded-xl">
+                    <Building2 className="w-5 h-5 text-blue-400" />
+                    <div>
+                      <p className="text-xs text-gray-400">Empresa</p>
+                      <p className="text-white font-medium">{empresaNome}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Contactos */}
             <div className="bg-gradient-to-br from-gray-800/90 to-gray-900/90 backdrop-blur-sm rounded-2xl border border-gray-700/50 overflow-hidden">
               <div className="bg-gradient-to-r from-blue-600/20 to-cyan-600/20 px-6 py-4 border-b border-gray-700">
@@ -219,6 +301,46 @@ const VisualizarFornecedor = () => {
               </div>
             </div>
 
+            {/* Itens Fornecidos */}
+            {hasItens && (
+              <div className="bg-gradient-to-br from-gray-800/90 to-gray-900/90 backdrop-blur-sm rounded-2xl border border-gray-700/50 overflow-hidden">
+                <div className="bg-gradient-to-r from-yellow-600/20 to-orange-600/20 px-6 py-4 border-b border-gray-700">
+                  <div className="flex items-center gap-2">
+                    <Package className="w-5 h-5 text-yellow-400" />
+                    <h2 className="text-lg font-bold text-white">Itens Fornecidos ({itensExibicao.length})</h2>
+                  </div>
+                </div>
+                <div className="p-6 space-y-3">
+                  {itensExibicao.map((item, index) => (
+                    <div key={index} className="bg-gray-700/30 rounded-xl p-4">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <p className="text-white font-medium">
+                            {item.produto || item.descricao || item.nome || "Item"}
+                          </p>
+                          <p className="text-emerald-400 font-bold mt-1">
+                            {formatarMoeda(item.valorTotal || item.valor || item.valorMensal)}
+                          </p>
+                        </div>
+                        {item.quantidade && (
+                          <span className="text-xs px-2 py-1 bg-blue-500/20 text-blue-400 rounded-full">
+                            Qtd: {item.quantidade}
+                          </span>
+                        )}
+                      </div>
+                      {item.unidadeMedida && (
+                        <p className="text-xs text-gray-400 mt-2">Unidade: {item.unidadeMedida}</p>
+                      )}
+                    </div>
+                  ))}
+                  <div className="pt-3 border-t border-gray-600 flex justify-between items-center">
+                    <span className="text-gray-400">Total em Itens:</span>
+                    <span className="text-emerald-400 font-bold text-lg">{formatarMoeda(valorTotalItens)}</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Contratos */}
             {fornecedor.contratos && fornecedor.contratos.length > 0 && (
               <div className="bg-gradient-to-br from-gray-800/90 to-gray-900/90 backdrop-blur-sm rounded-2xl border border-gray-700/50 overflow-hidden">
@@ -232,7 +354,10 @@ const VisualizarFornecedor = () => {
                   {fornecedor.contratos.map((contrato, index) => (
                     <div key={index} className="bg-gray-700/30 rounded-xl p-4">
                       <div className="flex justify-between items-start mb-2">
-                        <p className="text-lg font-bold text-emerald-400">{formatarMoeda(contrato.valor)}</p>
+                        <div>
+                          <p className="text-white font-medium">{contrato.descricao || "Contrato"}</p>
+                          <p className="text-emerald-400 font-bold mt-1">{formatarMoeda(contrato.valor)}</p>
+                        </div>
                         <span className="text-xs px-2 py-1 bg-blue-500/20 text-blue-400 rounded-full">
                           {contrato.modalidadePagamento}
                         </span>
@@ -247,14 +372,54 @@ const VisualizarFornecedor = () => {
                           <p className="text-white">{formatarData(contrato.dataFim)}</p>
                         </div>
                       </div>
-                      {contrato.descricao && (
+                      {(contrato.diaVencimento || contrato.diaPagamento) && (
+                        <div className="grid grid-cols-2 gap-2 text-sm mt-2 pt-2 border-t border-gray-600">
+                          {contrato.diaVencimento && (
+                            <div>
+                              <p className="text-xs text-gray-400">Dia Vencimento</p>
+                              <p className="text-white">{contrato.diaVencimento}</p>
+                            </div>
+                          )}
+                          {contrato.diaPagamento && (
+                            <div>
+                              <p className="text-xs text-gray-400">Dia Pagamento</p>
+                              <p className="text-white">{contrato.diaPagamento}</p>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      {contrato.observacoes && (
                         <div className="mt-3 pt-3 border-t border-gray-600">
-                          <p className="text-xs text-gray-400">Descrição</p>
-                          <p className="text-gray-300 text-sm">{contrato.descricao}</p>
+                          <p className="text-xs text-gray-400">Observações</p>
+                          <p className="text-gray-300 text-sm">{contrato.observacoes}</p>
                         </div>
                       )}
                     </div>
                   ))}
+                  <div className="pt-3 border-t border-gray-600 flex justify-between items-center">
+                    <span className="text-gray-400">Total Mensal em Contratos:</span>
+                    <span className="text-purple-400 font-bold text-lg">{formatarMoeda(valorTotalContratos)}</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Resumo Financeiro */}
+            {(valorTotalItens > 0 || valorTotalContratos > 0) && (
+              <div className="bg-gradient-to-r from-blue-600/10 to-purple-600/10 rounded-2xl border border-blue-500/30 p-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <TrendingUp className="w-5 h-5 text-blue-400" />
+                  <h2 className="text-lg font-bold text-white">Resumo Financeiro</h2>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="text-center p-3 bg-gray-800/50 rounded-lg">
+                    <p className="text-gray-400 text-sm">Total em Itens</p>
+                    <p className="text-green-400 font-bold text-xl">{formatarMoeda(valorTotalItens)}</p>
+                  </div>
+                  <div className="text-center p-3 bg-gray-800/50 rounded-lg">
+                    <p className="text-gray-400 text-sm">Total em Contratos</p>
+                    <p className="text-purple-400 font-bold text-xl">{formatarMoeda(valorTotalContratos)}</p>
+                  </div>
                 </div>
               </div>
             )}
@@ -269,7 +434,7 @@ const VisualizarFornecedor = () => {
                   </div>
                 </div>
                 <div className="p-6">
-                  <p className="text-gray-300">{fornecedor.observacoes}</p>
+                  <p className="text-gray-300 whitespace-pre-wrap">{fornecedor.observacoes}</p>
                 </div>
               </div>
             )}
@@ -277,12 +442,42 @@ const VisualizarFornecedor = () => {
 
           {/* Coluna da Direita - Informações Adicionais */}
           <div className="space-y-6">
+            {/* Tipo de Fornecedor */}
+            {fornecedor.tipoFornecedor && (
+              <div className="bg-gradient-to-br from-gray-800/90 to-gray-900/90 backdrop-blur-sm rounded-2xl border border-gray-700/50 overflow-hidden">
+                <div className={`bg-gradient-to-r from-${tipoInfo.cor}-600/20 to-${tipoInfo.cor}-600/20 px-6 py-4 border-b border-gray-700`}>
+                  <div className="flex items-center gap-2">
+                    {React.createElement(tipoInfo.icon, { className: `w-5 h-5 text-${tipoInfo.cor}-400` })}
+                    <h2 className="text-lg font-bold text-white">Tipo de Fornecedor</h2>
+                  </div>
+                </div>
+                <div className="p-6">
+                  <div className={`flex items-center gap-3 p-3 bg-${tipoInfo.cor}-600/20 rounded-xl border border-${tipoInfo.cor}-500/30`}>
+                    {React.createElement(tipoInfo.icon, { className: `w-6 h-6 text-${tipoInfo.cor}-400` })}
+                    <div>
+                      <p className={`font-medium text-${tipoInfo.cor}-400`}>{tipoInfo.label}</p>
+                      <p className="text-xs text-gray-400 mt-1">
+                        {fornecedor.tipoFornecedor === "mercadoria" && "Produtos físicos para revenda ou consumo"}
+                        {fornecedor.tipoFornecedor === "renda" && "Serviços de arrendamento"}
+                        {fornecedor.tipoFornecedor === "servicoProfissional" && "Consultoria, advocacia, contabilidade"}
+                        {fornecedor.tipoFornecedor === "internet" && "Serviços de comunicação"}
+                        {fornecedor.tipoFornecedor === "manutencao" && "Serviços de manutenção"}
+                        {fornecedor.tipoFornecedor === "abastecimento" && "Combustível e lubrificantes"}
+                        {fornecedor.tipoFornecedor === "equipamento" && "Aquisição de equipamentos"}
+                        {fornecedor.tipoFornecedor === "servicoGeral" && "Outros tipos de serviço"}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Dados Bancários */}
-            {(fornecedor.pagamento?.banco || fornecedor.pagamento?.iban) && (
+            {(fornecedor.pagamento?.banco || fornecedor.pagamento?.iban || fornecedor.pagamento?.formaPagamento) && (
               <div className="bg-gradient-to-br from-gray-800/90 to-gray-900/90 backdrop-blur-sm rounded-2xl border border-gray-700/50 overflow-hidden">
                 <div className="bg-gradient-to-r from-yellow-600/20 to-orange-600/20 px-6 py-4 border-b border-gray-700">
                   <div className="flex items-center gap-2">
-                    <CreditCard className="w-5 h-5 text-yellow-400" />
+                    <Wallet className="w-5 h-5 text-yellow-400" />
                     <h2 className="text-lg font-bold text-white">Dados Bancários</h2>
                   </div>
                 </div>
@@ -316,12 +511,15 @@ const VisualizarFornecedor = () => {
             )}
 
             {/* Dados Fiscais */}
-            {(fornecedor.regimeTributacao || fornecedor.fiscal?.taxaIVA > 0 || fornecedor.fiscal?.taxaRetencao > 0) && (
+            {(fornecedor.regimeTributacao || 
+              fornecedor.fiscal?.taxaIVA > 0 || 
+              fornecedor.fiscal?.taxaRetencao > 0 ||
+              fornecedor.fiscal?.suportaIVA !== undefined) && (
               <div className="bg-gradient-to-br from-gray-800/90 to-gray-900/90 backdrop-blur-sm rounded-2xl border border-gray-700/50 overflow-hidden">
                 <div className="bg-gradient-to-r from-red-600/20 to-pink-600/20 px-6 py-4 border-b border-gray-700">
                   <div className="flex items-center gap-2">
-                    <FileText className="w-5 h-5 text-red-400" />
-                    <h2 className="text-lg font-bold text-white">Dados Fiscais</h2>
+                    <Percent className="w-5 h-5 text-red-400" />
+                    <h2 className="text-lg font-bold text-white">Configuração Fiscal</h2>
                   </div>
                 </div>
                 <div className="p-6 space-y-3">
@@ -335,7 +533,7 @@ const VisualizarFornecedor = () => {
                     {fornecedor.fiscal?.suportaIVA !== undefined && (
                       <div>
                         <p className="text-xs text-gray-400 mb-1">Suporta IVA</p>
-                        <p className="text-white">{fornecedor.fiscal.suportaIVA ? "Sim" : "Não"}</p>
+                        <p className="text-white">{fornecedor.fiscal.suportaIVA ? "✅ Sim" : "❌ Não"}</p>
                       </div>
                     )}
                     {fornecedor.fiscal?.taxaIVA > 0 && (
@@ -346,25 +544,23 @@ const VisualizarFornecedor = () => {
                     )}
                   </div>
                   {fornecedor.fiscal?.retencaoFonte && (
-                    <>
-                      <div className="border-t border-gray-700 pt-2">
-                        <p className="text-xs text-yellow-400 mb-1">Retenção na Fonte</p>
-                        <div className="grid grid-cols-2 gap-3 mt-2">
-                          {fornecedor.fiscal?.tipoRetencao && (
-                            <div>
-                              <p className="text-xs text-gray-400">Tipo</p>
-                              <p className="text-white">{fornecedor.fiscal.tipoRetencao}</p>
-                            </div>
-                          )}
-                          {fornecedor.fiscal?.taxaRetencao > 0 && (
-                            <div>
-                              <p className="text-xs text-gray-400">Taxa</p>
-                              <p className="text-white">{fornecedor.fiscal.taxaRetencao}%</p>
-                            </div>
-                          )}
-                        </div>
+                    <div className="border-t border-gray-700 pt-3 mt-2">
+                      <p className="text-xs text-yellow-400 mb-2">Retenção na Fonte</p>
+                      <div className="grid grid-cols-2 gap-3">
+                        {fornecedor.fiscal?.tipoRetencao && (
+                          <div>
+                            <p className="text-xs text-gray-400">Tipo</p>
+                            <p className="text-white">{fornecedor.fiscal.tipoRetencao}</p>
+                          </div>
+                        )}
+                        {fornecedor.fiscal?.taxaRetencao > 0 && (
+                          <div>
+                            <p className="text-xs text-gray-400">Taxa</p>
+                            <p className="text-white">{fornecedor.fiscal.taxaRetencao}%</p>
+                          </div>
+                        )}
                       </div>
-                    </>
+                    </div>
                   )}
                 </div>
               </div>
@@ -391,12 +587,6 @@ const VisualizarFornecedor = () => {
                   <p className="text-xs text-gray-400 mb-1">ID do Fornecedor</p>
                   <p className="text-white font-mono text-xs break-all">{fornecedor._id}</p>
                 </div>
-                {fornecedor.criadoPor && (
-                  <div>
-                    <p className="text-xs text-gray-400 mb-1">Criado por</p>
-                    <p className="text-white">{fornecedor.criadoPor}</p>
-                  </div>
-                )}
               </div>
             </div>
 
@@ -410,11 +600,11 @@ const VisualizarFornecedor = () => {
                 Editar Fornecedor
               </button>
               <button
-                onClick={() => navigate(`/fornecedores/relatorio/${fornecedor._id}`)}
+                onClick={exportarPDF}
                 className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 py-3 rounded-xl transition-all duration-300 flex items-center justify-center gap-2 shadow-lg"
               >
-                <FileText className="w-5 h-5" />
-                Relatório Completo
+                <Download className="w-5 h-5" />
+                Exportar PDF
               </button>
               <button
                 onClick={imprimir}

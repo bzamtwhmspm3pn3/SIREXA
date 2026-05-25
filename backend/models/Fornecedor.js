@@ -1,51 +1,85 @@
 const mongoose = require("mongoose");
 
+// Schema de Contrato
 const contratoSchema = new mongoose.Schema({
+  descricao: { type: String, required: true },
   valor: { type: Number, required: true },
   dataInicio: { type: Date, required: true },
   dataFim: { type: Date, required: true },
   modalidadePagamento: {
     type: String,
     enum: ['Diário', 'Semanal', 'Quinzenal', 'Mensal', 'Bimestral', 'Trimestral', 'Semestral', 'Anual', 'Único'],
-    required: true
+    default: 'Mensal'
   },
   diaVencimento: { type: Number, min: 1, max: 31, default: 5 },
   diaPagamento: { type: Number, min: 1, max: 31, default: 15 },
   avisoAntecedencia: { type: Number, default: 5 },
   proximoPagamento: { type: Date },
-  descricao: { type: String, default: "" },
-  anexos: [{ type: String }]
+  valorLiquido: { type: Number, default: 0 },
+  iva: { type: Number, default: 0 },
+  retencao: { type: Number, default: 0 },
+  observacoes: { type: String, default: "" }
 });
 
-const pagamentoRegistoSchema = new mongoose.Schema({
-  valor: { type: Number, required: true },
-  data: { type: Date, default: Date.now },
-  referencia: { type: String },
-  usuario: { type: String },
-  valorBruto: { type: Number },
-  valorRetencao: { type: Number },
-  taxaRetencao: { type: Number }
+// Schema de Produto/Serviço Fornecido
+const itemFornecidoSchema = new mongoose.Schema({
+  tipo: { type: String, enum: ['mercadoria', 'manutencao', 'abastecimento', 'equipamento', 'servicoProfissional', 'renda', 'internet', 'servicoGeral'], required: true },
+  descricao: { type: String },
+  valor: { type: Number, default: 0 },
+  valorTotal: { type: Number, default: 0 },
+  produto: { type: String },
+  quantidade: { type: Number, default: 0 },
+  unidadeMedida: { type: String, default: 'Unidade' },
+  precoCompra: { type: Number, default: 0 },
+  precoVenda: { type: Number, default: 0 },
+  dataRegisto: { type: Date, default: Date.now },
+  usuario: { type: String }
+});
+
+// Schema de Produto Info (para mercadoria)
+const produtoInfoSchema = new mongoose.Schema({
+  produto: { type: String, required: true },
+  codigoBarras: { type: String, default: "" },
+  codigoInterno: { type: String, default: "" },
+  categoria: { type: String, default: "Geral" },
+  marca: { type: String, default: "" },
+  unidadeMedida: { type: String, default: "Unidade" },
+  precoCompra: { type: Number, default: 0 },
+  precoVenda: { type: Number, default: 0 },
+  quantidade: { type: Number, default: 0 },
+  quantidadeMinima: { type: Number, default: 5 },
+  dataValidade: { type: Date },
+  armazem: { type: String, default: "Principal" },
+  numeroLote: { type: String, default: "" },
+  taxaIVA: { type: Number, default: 14 },
+  observacoes: { type: String, default: "" },
+  stockId: { type: mongoose.Schema.Types.ObjectId, ref: 'Stock' }
 });
 
 const fornecedorSchema = new mongoose.Schema(
   {
-    empresaId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Empresa',
-      required: true
-    },
-    empresaNome: {
-      type: String,
-      required: false,
-      default: ""
-    },
+    empresaId: { type: mongoose.Schema.Types.ObjectId, ref: 'Empresa', required: true },
+    empresaNome: { type: String, default: "" },
     nome: { type: String, required: true, trim: true },
     nif: { type: String, required: true, trim: true },
-    telefone: { type: String, default: "", trim: true },
-    email: { type: String, default: "", trim: true },
-    endereco: { type: String, default: "", trim: true },
-    contato: { type: String, default: "", trim: true },
-    tipoServico: { type: String, default: "", trim: true },
+    telefone: { type: String, default: "" },
+    email: { type: String, default: "" },
+    endereco: { type: String, default: "" },
+    contato: { type: String, default: "" },
+    
+    // Tipo de fornecedor (mercadoria, servico, renda, internet, outro)
+    tipoFornecedor: { 
+      type: String, 
+      enum: ['mercadoria', 'manutencao', 'abastecimento', 'equipamento', 'servicoProfissional', 'renda', 'internet', 'servicoGeral'],
+      default: 'servicoGeral'
+    },
+    tipoServico: { type: String, default: "" },
+    natureza: { type: String },
+    
+    // Informações do produto (se for mercadoria)
+    produtoInfo: produtoInfoSchema,
+    
+    // Dados Fiscais
     regimeTributacao: {
       type: String,
       enum: ["Regime Geral", "Regime Simplificado", "Regime de IVA com Exclusão", "Regime de IVA com Inclusão", ""],
@@ -58,18 +92,29 @@ const fornecedorSchema = new mongoose.Schema(
       tipoRetencao: { type: String, enum: ['Renda', 'Serviços', 'Outros', ''], default: '' },
       taxaRetencao: { type: Number, default: 0 }
     },
+    
+    // Contratos
     contratos: [contratoSchema],
+    
+    // Itens fornecidos
+    itensFornecidos: [itemFornecidoSchema],
+    
+    // Dados Bancários
     pagamento: {
       banco: { type: String, default: "" },
       iban: { type: String, default: "" },
       swift: { type: String, default: "" },
-      formaPagamento: {
-        type: String,
-        enum: ['Transferência', 'Dinheiro', 'Cheque', 'POS'],
-        default: 'Transferência'
-      }
+      formaPagamento: { type: String, enum: ['Transferência', 'Dinheiro', 'Cheque', 'POS'], default: 'Transferência' }
     },
-    pagamentos: [pagamentoRegistoSchema],
+    
+    // Estatísticas
+    estatisticasCompras: {
+      totalCompras: { type: Number, default: 0 },
+      totalGasto: { type: Number, default: 0 },
+      ultimaCompra: { type: Date },
+      quantidadeTotalProdutos: { type: Number, default: 0 }
+    },
+    
     observacoes: { type: String, default: "" },
     status: { type: String, enum: ['Ativo', 'Inativo', 'Bloqueado'], default: 'Ativo' },
     ultimoPagamento: { type: Date },
@@ -80,9 +125,7 @@ const fornecedorSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// =============================================
-// MIDDLEWARE: Calcular próximo pagamento automaticamente
-// =============================================
+// Middleware para calcular próximo pagamento
 fornecedorSchema.pre('save', function(next) {
   if (!this.contratos || this.contratos.length === 0) {
     this.proximoPagamento = null;
@@ -90,84 +133,31 @@ fornecedorSchema.pre('save', function(next) {
   }
   
   const hoje = new Date();
-  let atualizado = false;
   const pagamentosFuturos = [];
   
   for (const contrato of this.contratos) {
     const dataFim = new Date(contrato.dataFim);
+    if (dataFim < hoje) continue;
     
-    if (dataFim < hoje) {
-      if (contrato.proximoPagamento) {
-        contrato.proximoPagamento = null;
-        atualizado = true;
-      }
-      continue;
-    }
-    
-    if (contrato.modalidadePagamento === 'Único') {
-      contrato.proximoPagamento = null;
-      continue;
-    }
+    if (contrato.modalidadePagamento === 'Único') continue;
     
     if (!contrato.proximoPagamento || new Date(contrato.proximoPagamento) <= hoje) {
       const diaPagamento = contrato.diaPagamento || 15;
-      const dataRef = contrato.proximoPagamento && new Date(contrato.proximoPagamento) > hoje 
-        ? new Date(contrato.proximoPagamento) 
-        : hoje;
-      
-      let proximoPagamento = new Date(dataRef);
+      let proximoPagamento = new Date(hoje);
       
       switch (contrato.modalidadePagamento) {
-        case 'Diário':
-          proximoPagamento.setDate(dataRef.getDate() + 1);
-          break;
-        case 'Semanal':
-          proximoPagamento.setDate(dataRef.getDate() + 7);
-          break;
-        case 'Quinzenal':
-          proximoPagamento.setDate(dataRef.getDate() + 15);
-          break;
         case 'Mensal':
           proximoPagamento.setDate(diaPagamento);
-          if (proximoPagamento <= dataRef) {
+          if (proximoPagamento <= hoje) {
             proximoPagamento.setMonth(proximoPagamento.getMonth() + 1);
-          }
-          break;
-        case 'Bimestral':
-          proximoPagamento.setDate(diaPagamento);
-          if (proximoPagamento <= dataRef) {
-            proximoPagamento.setMonth(proximoPagamento.getMonth() + 2);
-          }
-          break;
-        case 'Trimestral':
-          proximoPagamento.setDate(diaPagamento);
-          if (proximoPagamento <= dataRef) {
-            proximoPagamento.setMonth(proximoPagamento.getMonth() + 3);
-          }
-          break;
-        case 'Semestral':
-          proximoPagamento.setDate(diaPagamento);
-          if (proximoPagamento <= dataRef) {
-            proximoPagamento.setMonth(proximoPagamento.getMonth() + 6);
-          }
-          break;
-        case 'Anual':
-          proximoPagamento.setDate(diaPagamento);
-          if (proximoPagamento <= dataRef) {
-            proximoPagamento.setFullYear(proximoPagamento.getFullYear() + 1);
           }
           break;
         default:
           proximoPagamento = null;
       }
       
-      if (proximoPagamento && proximoPagamento > dataFim) {
-        proximoPagamento = null;
-      }
-      
-      if (contrato.proximoPagamento !== proximoPagamento) {
+      if (proximoPagamento && proximoPagamento <= dataFim) {
         contrato.proximoPagamento = proximoPagamento;
-        atualizado = true;
       }
     }
     
@@ -183,192 +173,15 @@ fornecedorSchema.pre('save', function(next) {
     this.proximoPagamento = null;
   }
   
-  if (atualizado) {
-    this.markModified('contratos');
-  }
-  
   next();
 });
 
-// =============================================
-// MÉTODOS DE INSTÂNCIA
-// =============================================
-fornecedorSchema.methods.calcularValorLiquido = function(valorBruto) {
-  let valorLiquido = valorBruto;
-  let taxaRetencao = 0;
-  let valorRetencao = 0;
-  
-  if (this.fiscal && this.fiscal.retencaoFonte) {
-    if (this.fiscal.taxaRetencao && this.fiscal.taxaRetencao > 0) {
-      taxaRetencao = this.fiscal.taxaRetencao;
-    } else if (this.fiscal.tipoRetencao === 'Renda') {
-      taxaRetencao = 15;
-    } else if (this.fiscal.tipoRetencao === 'Serviços') {
-      taxaRetencao = 6.5;
-    }
-    
-    valorRetencao = (valorBruto * taxaRetencao) / 100;
-    valorLiquido = valorBruto - valorRetencao;
-  }
-  
-  return { valorLiquido, taxaRetencao, valorRetencao };
-};
-
-// =============================================
-// MÉTODOS ESTÁTICOS
-// =============================================
-fornecedorSchema.statics.buscarComPagamentosProximos = function(empresaId = null, dias = 15) {
-  const hoje = new Date();
-  const dataLimite = new Date();
-  dataLimite.setDate(hoje.getDate() + dias);
-  
-  const query = { status: 'Ativo', proximoPagamento: { $lte: dataLimite, $gte: hoje } };
-  if (empresaId) query.empresaId = empresaId;
-  
-  return this.find(query).sort({ proximoPagamento: 1 });
-};
-
-fornecedorSchema.statics.buscarContratosAtivos = function(empresaId = null) {
-  const hoje = new Date();
-  const query = { status: 'Ativo', 'contratos.dataFim': { $gte: hoje } };
-  if (empresaId) query.empresaId = empresaId;
-  
-  return this.find(query);
-};
-
 // Índices
 fornecedorSchema.index({ empresaId: 1, nif: 1 }, { unique: true });
-fornecedorSchema.index({ empresaId: 1 });
+fornecedorSchema.index({ empresaId: 1, tipoFornecedor: 1 });
 fornecedorSchema.index({ nome: 1 });
 fornecedorSchema.index({ status: 1 });
 fornecedorSchema.index({ 'contratos.dataFim': 1 });
 fornecedorSchema.index({ proximoPagamento: 1 });
-
-// =============================================
-// POST-SAVE MIDDLEWARE - GERAR PAGAMENTOS AUTOMATICAMENTE
-// =============================================
-fornecedorSchema.post('save', async function(doc) {
-  try {
-    console.log(`\n🔔 [AUTOMÁTICO] Fornecedor salvo: ${doc.nome}`);
-    
-    // Verificar se há contratos
-    if (!doc.contratos || doc.contratos.length === 0) {
-      console.log(`   ℹ️ Nenhum contrato para gerar pagamentos`);
-      return;
-    }
-    
-    const hoje = new Date();
-    const integracaoPagamentos = require('../services/integracaoPagamentos');
-    const Pagamento = require('../models/Pagamento');
-    let pagamentosGerados = 0;
-    
-    for (let i = 0; i < doc.contratos.length; i++) {
-      const contrato = doc.contratos[i];
-      const dataFim = new Date(contrato.dataFim);
-      
-      // Verificar se contrato está ativo
-      if (dataFim < hoje) {
-        console.log(`   ⏭️ Contrato ${i + 1} expirado - ignorado`);
-        continue;
-      }
-      
-      // Verificar se é contrato único
-      if (contrato.modalidadePagamento === 'Único') {
-        console.log(`   ⏭️ Contrato ${i + 1} é único - verificando pagamento...`);
-        // Para contrato único, verificar se já existe pagamento
-        const pagamentoExistente = await Pagamento.findOne({
-          tipo: 'Fornecedor',
-          origemId: doc._id,
-          'detalhesPagamento.contratoId': contrato._id
-        });
-        
-        if (!pagamentoExistente && contrato.dataFim) {
-          console.log(`   🚀 Gerando pagamento único para contrato ${i + 1}`);
-          await integracaoPagamentos.integrarFornecedor(doc, contrato, 'Sistema - Automático');
-          pagamentosGerados++;
-        }
-        continue;
-      }
-      
-      // Para contratos recorrentes
-      if (contrato.proximoPagamento) {
-        const mesReferencia = `${contrato.proximoPagamento.getFullYear()}-${String(contrato.proximoPagamento.getMonth() + 1).padStart(2, '0')}`;
-        
-        // Verificar se já existe pagamento para este período
-        const pagamentoExistente = await Pagamento.findOne({
-          tipo: 'Fornecedor',
-          origemId: doc._id,
-          'detalhesPagamento.mesReferencia': mesReferencia
-        });
-        
-        if (!pagamentoExistente) {
-          console.log(`   🚀 Gerando pagamento para contrato ${i + 1} - ${contrato.modalidadePagamento}`);
-          await integracaoPagamentos.integrarFornecedor(doc, contrato, 'Sistema - Automático');
-          pagamentosGerados++;
-        } else {
-          console.log(`   ⏭️ Contrato ${i + 1} - pagamento já existe para ${mesReferencia}`);
-        }
-      } else if (contrato.modalidadePagamento !== 'Único') {
-        console.log(`   ⚠️ Contrato ${i + 1} sem próximo pagamento calculado`);
-      }
-    }
-    
-    if (pagamentosGerados > 0) {
-      console.log(`   ✅ ${pagamentosGerados} pagamentos gerados automaticamente para ${doc.nome}`);
-    }
-    
-  } catch (error) {
-    console.error(`   ❌ Erro no post-save do fornecedor ${doc.nome}:`, error.message);
-  }
-});
-
-// =============================================
-// POST-UPDATE MIDDLEWARE - PARA QUANDO CONTRATOS SÃO MODIFICADOS
-// =============================================
-fornecedorSchema.post('findOneAndUpdate', async function(doc) {
-  if (!doc) return;
-  
-  try {
-    console.log(`\n🔔 [AUTOMÁTICO] Fornecedor atualizado: ${doc.nome}`);
-    
-    // Verificar se houve alteração nos contratos
-    const update = this.getUpdate();
-    if (!update || (!update.contratos && !update.$push?.contratos && !update.$pull?.contratos)) {
-      console.log(`   ℹ️ Nenhuma alteração nos contratos`);
-      return;
-    }
-    
-    const integracaoPagamentos = require('../services/integracaoPagamentos');
-    const Pagamento = require('../models/Pagamento');
-    const hoje = new Date();
-    let pagamentosGerados = 0;
-    
-    for (const contrato of doc.contratos || []) {
-      const dataFim = new Date(contrato.dataFim);
-      
-      if (dataFim >= hoje && contrato.proximoPagamento) {
-        const mesReferencia = `${contrato.proximoPagamento.getFullYear()}-${String(contrato.proximoPagamento.getMonth() + 1).padStart(2, '0')}`;
-        
-        const pagamentoExistente = await Pagamento.findOne({
-          tipo: 'Fornecedor',
-          origemId: doc._id,
-          'detalhesPagamento.mesReferencia': mesReferencia
-        });
-        
-        if (!pagamentoExistente) {
-          await integracaoPagamentos.integrarFornecedor(doc, contrato, 'Sistema - Atualização');
-          pagamentosGerados++;
-        }
-      }
-    }
-    
-    if (pagamentosGerados > 0) {
-      console.log(`   ✅ ${pagamentosGerados} pagamentos gerados após atualização`);
-    }
-    
-  } catch (error) {
-    console.error(`   ❌ Erro no post-update:`, error.message);
-  }
-});
 
 module.exports = mongoose.model("Fornecedor", fornecedorSchema);
