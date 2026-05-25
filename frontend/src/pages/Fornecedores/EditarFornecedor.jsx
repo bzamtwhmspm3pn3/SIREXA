@@ -1,4 +1,4 @@
-// src/pages/Fornecedores/EditarFornecedor.jsx - VERSÃO COMPLETA COM TIPOS E ITENS
+// src/pages/Fornecedores/EditarFornecedor.jsx
 import React, { useState, useEffect } from "react";
 import { useAuth } from "../../contexts/AuthContext";
 import Layout from "../../components/Layout";
@@ -26,7 +26,6 @@ const EditarFornecedor = () => {
   const [itens, setItens] = useState([]);
   const [contratos, setContratos] = useState([]);
   
-  // Modal states
   const [modalItemOpen, setModalItemOpen] = useState(false);
   const [editandoItem, setEditandoItem] = useState(null);
   const [novoItem, setNovoItem] = useState({});
@@ -70,7 +69,6 @@ const EditarFornecedor = () => {
     observacoes: ""
   });
 
-  // Configuração dos tipos de fornecedor (mesma do Cadastro)
   const tiposFornecedorConfig = [
     { value: "mercadoria", label: "📦 Mercadoria/Produto", icon: Package, cor: "blue", modulo: "Stock", descricao: "Produtos físicos para revenda ou consumo", natureza: "Produto Físico" },
     { value: "renda", label: "🏠 Renda (Aluguer)", icon: Home, cor: "green", modulo: "Contratos", descricao: "Fornecedor de serviços de arrendamento", natureza: "Serviço Recorrente" },
@@ -82,7 +80,6 @@ const EditarFornecedor = () => {
     { value: "servicoGeral", label: "📝 Outro Serviço", icon: FileText, cor: "gray", modulo: "Pagamentos", descricao: "Outros tipos de serviço", natureza: "Serviço Geral" }
   ];
 
-  // Campos para cada tipo (simplificados para edição)
   const getCamposItem = () => {
     const camposPorTipo = {
       mercadoria: [
@@ -197,17 +194,16 @@ const EditarFornecedor = () => {
       
       const data = await response.json();
       
-      // Set tipoFornecedor
       if (data.tipoFornecedor) {
         setTipoFornecedor(data.tipoFornecedor);
       }
       
-      // Set itens
-      if (data.itens && Array.isArray(data.itens)) {
+      if (data.itensFornecidos && Array.isArray(data.itensFornecidos)) {
+        setItens(data.itensFornecidos);
+      } else if (data.itens && Array.isArray(data.itens)) {
         setItens(data.itens);
       }
       
-      // Set contratos
       if (data.contratos && Array.isArray(data.contratos)) {
         setContratos(data.contratos);
       }
@@ -250,7 +246,6 @@ const EditarFornecedor = () => {
     return { iva, retencao, valorLiquido: valor + iva - retencao };
   };
 
-  // FUNÇÕES PARA ITENS
   const abrirModalItem = (item = null) => {
     setEditandoItem(item);
     if (item) {
@@ -306,7 +301,6 @@ const EditarFornecedor = () => {
     }
   };
 
-  // FUNÇÕES PARA CONTRATOS
   const abrirModalContrato = (contrato = null) => {
     if (contrato) {
       setEditandoContrato(contrato);
@@ -383,7 +377,6 @@ const EditarFornecedor = () => {
     }
   };
 
-  // Funções de estilo (corrigidas)
   const getBorderClass = (cor, isSelected) => {
     if (!isSelected) return "border-gray-600 bg-gray-700/30 hover:bg-gray-700/50";
     switch(cor) {
@@ -450,7 +443,7 @@ const EditarFornecedor = () => {
     const dadosEnvio = {
       ...formData,
       tipoFornecedor,
-      itens: itens,
+      itensFornecidos: itens,
       contratos: contratos
     };
 
@@ -463,7 +456,6 @@ const EditarFornecedor = () => {
 
       const result = await response.json();
 
-      // CORREÇÃO: verificar se tem _id (igual ao cadastro)
       if (response.ok && result._id) {
         mostrarMensagem("✅ Fornecedor atualizado com sucesso!", "sucesso");
         setRedirecting(true);
@@ -595,7 +587,7 @@ const EditarFornecedor = () => {
               </div>
             </div>
 
-            {/* Tipo de Fornecedor - Exibição (não editável) */}
+            {/* Tipo de Fornecedor */}
             <div className="bg-gray-700/30 rounded-xl p-4">
               <h3 className="text-md font-semibold text-blue-400 mb-4 flex items-center gap-2"><Briefcase className="w-4 h-4" /> Tipo de Fornecedor</h3>
               {tipoFornecedor && tipoInfo ? (
@@ -616,7 +608,7 @@ const EditarFornecedor = () => {
               )}
             </div>
 
-            {/* Itens do Tipo de Fornecedor */}
+            {/* Itens */}
             {tipoFornecedor && (
               <div className="bg-gray-700/30 rounded-xl p-4">
                 <div className="flex justify-between items-center mb-4">
