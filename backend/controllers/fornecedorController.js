@@ -227,7 +227,7 @@ async function processarServico(fornecedor, item, empresaId, usuario) {
 }
 
 // ============================================
-// CONTROLLER PRINCIPAL - CORRIGIDO
+// CONTROLLER PRINCIPAL
 // ============================================
 
 exports.criarFornecedor = async (req, res) => {
@@ -287,7 +287,6 @@ exports.criarFornecedor = async (req, res) => {
       }
     }
     
-    // CORREÇÃO: Retornar o objeto diretamente (não dentro de dados)
     const fornecedorObj = fornecedor.toObject();
     res.status(201).json({
       _id: fornecedorObj._id,
@@ -302,14 +301,20 @@ exports.criarFornecedor = async (req, res) => {
 };
 
 // ============================================
-// LISTAR FORNECEDORES - CORRIGIDO
+// LISTAR FORNECEDORES - COM FALLBACK DE EMPRESA
 // ============================================
 exports.listarFornecedores = async (req, res) => {
   try {
-    const { empresaId, tipoFornecedor, status, busca } = req.query;
-    const query = {};
+    // 🔥 USAR empresaAtual do security.js ou fallback
+    const empresaId = req.empresaAtual || req.query.empresaId || req.user?.empresaId;
     
-    if (empresaId) query.empresaId = new mongoose.Types.ObjectId(empresaId);
+    if (!empresaId) {
+      return res.status(400).json({ mensagem: 'Empresa não identificada' });
+    }
+    
+    const { tipoFornecedor, status, busca } = req.query;
+    const query = { empresaId: new mongoose.Types.ObjectId(empresaId) };
+    
     if (tipoFornecedor) query.tipoFornecedor = tipoFornecedor;
     if (status) query.status = status;
     if (busca) {
@@ -321,7 +326,6 @@ exports.listarFornecedores = async (req, res) => {
     }
     
     const fornecedores = await Fornecedor.find(query).sort({ nome: 1 });
-    // CORREÇÃO: Retornar array diretamente
     res.json(fornecedores);
     
   } catch (error) {
@@ -331,7 +335,7 @@ exports.listarFornecedores = async (req, res) => {
 };
 
 // ============================================
-// BUSCAR FORNECEDOR POR ID - CORRIGIDO
+// BUSCAR FORNECEDOR POR ID - COM VERIFICAÇÃO DE ACESSO
 // ============================================
 exports.getFornecedorById = async (req, res) => {
   try {
@@ -339,15 +343,22 @@ exports.getFornecedorById = async (req, res) => {
     if (!fornecedor) {
       return res.status(404).json({ mensagem: 'Fornecedor não encontrado', erro: 'nao_encontrado' });
     }
-    // CORREÇÃO: Retornar o objeto diretamente
+    
+    // 🔥 VERIFICAR ACESSO (segurança extra)
+    const empresaUsuario = req.empresaAtual || req.user?.empresaId;
+    if (empresaUsuario && fornecedor.empresaId.toString() !== empresaUsuario.toString()) {
+      return res.status(403).json({ mensagem: 'Acesso negado a este fornecedor', erro: 'acesso_negado' });
+    }
+    
     res.json(fornecedor);
   } catch (error) {
+    console.error('Erro ao buscar fornecedor:', error);
     res.status(500).json({ mensagem: error.message, erro: error.message });
   }
 };
 
 // ============================================
-// ATUALIZAR FORNECEDOR - CORRIGIDO
+// ATUALIZAR FORNECEDOR - COM VERIFICAÇÃO DE ACESSO
 // ============================================
 exports.atualizarFornecedor = async (req, res) => {
   try {
@@ -360,11 +371,17 @@ exports.atualizarFornecedor = async (req, res) => {
       return res.status(404).json({ mensagem: 'Fornecedor não encontrado', erro: 'nao_encontrado' });
     }
     
-    // CORREÇÃO: Garantir tipoFornecedor se não existir (fallback para dados antigos)
+    // 🔥 VERIFICAR ACESSO (segurança extra)
+    const empresaUsuario = req.empresaAtual || req.user?.empresaId;
+    if (empresaUsuario && fornecedor.empresaId.toString() !== empresaUsuario.toString()) {
+      return res.status(403).json({ mensagem: 'Acesso negado a este fornecedor', erro: 'acesso_negado' });
+    }
+    
+    // Fallback para tipoFornecedor
     if (!fornecedor.tipoFornecedor && atualizacoes.tipoFornecedor) {
       fornecedor.tipoFornecedor = atualizacoes.tipoFornecedor;
     } else if (!fornecedor.tipoFornecedor) {
-      fornecedor.tipoFornecedor = 'servicoGeral'; // fallback padrão
+      fornecedor.tipoFornecedor = 'servicoGeral';
     }
     
     if (nif && nif !== fornecedor.nif) {
@@ -375,7 +392,7 @@ exports.atualizarFornecedor = async (req, res) => {
       atualizacoes.nif = nif;
     }
     
-    // CORREÇÃO: Converter itens para itensFornecidos se veio do frontend
+    // Converter itens para itensFornecidos
     if (atualizacoes.itens && !atualizacoes.itensFornecidos) {
       atualizacoes.itensFornecidos = atualizacoes.itens;
       delete atualizacoes.itens;
@@ -385,7 +402,6 @@ exports.atualizarFornecedor = async (req, res) => {
     fornecedor.atualizadoPor = usuario;
     await fornecedor.save();
     
-    // CORREÇÃO: Retornar o objeto diretamente
     res.json(fornecedor);
     
   } catch (error) {
@@ -395,13 +411,19 @@ exports.atualizarFornecedor = async (req, res) => {
 };
 
 // ============================================
-// EXCLUIR/DESATIVAR FORNECEDOR
+// EXCLUIR/DESATIVAR FORNECEDOR - COM VERIFICAÇÃO DE ACESSO
 // ============================================
 exports.excluirFornecedor = async (req, res) => {
   try {
     const fornecedor = await Fornecedor.findById(req.params.id);
     if (!fornecedor) {
       return res.status(404).json({ mensagem: 'Fornecedor não encontrado', erro: 'nao_encontrado' });
+    }
+    
+    // 🔥 VERIFICAR ACESSO
+    const empresaUsuario = req.empresaAtual || req.user?.empresaId;
+    if (empresaUsuario && fornecedor.empresaId.toString() !== empresaUsuario.toString()) {
+      return res.status(403).json({ mensagem: 'Acesso negado a este fornecedor', erro: 'acesso_negado' });
     }
     
     fornecedor.status = 'Inativo';
@@ -421,6 +443,11 @@ exports.getEstatisticasFornecedor = async (req, res) => {
     const fornecedor = await Fornecedor.findById(req.params.id);
     if (!fornecedor) {
       return res.status(404).json({ mensagem: 'Fornecedor não encontrado', erro: 'nao_encontrado' });
+    }
+    
+    const empresaUsuario = req.empresaAtual || req.user?.empresaId;
+    if (empresaUsuario && fornecedor.empresaId.toString() !== empresaUsuario.toString()) {
+      return res.status(403).json({ mensagem: 'Acesso negado', erro: 'acesso_negado' });
     }
     
     const pagamentos = await Pagamento.find({ tipo: 'Fornecedor', origemId: fornecedor._id });
@@ -456,8 +483,14 @@ exports.getEstatisticasFornecedor = async (req, res) => {
 exports.getTopFornecedores = async (req, res) => {
   try {
     const { empresaId, limit = 10 } = req.query;
-    const query = { status: 'Ativo' };
-    if (empresaId) query.empresaId = new mongoose.Types.ObjectId(empresaId);
+    const empresaUsuario = req.empresaAtual || req.user?.empresaId;
+    const empresaFinal = empresaId || empresaUsuario;
+    
+    if (!empresaFinal) {
+      return res.status(400).json({ mensagem: 'Empresa não identificada' });
+    }
+    
+    const query = { status: 'Ativo', empresaId: new mongoose.Types.ObjectId(empresaFinal) };
     
     const fornecedores = await Fornecedor.find(query)
       .sort({ 'estatisticasCompras.totalGasto': -1 })
@@ -477,8 +510,18 @@ exports.getFornecedoresPorTipo = async (req, res) => {
   try {
     const { tipoFornecedor } = req.params;
     const { empresaId } = req.query;
-    const query = { tipoFornecedor, status: 'Ativo' };
-    if (empresaId) query.empresaId = new mongoose.Types.ObjectId(empresaId);
+    const empresaUsuario = req.empresaAtual || req.user?.empresaId;
+    const empresaFinal = empresaId || empresaUsuario;
+    
+    if (!empresaFinal) {
+      return res.status(400).json({ mensagem: 'Empresa não identificada' });
+    }
+    
+    const query = { 
+      tipoFornecedor, 
+      status: 'Ativo',
+      empresaId: new mongoose.Types.ObjectId(empresaFinal)
+    };
     
     const fornecedores = await Fornecedor.find(query).sort({ nome: 1 });
     res.json(fornecedores);
@@ -493,15 +536,22 @@ exports.getFornecedoresPorTipo = async (req, res) => {
 exports.getContratosAVencer = async (req, res) => {
   try {
     const { empresaId, dias = 30 } = req.query;
+    const empresaUsuario = req.empresaAtual || req.user?.empresaId;
+    const empresaFinal = empresaId || empresaUsuario;
+    
+    if (!empresaFinal) {
+      return res.status(400).json({ mensagem: 'Empresa não identificada' });
+    }
+    
     const hoje = new Date();
     const dataLimite = new Date();
     dataLimite.setDate(hoje.getDate() + parseInt(dias));
     
     const query = { 
-      status: 'Ativo', 
+      status: 'Ativo',
+      empresaId: new mongoose.Types.ObjectId(empresaFinal),
       'contratos.dataFim': { $lte: dataLimite, $gte: hoje } 
     };
-    if (empresaId) query.empresaId = new mongoose.Types.ObjectId(empresaId);
     
     const fornecedores = await Fornecedor.find(query).select('nome nif contratos');
     res.json(fornecedores);
@@ -522,6 +572,11 @@ exports.adicionarItem = async (req, res) => {
     const fornecedor = await Fornecedor.findById(id);
     if (!fornecedor) {
       return res.status(404).json({ mensagem: 'Fornecedor não encontrado', erro: 'nao_encontrado' });
+    }
+    
+    const empresaUsuario = req.empresaAtual || req.user?.empresaId;
+    if (empresaUsuario && fornecedor.empresaId.toString() !== empresaUsuario.toString()) {
+      return res.status(403).json({ mensagem: 'Acesso negado', erro: 'acesso_negado' });
     }
     
     if (!fornecedor.itensFornecidos) fornecedor.itensFornecidos = [];
@@ -545,6 +600,11 @@ exports.atualizarItem = async (req, res) => {
     const fornecedor = await Fornecedor.findById(id);
     if (!fornecedor) {
       return res.status(404).json({ mensagem: 'Fornecedor não encontrado', erro: 'nao_encontrado' });
+    }
+    
+    const empresaUsuario = req.empresaAtual || req.user?.empresaId;
+    if (empresaUsuario && fornecedor.empresaId.toString() !== empresaUsuario.toString()) {
+      return res.status(403).json({ mensagem: 'Acesso negado', erro: 'acesso_negado' });
     }
     
     const itemIndex = fornecedor.itensFornecidos.findIndex(i => i._id.toString() === itemId);
@@ -573,6 +633,11 @@ exports.removerItem = async (req, res) => {
       return res.status(404).json({ mensagem: 'Fornecedor não encontrado', erro: 'nao_encontrado' });
     }
     
+    const empresaUsuario = req.empresaAtual || req.user?.empresaId;
+    if (empresaUsuario && fornecedor.empresaId.toString() !== empresaUsuario.toString()) {
+      return res.status(403).json({ mensagem: 'Acesso negado', erro: 'acesso_negado' });
+    }
+    
     fornecedor.itensFornecidos = fornecedor.itensFornecidos.filter(i => i._id.toString() !== itemId);
     await fornecedor.save();
     
@@ -595,6 +660,11 @@ exports.adicionarContrato = async (req, res) => {
       return res.status(404).json({ mensagem: 'Fornecedor não encontrado', erro: 'nao_encontrado' });
     }
     
+    const empresaUsuario = req.empresaAtual || req.user?.empresaId;
+    if (empresaUsuario && fornecedor.empresaId.toString() !== empresaUsuario.toString()) {
+      return res.status(403).json({ mensagem: 'Acesso negado', erro: 'acesso_negado' });
+    }
+    
     fornecedor.contratos.push(contrato);
     await fornecedor.save();
     
@@ -615,6 +685,11 @@ exports.atualizarContrato = async (req, res) => {
     const fornecedor = await Fornecedor.findById(id);
     if (!fornecedor) {
       return res.status(404).json({ mensagem: 'Fornecedor não encontrado', erro: 'nao_encontrado' });
+    }
+    
+    const empresaUsuario = req.empresaAtual || req.user?.empresaId;
+    if (empresaUsuario && fornecedor.empresaId.toString() !== empresaUsuario.toString()) {
+      return res.status(403).json({ mensagem: 'Acesso negado', erro: 'acesso_negado' });
     }
     
     const contratoIndex = fornecedor.contratos.findIndex(c => c._id.toString() === contratoId);
@@ -643,6 +718,11 @@ exports.removerContrato = async (req, res) => {
       return res.status(404).json({ mensagem: 'Fornecedor não encontrado', erro: 'nao_encontrado' });
     }
     
+    const empresaUsuario = req.empresaAtual || req.user?.empresaId;
+    if (empresaUsuario && fornecedor.empresaId.toString() !== empresaUsuario.toString()) {
+      return res.status(403).json({ mensagem: 'Acesso negado', erro: 'acesso_negado' });
+    }
+    
     fornecedor.contratos = fornecedor.contratos.filter(c => c._id.toString() !== contratoId);
     await fornecedor.save();
     
@@ -662,6 +742,11 @@ exports.gerarPagamentoContrato = async (req, res) => {
     const fornecedor = await Fornecedor.findById(id);
     if (!fornecedor) {
       return res.status(404).json({ mensagem: 'Fornecedor não encontrado', erro: 'nao_encontrado' });
+    }
+    
+    const empresaUsuario = req.empresaAtual || req.user?.empresaId;
+    if (empresaUsuario && fornecedor.empresaId.toString() !== empresaUsuario.toString()) {
+      return res.status(403).json({ mensagem: 'Acesso negado', erro: 'acesso_negado' });
     }
     
     const contrato = fornecedor.contratos.find(c => c._id.toString() === contratoId);
@@ -701,7 +786,11 @@ exports.getProdutosFornecidos = async (req, res) => {
       return res.status(404).json({ mensagem: 'Fornecedor não encontrado', erro: 'nao_encontrado' });
     }
     
-    // Buscar produtos no stock deste fornecedor
+    const empresaUsuario = req.empresaAtual || req.user?.empresaId;
+    if (empresaUsuario && fornecedor.empresaId.toString() !== empresaUsuario.toString()) {
+      return res.status(403).json({ mensagem: 'Acesso negado', erro: 'acesso_negado' });
+    }
+    
     const produtos = await Stock.find({ fornecedorId: fornecedor._id });
     res.json(produtos);
   } catch (error) {
@@ -721,6 +810,11 @@ exports.registrarCompraProduto = async (req, res) => {
     const fornecedor = await Fornecedor.findById(id);
     if (!fornecedor) {
       return res.status(404).json({ mensagem: 'Fornecedor não encontrado', erro: 'nao_encontrado' });
+    }
+    
+    const empresaUsuario = req.empresaAtual || req.user?.empresaId;
+    if (empresaUsuario && fornecedor.empresaId.toString() !== empresaUsuario.toString()) {
+      return res.status(403).json({ mensagem: 'Acesso negado', erro: 'acesso_negado' });
     }
     
     const produto = await Stock.findById(produtoId);
@@ -750,7 +844,6 @@ exports.registrarCompraProduto = async (req, res) => {
     
     await produto.save();
     
-    // Atualizar estatísticas do fornecedor
     const valorTotal = quantidade * precoUnitario;
     fornecedor.estatisticasCompras = fornecedor.estatisticasCompras || {};
     fornecedor.estatisticasCompras.totalCompras = (fornecedor.estatisticasCompras.totalCompras || 0) + 1;

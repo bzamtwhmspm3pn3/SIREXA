@@ -1,93 +1,101 @@
 // backend/middlewares/security.js
 const validateEmpresaAccess = (req, res, next) => {
-  // ============================================
-  // VERIFICAÇÃO 1: Usuário autenticado
-  // ============================================
+  // 🔥 VERIFICAÇÃO CRÍTICA - Garantir que req.user existe
   if (!req.user) {
-    console.error('❌ [SECURITY] Usuário não autenticado');
+    console.error('❌ [SECURITY] validateEmpresaAccess chamado sem req.user!');
+    console.error('   Headers:', req.headers);
+    console.error('   URL:', req.url);
     return res.status(401).json({ 
       sucesso: false, 
-      mensagem: 'Usuário não autenticado' 
+      mensagem: 'Usuário não autenticado. Faça login novamente.' 
     });
   }
   
-  // ============================================
-  // VERIFICAÇÃO 2: Obter empresa da requisição
-  // ============================================
-  const empresaRequisicao = req.params.empresaId || req.query.empresaId || req.body.empresaId;
-  const empresaToken = req.user.empresaId;
-  const empresasPermitidas = req.user.empresasPermitidas || [];
-  const role = req.user.role || 'gestor';
+  const empresaId = req.params.empresaId || req.query.empresaId || req.body.empresaId;
+  const usuarioEmpresaId = req.user?.empresaId;
+  const usuarioEmpresasPermitidas = req.user?.empresasPermitidas || [];
+  const usuarioTipo = req.user?.role;
   
-  // ============================================
-  // REGRA 1: ADMIN tem acesso total
-  // ============================================
-  if (role === 'admin') {
-    console.log('✅ ADMIN - acesso total');
-    return next();
-  }
+  console.log('🔒 [SECURITY] Validando acesso:', {
+    empresaId,
+    usuarioEmpresaId,
+    empresasPermitidas: usuarioEmpresasPermitidas,
+    usuarioTipo,
+    url: req.url,
+    method: req.method
+  });
   
-  // ============================================
-  // REGRA 2: TÉCNICO - só vê a empresa dele
-  // ============================================
-  if (role === 'tecnico') {
-    if (!empresaToken) {
-      console.error('❌ Técnico sem empresa associada');
-      return res.status(403).json({ 
-        sucesso: false, 
-        mensagem: 'Técnico não associado a nenhuma empresa' 
-      });
+  // 🔥 REGRA ESPECIAL PARA TÉCNICO
+  if (usuarioTipo === 'tecnico') {
+    // Técnico usa a empresa do token
+    if (usuarioEmpresaId) {
+      req.empresaAtual = usuarioEmpresaId;
+      console.log('✅ Técnico - Usando empresa do token:', req.empresaAtual);
+      return next();
     }
     
-    // Se a requisição pede uma empresa específica, verifica se é a do técnico
-    if (empresaRequisicao && empresaRequisicao.toString() !== empresaToken.toString()) {
-      console.error(`❌ Técnico ${req.user.nome} tentou acessar empresa ${empresaRequisicao} (sua empresa é ${empresaToken})`);
-      return res.status(403).json({ 
-        sucesso: false, 
-        mensagem: 'Acesso negado: você só pode acessar sua própria empresa' 
-      });
-    }
-    
-    req.empresaAtual = empresaToken;
-    console.log(`✅ TÉCNICO ${req.user.nome} - empresa: ${empresaToken}`);
-    return next();
-  }
-  
-  // ============================================
-  // REGRA 3: GESTOR - só vê empresas permitidas
-  // ============================================
-  // Se o gestor não tem empresas permitidas, usa a do token
-  let empresasValidas = empresasPermitidas;
-  if (empresasValidas.length === 0 && empresaToken) {
-    empresasValidas = [empresaToken];
-  }
-  
-  // Se o gestor não tem nenhuma empresa (caso de primeiro acesso)
-  if (empresasValidas.length === 0) {
-    console.log(`⚠️ GESTOR ${req.user.nome} sem empresas - permitindo primeiro acesso`);
-    return next();
-  }
-  
-  // Se a requisição não pede empresa específica, usa a primeira permitida
-  if (!empresaRequisicao) {
-    req.empresaAtual = empresasValidas[0];
-    console.log(`✅ GESTOR ${req.user.nome} - usando empresa padrão: ${req.empresaAtual}`);
-    return next();
-  }
-  
-  // Verificar se o gestor tem acesso à empresa solicitada
-  const temAcesso = empresasValidas.some(id => id.toString() === empresaRequisicao.toString());
-  
-  if (!temAcesso) {
-    console.error(`❌ GESTOR ${req.user.nome} tentou acessar empresa ${empresaRequisicao} (permitidas: ${empresasValidas.join(', ')})`);
+    // Se não tem empresaId no token, tentar buscar do banco (fallback)
+    console.error('❌ Técnico sem empresaId no token');
     return res.status(403).json({ 
       sucesso: false, 
-      mensagem: 'Acesso negado: você não tem permissão para esta empresa' 
+      mensagem: 'Técnico não associado a nenhuma empresa. Contate o administrador.' 
     });
   }
   
-  req.empresaAtual = empresaRequisicao;
-  console.log(`✅ GESTOR ${req.user.nome} - empresa: ${req.empresaAtual}`);
+  // Admin pode acessar qualquer empresa
+  if (usuarioTipo === 'admin') {
+    if (empresaId) req.empresaAtual = empresaId;
+    return next();
+  }
+  
+  // Se não tem empresaId na requisição
+  if (!empresaId) {
+    // Usa a primeira empresa permitida
+    if (usuarioEmpresasPermitidas.length > 0) {
+      req.empresaAtual = usuarioEmpresasPermitidas[0];
+      console.log('🔒 Usando primeira empresa permitida:', req.empresaAtual);
+      return next();
+    }
+    if (usuarioEmpresaId) {
+      req.empresaAtual = usuarioEmpresaId;
+      console.log('🔒 Usando empresa do token:', req.empresaAtual);
+      return next();
+    }
+    
+    return res.status(400).json({ 
+      sucesso: false, 
+      mensagem: 'Nenhuma empresa selecionada. Selecione uma empresa para continuar.' 
+    });
+  }
+  
+  // Verificar acesso para gestor
+  let temAcesso = false;
+  
+  // Caso 1: empresaId é igual ao empresaId do token
+  if (usuarioEmpresaId && empresaId.toString() === usuarioEmpresaId.toString()) {
+    temAcesso = true;
+  }
+  // Caso 2: empresaId está na lista de empresas permitidas
+  else if (usuarioEmpresasPermitidas.some(id => id.toString() === empresaId.toString())) {
+    temAcesso = true;
+  }
+  // Caso 3: Primeiro acesso (gestor sem empresas)
+  else if ((!usuarioEmpresaId || usuarioEmpresasPermitidas.length === 0) && usuarioTipo === 'gestor') {
+    console.log('⚠️ Gestor sem empresas, permitindo primeiro acesso');
+    temAcesso = true;
+  }
+  
+  if (!temAcesso) {
+    console.error(`❌ ACESSO NEGADO: ${req.user?.nome} tentou acessar empresa ${empresaId}`);
+    console.error(`   Permitidas: ${JSON.stringify(usuarioEmpresasPermitidas)}`);
+    return res.status(403).json({ 
+      sucesso: false, 
+      mensagem: 'Acesso negado. Você não tem permissão para aceder a esta empresa.' 
+    });
+  }
+  
+  req.empresaAtual = empresaId;
+  console.log('✅ [SECURITY] Acesso permitido para empresa:', req.empresaAtual);
   next();
 };
 
