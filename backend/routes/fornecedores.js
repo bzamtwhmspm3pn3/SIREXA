@@ -11,12 +11,13 @@ const { verifyToken } = require('../middlewares/auth');
 router.use(verifyToken);
 
 // ============================================
-// FUNÇÃO PARA GERAR PAGAMENTO DE COMPRA DE MERCADORIA
+// FUNÇÃO PARA GERAR PAGAMENTO DE COMPRA DE MERCADORIA (CORRIGIDA)
 // ============================================
-async function gerarPagamentoCompra(fornecedor, produtoInfo, quantidade, precoCompra, usuario) {
+async function gerarPagamentoCompra(fornecedor, quantidade, precoCompra, produtoNome, unidadeMedida, usuario, dataCompra = null) {
   try {
     const subtotal = quantidade * precoCompra;
-    const taxaIVA = fornecedor.fiscal?.taxaIVA || 14;
+    const suportaIVA = fornecedor.fiscal?.suportaIVA !== false;
+    const taxaIVA = suportaIVA ? (fornecedor.fiscal?.taxaIVA || 14) : 0;
     const valorIVA = (subtotal * taxaIVA) / 100;
     const valorTotal = subtotal + valorIVA;
 
@@ -33,46 +34,106 @@ async function gerarPagamentoCompra(fornecedor, produtoInfo, quantidade, precoCo
       valorRetencao = (valorTotal * taxaRetencao) / 100;
     }
 
-    const valorLiquido = valorTotal - valorRetencao;
-    const mesReferencia = new Date().toISOString().slice(0, 7);
+    const ano = new Date().getFullYear();
+    const mes = String(new Date().getMonth() + 1).padStart(2, '0');
+    const count = await Pagamento.countDocuments({ empresaId: fornecedor.empresaId }) + 1;
+    const referencia = `PAG-${ano}${mes}-${String(count).padStart(4, '0')}`;
 
     const pagamento = new Pagamento({
+      referencia: referencia,
       tipo: 'Fornecedor',
+      categoria: 'Operacional',
+      subtipo: 'Compra de Mercadoria',
       origemId: fornecedor._id,
+      origemModel: 'Fornecedor',
+      origemDescricao: `Compra de ${quantidade} ${unidadeMedida}(s) de ${produtoNome}`,
+      empresaId: fornecedor.empresaId,
+      empresaNome: fornecedor.empresaNome,
       beneficiario: fornecedor.nome,
-      nifBeneficiario: fornecedor.nif,
+      beneficiarioDocumento: fornecedor.nif,
       valor: valorTotal,
-      valorLiquido: valorLiquido,
+      valorBruto: valorTotal,
       valorRetencao: valorRetencao,
       taxaRetencao: taxaRetencao,
-      valorIva: valorIVA,
-      taxaIva: taxaIVA,
-      dataVencimento: new Date(),
-      status: 'pendente',
-      descricao: `Compra de ${quantidade} ${produtoInfo.unidadeMedida || 'Unidade'}(s) de ${produtoInfo.produto}`,
-      usuario: usuario,
-      empresaId: fornecedor.empresaId,
-      detalhesPagamento: {
-        contaBancaria: fornecedor.pagamento?.iban || '',
-        modalidade: fornecedor.pagamento?.formaPagamento || 'Transferência',
-        mesReferencia: mesReferencia,
-        itens: [{
-          descricao: produtoInfo.produto,
-          quantidade: quantidade,
-          precoUnitario: precoCompra,
-          subtotal: subtotal,
-          iva: valorIVA,
-          retencao: valorRetencao,
-          total: valorTotal
-        }]
-      }
+      valorPago: 0,
+      saldo: valorTotal - valorRetencao,
+      dataVencimento: dataCompra ? new Date(dataCompra) : new Date(),
+      status: 'Pendente',
+      descricao: `Compra de ${quantidade} ${unidadeMedida}(s) de ${produtoNome}`,
+      observacao: `Preço unitário: ${precoCompra} Kz | IVA: ${taxaIVA}% | Subtotal: ${subtotal} Kz | Total: ${valorTotal} Kz`,
+      formaPagamento: fornecedor.pagamento?.formaPagamento || 'Transferência Bancária',
+      contaDebito: fornecedor.pagamento?.iban || 'Conta Principal',
+      criadoPor: usuario,
+      notaInformativa: `Compra registrada. Produto: ${produtoNome}`
     });
     
     await pagamento.save();
-    console.log(`💰 Pagamento de compra gerado: ${pagamento._id} - Valor: ${valorTotal} Kz`);
+    console.log(`💰 Pagamento de compra gerado: ${pagamento.referencia} - Valor: ${valorTotal} Kz`);
+    
     return pagamento;
   } catch (error) {
     console.error('❌ Erro ao gerar pagamento de compra:', error.message);
+    return null;
+  }
+}
+
+// ============================================
+// FUNÇÃO PARA GERAR PAGAMENTO DE CONTRATO (CORRIGIDA)
+// ============================================
+async function gerarPagamentoContrato(fornecedor, contrato, usuario) {
+  try {
+    let taxaRetencao = 0;
+    let valorRetencao = 0;
+    
+    if (fornecedor.fiscal?.retencaoFonte) {
+      taxaRetencao = fornecedor.fiscal?.taxaRetencao || 
+        (fornecedor.fiscal?.tipoRetencao === 'Renda' ? 15 : 
+         fornecedor.fiscal?.tipoRetencao === 'Serviços' ? 6.5 : 0);
+      valorRetencao = (contrato.valor * taxaRetencao) / 100;
+    }
+    
+    const ano = new Date().getFullYear();
+    const mes = String(new Date().getMonth() + 1).padStart(2, '0');
+    const count = await Pagamento.countDocuments({ empresaId: fornecedor.empresaId }) + 1;
+    const referencia = `PAG-${ano}${mes}-${String(count).padStart(4, '0')}`;
+    
+    const dataVencimento = contrato.proximoPagamento || new Date();
+    const mesReferencia = `${dataVencimento.getFullYear()}-${String(dataVencimento.getMonth() + 1).padStart(2, '0')}`;
+
+    const pagamento = new Pagamento({
+      referencia: referencia,
+      tipo: 'Fornecedor',
+      categoria: 'Operacional',
+      subtipo: contrato.descricao || 'Contrato',
+      origemId: fornecedor._id,
+      origemModel: 'Fornecedor',
+      origemDescricao: `Contrato: ${contrato.descricao}`,
+      empresaId: fornecedor.empresaId,
+      empresaNome: fornecedor.empresaNome,
+      beneficiario: fornecedor.nome,
+      beneficiarioDocumento: fornecedor.nif,
+      valor: contrato.valor,
+      valorBruto: contrato.valor,
+      valorRetencao: valorRetencao,
+      taxaRetencao: taxaRetencao,
+      valorPago: 0,
+      saldo: contrato.valor - valorRetencao,
+      dataVencimento: dataVencimento,
+      status: 'Pendente',
+      descricao: `Pagamento - ${contrato.descricao || fornecedor.tipoFornecedor || 'Serviço'}`,
+      observacao: `Modalidade: ${contrato.modalidadePagamento} | Período: ${mesReferencia}`,
+      formaPagamento: fornecedor.pagamento?.formaPagamento || 'Transferência Bancária',
+      contaDebito: fornecedor.pagamento?.iban || 'Conta Principal',
+      criadoPor: usuario,
+      notaInformativa: `Pagamento recorrente - ${contrato.modalidadePagamento}`
+    });
+    
+    await pagamento.save();
+    console.log(`💰 Pagamento de contrato gerado: ${pagamento.referencia} - Valor: ${contrato.valor} Kz`);
+    
+    return pagamento;
+  } catch (error) {
+    console.error('❌ Erro ao gerar pagamento de contrato:', error.message);
     return null;
   }
 }
@@ -147,38 +208,6 @@ async function criarProdutoNoStock(fornecedor, produtoInfo, empresaId, usuario) 
       produtoCriado = produto;
     }
     
-    // Gerar pagamento se houver quantidade e preço
-    if (quantidade > 0 && precoCompra > 0) {
-      const pagamento = await gerarPagamentoCompra(fornecedor, produtoInfo, quantidade, precoCompra, usuario);
-      
-      if (pagamento) {
-        if (!fornecedor.itensFornecidos) fornecedor.itensFornecidos = [];
-        fornecedor.itensFornecidos.push({
-          tipo: 'mercadoria',
-          descricao: `Compra de ${quantidade} ${produtoInfo.unidadeMedida || 'Unidade'}(s) de ${produtoInfo.produto}`,
-          valor: precoCompra,
-          valorTotal: pagamento.valor,
-          produto: produtoInfo.produto,
-          quantidade: quantidade,
-          unidadeMedida: produtoInfo.unidadeMedida || 'Unidade',
-          precoCompra: precoCompra,
-          precoVenda: produtoInfo.precoVenda || 0,
-          dataRegisto: new Date(),
-          usuario: usuario,
-          pagamentoId: pagamento._id
-        });
-        
-        fornecedor.estatisticasCompras = {
-          totalCompras: (fornecedor.estatisticasCompras?.totalCompras || 0) + 1,
-          totalGasto: (fornecedor.estatisticasCompras?.totalGasto || 0) + pagamento.valor,
-          ultimaCompra: new Date(),
-          quantidadeTotalProdutos: (fornecedor.estatisticasCompras?.quantidadeTotalProdutos || 0) + quantidade
-        };
-        
-        await fornecedor.save();
-      }
-    }
-    
     return produtoCriado;
   } catch (error) {
     console.error(`❌ Erro ao processar produto:`, error.message);
@@ -232,55 +261,6 @@ function calcularProximoPagamento(contrato, dataReferencia = new Date()) {
   }
 
   return proximoPagamento;
-}
-
-// ============================================
-// FUNÇÃO PARA GERAR PAGAMENTO DE CONTRATO
-// ============================================
-async function gerarPagamentoContrato(fornecedor, contrato, usuario) {
-  try {
-    const hoje = new Date();
-    const mesReferencia = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`;
-    
-    let taxaRetencao = 0;
-    if (fornecedor.fiscal?.retencaoFonte) {
-      taxaRetencao = fornecedor.fiscal?.taxaRetencao || 
-        (fornecedor.fiscal?.tipoRetencao === 'Renda' ? 15 : 
-         fornecedor.fiscal?.tipoRetencao === 'Serviços' ? 6.5 : 0);
-    }
-    
-    const valorRetencao = (contrato.valor * taxaRetencao) / 100;
-    const valorLiquido = contrato.valor - valorRetencao;
-    
-    const pagamento = new Pagamento({
-      tipo: 'Fornecedor',
-      origemId: fornecedor._id,
-      beneficiario: fornecedor.nome,
-      nifBeneficiario: fornecedor.nif,
-      valor: contrato.valor,
-      valorLiquido: valorLiquido,
-      valorRetencao: valorRetencao,
-      taxaRetencao: taxaRetencao,
-      dataVencimento: contrato.proximoPagamento || new Date(),
-      status: 'pendente',
-      descricao: `Pagamento - ${contrato.descricao || fornecedor.tipoFornecedor || 'Serviço'}`,
-      usuario: usuario,
-      empresaId: fornecedor.empresaId,
-      detalhesPagamento: {
-        contaBancaria: fornecedor.pagamento?.iban || '',
-        modalidade: fornecedor.pagamento?.formaPagamento || 'Transferência',
-        mesReferencia: mesReferencia,
-        contratoId: contrato._id
-      }
-    });
-    
-    await pagamento.save();
-    console.log(`💰 Pagamento de contrato gerado: ${pagamento._id}`);
-    return pagamento;
-  } catch (error) {
-    console.error('❌ Erro ao gerar pagamento de contrato:', error.message);
-    return null;
-  }
 }
 
 // ============================================
@@ -344,7 +324,7 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// POST - Criar novo fornecedor (COM INTEGRAÇÃO DE MERCADORIA)
+// POST - Criar novo fornecedor
 router.post('/', async (req, res) => {
   try {
     const { 
@@ -422,6 +402,19 @@ router.post('/', async (req, res) => {
         fornecedor.produtoInfo.stockId = produtoCriado._id;
         await fornecedor.save();
       }
+      
+      if (produtoInfo.quantidade > 0 && produtoInfo.precoCompra > 0) {
+        const pagamento = await gerarPagamentoCompra(
+          fornecedor, 
+          produtoInfo.quantidade, 
+          produtoInfo.precoCompra, 
+          produtoInfo.produto, 
+          produtoInfo.unidadeMedida || 'Unidade',
+          req.user?.nome || 'Sistema',
+          null
+        );
+        if (pagamento) pagamentosGerados.push(pagamento);
+      }
     }
     
     // INTEGRAÇÃO PARA CONTRATOS
@@ -471,19 +464,23 @@ router.post('/:id/adicionar-quantidade', async (req, res) => {
       numeroLote,
       dataValidade,
       armazem,
-      observacoes,
-      pagamentoImediato = false
+      observacoes
     } = req.body;
 
+    console.log('📦 Recebida requisição:', { id, quantidade, precoCompra });
+
+    // Validar ID
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return res.status(400).json({ sucesso: false, mensagem: 'ID inválido' });
     }
 
+    // Buscar fornecedor
     const fornecedor = await Fornecedor.findById(id);
     if (!fornecedor) {
       return res.status(404).json({ sucesso: false, mensagem: 'Fornecedor não encontrado' });
     }
 
+    // Verificar se é mercadoria
     if (fornecedor.tipoFornecedor !== 'mercadoria') {
       return res.status(400).json({ 
         sucesso: false, 
@@ -491,8 +488,9 @@ router.post('/:id/adicionar-quantidade', async (req, res) => {
       });
     }
 
+    // Validar dados
     if (!quantidade || quantidade <= 0) {
-      return res.status(400).json({ sucesso: false, mensagem: 'Quantidade é obrigatória e deve ser maior que zero' });
+      return res.status(400).json({ sucesso: false, mensagem: 'Quantidade é obrigatória' });
     }
     if (!precoCompra || precoCompra <= 0) {
       return res.status(400).json({ sucesso: false, mensagem: 'Preço de compra é obrigatório' });
@@ -500,12 +498,10 @@ router.post('/:id/adicionar-quantidade', async (req, res) => {
 
     const produtoNome = fornecedor.produtoInfo?.produto;
     if (!produtoNome) {
-      return res.status(400).json({ 
-        sucesso: false, 
-        mensagem: 'Produto não configurado para este fornecedor.' 
-      });
+      return res.status(400).json({ sucesso: false, mensagem: 'Produto não configurado' });
     }
 
+    // Buscar produto no stock
     let produtoStock = await Stock.findOne({
       produto: produtoNome,
       empresaId: fornecedor.empresaId,
@@ -513,18 +509,39 @@ router.post('/:id/adicionar-quantidade', async (req, res) => {
     });
 
     if (!produtoStock) {
-      return res.status(404).json({ 
-        sucesso: false, 
-        mensagem: 'Produto não encontrado no stock.' 
-      });
+      return res.status(404).json({ sucesso: false, mensagem: 'Produto não encontrado no stock' });
     }
 
+    // ATUALIZAR ESTOQUE
+    const quantidadeAntiga = produtoStock.quantidade || 0;
+    const novaQuantidade = quantidadeAntiga + quantidade;
+    const valorTotalAntigo = (produtoStock.precoCompra || 0) * quantidadeAntiga;
+    const valorTotalNovo = precoCompra * quantidade;
+    const novoPrecoMedio = novaQuantidade > 0 ? (valorTotalAntigo + valorTotalNovo) / novaQuantidade : precoCompra;
+    
+    produtoStock.quantidade = novaQuantidade;
+    produtoStock.precoCompra = novoPrecoMedio;
+    if (precoVenda) produtoStock.precoVenda = precoVenda;
+    if (numeroLote) produtoStock.numeroLote = numeroLote;
+    if (dataValidade) produtoStock.dataValidade = new Date(dataValidade);
+    if (armazem) produtoStock.armazem = armazem;
+    produtoStock.updatedAt = new Date();
+    await produtoStock.save();
+
+    console.log(`✅ Estoque atualizado: ${produtoStock.produto} - Antes: ${quantidadeAntiga} - Agora: ${novaQuantidade}`);
+
+    // ============================================
+    // GERAR PAGAMENTO
+    // ============================================
+    
     // Calcular valores
     const subtotal = quantidade * precoCompra;
-    const taxaIVA = fornecedor.fiscal?.taxaIVA || 14;
+    const suportaIVA = fornecedor.fiscal?.suportaIVA !== false;
+    const taxaIVA = suportaIVA ? (fornecedor.fiscal?.taxaIVA || 14) : 0;
     const valorIVA = (subtotal * taxaIVA) / 100;
     const valorTotal = subtotal + valorIVA;
 
+    // Calcular retenção
     let taxaRetencao = 0;
     let valorRetencao = 0;
     
@@ -538,61 +555,48 @@ router.post('/:id/adicionar-quantidade', async (req, res) => {
       valorRetencao = (valorTotal * taxaRetencao) / 100;
     }
 
-    const valorLiquido = valorTotal - valorRetencao;
+    // Gerar referência única para o pagamento
+    const ano = new Date().getFullYear();
+    const mes = String(new Date().getMonth() + 1).padStart(2, '0');
+    const count = await Pagamento.countDocuments({ empresaId: fornecedor.empresaId }) + 1;
+    const referencia = `COMP-${ano}${mes}-${String(count).padStart(4, '0')}`;
 
-    // ATUALIZAR PRODUTO
-    const novaQuantidade = (produtoStock.quantidade || 0) + quantidade;
-    const valorTotalAntigo = (produtoStock.precoCompra || 0) * (produtoStock.quantidade || 0);
-    const valorTotalNovo = precoCompra * quantidade;
-    const novoPrecoMedio = novaQuantidade > 0 ? (valorTotalAntigo + valorTotalNovo) / novaQuantidade : precoCompra;
-    
-    produtoStock.quantidade = novaQuantidade;
-    produtoStock.precoCompra = novoPrecoMedio;
-    if (precoVenda) produtoStock.precoVenda = precoVenda;
-    if (numeroLote) produtoStock.numeroLote = numeroLote;
-    if (dataValidade) produtoStock.dataValidade = new Date(dataValidade);
-    if (armazem) produtoStock.armazem = armazem;
-    produtoStock.updatedAt = new Date();
-    await produtoStock.save();
-
-    // REGISTRAR ITEM FORNECIDO
-    const mesReferencia = new Date().toISOString().slice(0, 7);
-    
+    // Criar pagamento
     const pagamento = new Pagamento({
+      referencia: referencia,
       tipo: 'Fornecedor',
+      categoria: 'Operacional',
+      subtipo: 'Compra de Mercadoria',
       origemId: fornecedor._id,
+      origemModel: 'Fornecedor',
+      origemDescricao: `Compra de ${quantidade} ${produtoStock.unidadeMedida}(s) de ${produtoNome}`,
+      empresaId: fornecedor.empresaId,
+      empresaNome: fornecedor.empresaNome,
       beneficiario: fornecedor.nome,
-      nifBeneficiario: fornecedor.nif,
+      beneficiarioDocumento: fornecedor.nif,
       valor: valorTotal,
-      valorLiquido: valorLiquido,
+      valorBruto: valorTotal,
       valorRetencao: valorRetencao,
       taxaRetencao: taxaRetencao,
-      valorIva: valorIVA,
-      taxaIva: taxaIVA,
+      valorPago: 0,
+      saldo: valorTotal - valorRetencao,
       dataVencimento: dataCompra ? new Date(dataCompra) : new Date(),
-      status: pagamentoImediato ? 'Pago' : 'pendente',
+      status: 'Pendente',
       descricao: `Compra de ${quantidade} ${produtoStock.unidadeMedida}(s) de ${produtoNome}`,
-      usuario: req.user?.nome || 'Sistema',
-      empresaId: fornecedor.empresaId,
-      detalhesPagamento: {
-        contaBancaria: fornecedor.pagamento?.iban || '',
-        modalidade: fornecedor.pagamento?.formaPagamento || 'Transferência',
-        mesReferencia: mesReferencia,
-        itens: [{
-          descricao: produtoNome,
-          quantidade: quantidade,
-          precoUnitario: precoCompra,
-          subtotal: subtotal,
-          iva: valorIVA,
-          retencao: valorRetencao,
-          total: valorTotal
-        }]
-      }
+      observacao: `Preço unitário: ${precoCompra} Kz | IVA: ${taxaIVA}% | Total: ${valorTotal} Kz`,
+      formaPagamento: fornecedor.pagamento?.formaPagamento || 'Transferência Bancária',
+      contaDebito: fornecedor.pagamento?.iban || 'Conta Principal',
+      criadoPor: req.user?.nome || 'Sistema',
+      notaInformativa: `Nova entrada de estoque. Quantidade: ${quantidade}`
     });
     
     await pagamento.save();
+    console.log(`💰 Pagamento gerado: ${pagamento.referencia} - Valor: ${valorTotal} Kz`);
 
-    // ATUALIZAR FORNECEDOR
+    // ============================================
+    // REGISTRAR NO FORNECEDOR (itensFornecidos)
+    // ============================================
+    
     if (!fornecedor.itensFornecidos) fornecedor.itensFornecidos = [];
     fornecedor.itensFornecidos.push({
       tipo: 'mercadoria',
@@ -607,9 +611,11 @@ router.post('/:id/adicionar-quantidade', async (req, res) => {
       dataRegisto: dataCompra ? new Date(dataCompra) : new Date(),
       usuario: req.user?.nome || 'Sistema',
       observacoes: observacoes || '',
-      pagamentoId: pagamento._id
+      pagamentoId: pagamento._id,
+      pagamentoReferencia: pagamento.referencia
     });
 
+    // Atualizar estatísticas do fornecedor
     fornecedor.estatisticasCompras = {
       totalCompras: (fornecedor.estatisticasCompras?.totalCompras || 0) + 1,
       totalGasto: (fornecedor.estatisticasCompras?.totalGasto || 0) + valorTotal,
@@ -617,29 +623,40 @@ router.post('/:id/adicionar-quantidade', async (req, res) => {
       quantidadeTotalProdutos: (fornecedor.estatisticasCompras?.quantidadeTotalProdutos || 0) + quantidade
     };
 
+    // ATUALIZAR produtoInfo do fornecedor com os novos valores
+    if (fornecedor.produtoInfo) {
+      fornecedor.produtoInfo.quantidade = novaQuantidade;
+      fornecedor.produtoInfo.precoCompra = novoPrecoMedio;
+      if (precoVenda) fornecedor.produtoInfo.precoVenda = precoVenda;
+      if (numeroLote) fornecedor.produtoInfo.numeroLote = numeroLote;
+      if (dataValidade) fornecedor.produtoInfo.dataValidade = new Date(dataValidade);
+      if (armazem) fornecedor.produtoInfo.armazem = armazem;
+    }
+
     await fornecedor.save();
 
+    // RESPONDER COM SUCESSO
     res.json({
       sucesso: true,
-      mensagem: `✅ Compra registrada com sucesso!`,
+      mensagem: `✅ Compra registrada! Estoque: ${quantidadeAntiga} → ${novaQuantidade} ${produtoStock.unidadeMedida}`,
       dados: {
         produto: {
-          _id: produtoStock._id,
           nome: produtoStock.produto,
-          quantidadeAtual: produtoStock.quantidade,
-          precoMedio: produtoStock.precoCompra
+          quantidadeAnterior: quantidadeAntiga,
+          quantidadeAtual: novaQuantidade,
+          precoMedio: novoPrecoMedio
         },
         compra: {
-          quantidade,
+          quantidade: quantidade,
           precoUnitario: precoCompra,
-          subtotal,
+          subtotal: subtotal,
           iva: valorIVA,
           total: valorTotal,
-          retencao: valorRetencao,
-          liquido: valorLiquido
+          retencao: valorRetencao
         },
         pagamento: {
-          _id: pagamento._id,
+          referencia: pagamento.referencia,
+          valor: valorTotal,
           status: pagamento.status,
           dataVencimento: pagamento.dataVencimento
         }
@@ -651,7 +668,8 @@ router.post('/:id/adicionar-quantidade', async (req, res) => {
     res.status(500).json({ 
       sucesso: false, 
       mensagem: 'Erro ao registrar compra', 
-      erro: error.message 
+      erro: error.message,
+      stack: error.stack
     });
   }
 });
@@ -687,7 +705,7 @@ router.get('/:id/pagamentos', async (req, res) => {
       },
       pagamentos,
       resumo: {
-        totalPendente: pagamentos.filter(p => p.status === 'pendente').reduce((sum, p) => sum + p.valor, 0),
+        totalPendente: pagamentos.filter(p => p.status === 'Pendente').reduce((sum, p) => sum + (p.saldo || p.valor), 0),
         totalPago: pagamentos.filter(p => p.status === 'Pago').reduce((sum, p) => sum + p.valor, 0),
         totalGeral: pagamentos.reduce((sum, p) => sum + p.valor, 0)
       }
