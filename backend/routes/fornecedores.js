@@ -1,4 +1,4 @@
-// backend/routes/fornecedores.js
+// backend/routes/fornecedores.js - VERSÃO SIMPLIFICADA (SEM gerarPagamentoCompra)
 const express = require('express');
 const router = express.Router();
 const mongoose = require('mongoose');
@@ -11,74 +11,7 @@ const { verifyToken } = require('../middlewares/auth');
 router.use(verifyToken);
 
 // ============================================
-// FUNÇÃO PARA GERAR PAGAMENTO DE COMPRA DE MERCADORIA (CORRIGIDA)
-// ============================================
-async function gerarPagamentoCompra(fornecedor, quantidade, precoCompra, produtoNome, unidadeMedida, usuario, dataCompra = null) {
-  try {
-    const subtotal = quantidade * precoCompra;
-    const suportaIVA = fornecedor.fiscal?.suportaIVA !== false;
-    const taxaIVA = suportaIVA ? (fornecedor.fiscal?.taxaIVA || 14) : 0;
-    const valorIVA = (subtotal * taxaIVA) / 100;
-    const valorTotal = subtotal + valorIVA;
-
-    let taxaRetencao = 0;
-    let valorRetencao = 0;
-    
-    if (fornecedor.fiscal?.retencaoFonte) {
-      taxaRetencao = fornecedor.fiscal?.taxaRetencao || 0;
-      if (taxaRetencao === 0 && fornecedor.fiscal?.tipoRetencao === 'Renda') {
-        taxaRetencao = 15;
-      } else if (taxaRetencao === 0 && fornecedor.fiscal?.tipoRetencao === 'Serviços') {
-        taxaRetencao = 6.5;
-      }
-      valorRetencao = (valorTotal * taxaRetencao) / 100;
-    }
-
-    const ano = new Date().getFullYear();
-    const mes = String(new Date().getMonth() + 1).padStart(2, '0');
-    const count = await Pagamento.countDocuments({ empresaId: fornecedor.empresaId }) + 1;
-    const referencia = `PAG-${ano}${mes}-${String(count).padStart(4, '0')}`;
-
-    const pagamento = new Pagamento({
-      referencia: referencia,
-      tipo: 'Fornecedor',
-      categoria: 'Operacional',
-      subtipo: 'Compra de Mercadoria',
-      origemId: fornecedor._id,
-      origemModel: 'Fornecedor',
-      origemDescricao: `Compra de ${quantidade} ${unidadeMedida}(s) de ${produtoNome}`,
-      empresaId: fornecedor.empresaId,
-      empresaNome: fornecedor.empresaNome,
-      beneficiario: fornecedor.nome,
-      beneficiarioDocumento: fornecedor.nif,
-      valor: valorTotal,
-      valorBruto: valorTotal,
-      valorRetencao: valorRetencao,
-      taxaRetencao: taxaRetencao,
-      valorPago: 0,
-      saldo: valorTotal - valorRetencao,
-      dataVencimento: dataCompra ? new Date(dataCompra) : new Date(),
-      status: 'Pendente',
-      descricao: `Compra de ${quantidade} ${unidadeMedida}(s) de ${produtoNome}`,
-      observacao: `Preço unitário: ${precoCompra} Kz | IVA: ${taxaIVA}% | Subtotal: ${subtotal} Kz | Total: ${valorTotal} Kz`,
-      formaPagamento: fornecedor.pagamento?.formaPagamento || 'Transferência Bancária',
-      contaDebito: fornecedor.pagamento?.iban || 'Conta Principal',
-      criadoPor: usuario,
-      notaInformativa: `Compra registrada. Produto: ${produtoNome}`
-    });
-    
-    await pagamento.save();
-    console.log(`💰 Pagamento de compra gerado: ${pagamento.referencia} - Valor: ${valorTotal} Kz`);
-    
-    return pagamento;
-  } catch (error) {
-    console.error('❌ Erro ao gerar pagamento de compra:', error.message);
-    return null;
-  }
-}
-
-// ============================================
-// FUNÇÃO PARA GERAR PAGAMENTO DE CONTRATO (CORRIGIDA)
+// FUNÇÃO PARA GERAR PAGAMENTO DE CONTRATO
 // ============================================
 async function gerarPagamentoContrato(fornecedor, contrato, usuario) {
   try {
@@ -125,15 +58,15 @@ async function gerarPagamentoContrato(fornecedor, contrato, usuario) {
       formaPagamento: fornecedor.pagamento?.formaPagamento || 'Transferência Bancária',
       contaDebito: fornecedor.pagamento?.iban || 'Conta Principal',
       criadoPor: usuario,
-      notaInformativa: `Pagamento recorrente - ${contrato.modalidadePagamento}`
+      notaInformativa: `Pagamento - ${contrato.modalidadePagamento}`
     });
     
     await pagamento.save();
-    console.log(`💰 Pagamento de contrato gerado: ${pagamento.referencia} - Valor: ${contrato.valor} Kz`);
+    console.log(`💰 Pagamento gerado: ${pagamento.referencia} - Valor: ${contrato.valor} Kz`);
     
     return pagamento;
   } catch (error) {
-    console.error('❌ Erro ao gerar pagamento de contrato:', error.message);
+    console.error('❌ Erro ao gerar pagamento:', error.message);
     return null;
   }
 }
@@ -213,6 +146,44 @@ async function criarProdutoNoStock(fornecedor, produtoInfo, empresaId, usuario) 
     console.error(`❌ Erro ao processar produto:`, error.message);
     return null;
   }
+}
+
+// ============================================
+// FUNÇÃO PARA CRIAR CONTRATO DE COMPRA (MERCADORIA)
+// ============================================
+async function criarContratoCompra(fornecedor, quantidade, precoCompra, produtoNome, unidadeMedida, dataCompra, usuario) {
+  // Calcular valores
+  const subtotal = quantidade * precoCompra;
+  const suportaIVA = fornecedor.fiscal?.suportaIVA !== false;
+  const taxaIVA = suportaIVA ? (fornecedor.fiscal?.taxaIVA || 14) : 0;
+  const valorIVA = (subtotal * taxaIVA) / 100;
+  const valorTotal = subtotal + valorIVA;
+
+  // Data de vencimento (30 dias após a compra)
+  const dataVencimento = dataCompra ? new Date(dataCompra) : new Date();
+  dataVencimento.setDate(dataVencimento.getDate() + 30);
+
+  // Criar o contrato
+  const novoContrato = {
+    descricao: `Compra de ${quantidade} ${unidadeMedida}(s) de ${produtoNome}`,
+    valor: valorTotal,
+    dataInicio: dataCompra ? new Date(dataCompra) : new Date(),
+    dataFim: dataVencimento,
+    modalidadePagamento: "Único",
+    diaVencimento: dataVencimento.getDate(),
+    diaPagamento: dataVencimento.getDate(),
+    avisoAntecedencia: 5,
+    proximoPagamento: dataVencimento
+  };
+
+  // Adicionar contrato ao fornecedor
+  if (!fornecedor.contratos) fornecedor.contratos = [];
+  fornecedor.contratos.push(novoContrato);
+
+  // Gerar pagamento
+  const pagamento = await gerarPagamentoContrato(fornecedor, novoContrato, usuario);
+
+  return { contrato: novoContrato, pagamento, valorTotal };
 }
 
 // ============================================
@@ -377,7 +348,7 @@ router.post('/', async (req, res) => {
         banco: pagamento?.banco || '',
         iban: pagamento?.iban || '',
         swift: pagamento?.swift || '',
-        formaPagamento: pagamento?.formaPagamento || 'Transferência'
+        formaPagamento: pagamento?.formaPagamento || 'Transferência Bancária'
       },
       contratos: contratos || [],
       produtoInfo: produtoInfo || null,
@@ -392,7 +363,7 @@ router.post('/', async (req, res) => {
     let produtoCriado = null;
     let pagamentosGerados = [];
     
-    // INTEGRAÇÃO PARA MERCADORIA
+    // INTEGRAÇÃO PARA MERCADORIA (cria produto e contrato)
     if ((tipoFornecedor === 'mercadoria' || tipoServico === 'mercadoria') && produtoInfo && produtoInfo.produto) {
       console.log(`📦 Processando produto para stock...`);
       produtoCriado = await criarProdutoNoStock(fornecedor, produtoInfo, empresaIdFinal, req.user?.nome || 'Sistema');
@@ -403,21 +374,22 @@ router.post('/', async (req, res) => {
         await fornecedor.save();
       }
       
+      // Criar contrato para a compra inicial
       if (produtoInfo.quantidade > 0 && produtoInfo.precoCompra > 0) {
-        const pagamento = await gerarPagamentoCompra(
-          fornecedor, 
-          produtoInfo.quantidade, 
-          produtoInfo.precoCompra, 
-          produtoInfo.produto, 
+        const { contrato, pagamento, valorTotal } = await criarContratoCompra(
+          fornecedor,
+          produtoInfo.quantidade,
+          produtoInfo.precoCompra,
+          produtoInfo.produto,
           produtoInfo.unidadeMedida || 'Unidade',
-          req.user?.nome || 'Sistema',
-          null
+          null,
+          req.user?.nome || 'Sistema'
         );
         if (pagamento) pagamentosGerados.push(pagamento);
       }
     }
     
-    // INTEGRAÇÃO PARA CONTRATOS
+    // INTEGRAÇÃO PARA CONTRATOS (serviços, renda, internet)
     if (contratos && contratos.length > 0) {
       console.log(`📄 Processando ${contratos.length} contratos...`);
       for (const contrato of contratos) {
@@ -467,20 +439,17 @@ router.post('/:id/adicionar-quantidade', async (req, res) => {
       observacoes
     } = req.body;
 
-    console.log('📦 Recebida requisição:', { id, quantidade, precoCompra });
+    console.log('📦 Adicionando quantidade:', { id, quantidade, precoCompra });
 
-    // Validar ID
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return res.status(400).json({ sucesso: false, mensagem: 'ID inválido' });
     }
 
-    // Buscar fornecedor
     const fornecedor = await Fornecedor.findById(id);
     if (!fornecedor) {
       return res.status(404).json({ sucesso: false, mensagem: 'Fornecedor não encontrado' });
     }
 
-    // Verificar se é mercadoria
     if (fornecedor.tipoFornecedor !== 'mercadoria') {
       return res.status(400).json({ 
         sucesso: false, 
@@ -488,7 +457,6 @@ router.post('/:id/adicionar-quantidade', async (req, res) => {
       });
     }
 
-    // Validar dados
     if (!quantidade || quantidade <= 0) {
       return res.status(400).json({ sucesso: false, mensagem: 'Quantidade é obrigatória' });
     }
@@ -501,7 +469,6 @@ router.post('/:id/adicionar-quantidade', async (req, res) => {
       return res.status(400).json({ sucesso: false, mensagem: 'Produto não configurado' });
     }
 
-    // Buscar produto no stock
     let produtoStock = await Stock.findOne({
       produto: produtoNome,
       empresaId: fornecedor.empresaId,
@@ -525,78 +492,25 @@ router.post('/:id/adicionar-quantidade', async (req, res) => {
     if (numeroLote) produtoStock.numeroLote = numeroLote;
     if (dataValidade) produtoStock.dataValidade = new Date(dataValidade);
     if (armazem) produtoStock.armazem = armazem;
-    produtoStock.updatedAt = new Date();
     await produtoStock.save();
 
-    console.log(`✅ Estoque atualizado: ${produtoStock.produto} - Antes: ${quantidadeAntiga} - Agora: ${novaQuantidade}`);
+    console.log(`✅ Estoque atualizado: ${quantidadeAntiga} → ${novaQuantidade}`);
 
     // ============================================
-    // GERAR PAGAMENTO
+    // CRIAR CONTRATO PARA A COMPRA (IGUAL AOS SERVIÇOS)
     // ============================================
     
-    // Calcular valores
-    const subtotal = quantidade * precoCompra;
-    const suportaIVA = fornecedor.fiscal?.suportaIVA !== false;
-    const taxaIVA = suportaIVA ? (fornecedor.fiscal?.taxaIVA || 14) : 0;
-    const valorIVA = (subtotal * taxaIVA) / 100;
-    const valorTotal = subtotal + valorIVA;
+    const { contrato, pagamento, valorTotal } = await criarContratoCompra(
+      fornecedor,
+      quantidade,
+      precoCompra,
+      produtoNome,
+      produtoStock.unidadeMedida,
+      dataCompra,
+      req.user?.nome || 'Sistema'
+    );
 
-    // Calcular retenção
-    let taxaRetencao = 0;
-    let valorRetencao = 0;
-    
-    if (fornecedor.fiscal?.retencaoFonte) {
-      taxaRetencao = fornecedor.fiscal?.taxaRetencao || 0;
-      if (taxaRetencao === 0 && fornecedor.fiscal?.tipoRetencao === 'Renda') {
-        taxaRetencao = 15;
-      } else if (taxaRetencao === 0 && fornecedor.fiscal?.tipoRetencao === 'Serviços') {
-        taxaRetencao = 6.5;
-      }
-      valorRetencao = (valorTotal * taxaRetencao) / 100;
-    }
-
-    // Gerar referência única para o pagamento
-    const ano = new Date().getFullYear();
-    const mes = String(new Date().getMonth() + 1).padStart(2, '0');
-    const count = await Pagamento.countDocuments({ empresaId: fornecedor.empresaId }) + 1;
-    const referencia = `COMP-${ano}${mes}-${String(count).padStart(4, '0')}`;
-
-    // Criar pagamento
-    const pagamento = new Pagamento({
-      referencia: referencia,
-      tipo: 'Fornecedor',
-      categoria: 'Operacional',
-      subtipo: 'Compra de Mercadoria',
-      origemId: fornecedor._id,
-      origemModel: 'Fornecedor',
-      origemDescricao: `Compra de ${quantidade} ${produtoStock.unidadeMedida}(s) de ${produtoNome}`,
-      empresaId: fornecedor.empresaId,
-      empresaNome: fornecedor.empresaNome,
-      beneficiario: fornecedor.nome,
-      beneficiarioDocumento: fornecedor.nif,
-      valor: valorTotal,
-      valorBruto: valorTotal,
-      valorRetencao: valorRetencao,
-      taxaRetencao: taxaRetencao,
-      valorPago: 0,
-      saldo: valorTotal - valorRetencao,
-      dataVencimento: dataCompra ? new Date(dataCompra) : new Date(),
-      status: 'Pendente',
-      descricao: `Compra de ${quantidade} ${produtoStock.unidadeMedida}(s) de ${produtoNome}`,
-      observacao: `Preço unitário: ${precoCompra} Kz | IVA: ${taxaIVA}% | Total: ${valorTotal} Kz`,
-      formaPagamento: fornecedor.pagamento?.formaPagamento || 'Transferência Bancária',
-      contaDebito: fornecedor.pagamento?.iban || 'Conta Principal',
-      criadoPor: req.user?.nome || 'Sistema',
-      notaInformativa: `Nova entrada de estoque. Quantidade: ${quantidade}`
-    });
-    
-    await pagamento.save();
-    console.log(`💰 Pagamento gerado: ${pagamento.referencia} - Valor: ${valorTotal} Kz`);
-
-    // ============================================
-    // REGISTRAR NO FORNECEDOR (itensFornecidos)
-    // ============================================
-    
+    // REGISTRAR ITEM FORNECIDO
     if (!fornecedor.itensFornecidos) fornecedor.itensFornecidos = [];
     fornecedor.itensFornecidos.push({
       tipo: 'mercadoria',
@@ -611,11 +525,12 @@ router.post('/:id/adicionar-quantidade', async (req, res) => {
       dataRegisto: dataCompra ? new Date(dataCompra) : new Date(),
       usuario: req.user?.nome || 'Sistema',
       observacoes: observacoes || '',
-      pagamentoId: pagamento._id,
-      pagamentoReferencia: pagamento.referencia
+      pagamentoId: pagamento?._id,
+      pagamentoReferencia: pagamento?.referencia,
+      contratoId: contrato._id
     });
 
-    // Atualizar estatísticas do fornecedor
+    // ATUALIZAR ESTATÍSTICAS
     fornecedor.estatisticasCompras = {
       totalCompras: (fornecedor.estatisticasCompras?.totalCompras || 0) + 1,
       totalGasto: (fornecedor.estatisticasCompras?.totalGasto || 0) + valorTotal,
@@ -623,22 +538,18 @@ router.post('/:id/adicionar-quantidade', async (req, res) => {
       quantidadeTotalProdutos: (fornecedor.estatisticasCompras?.quantidadeTotalProdutos || 0) + quantidade
     };
 
-    // ATUALIZAR produtoInfo do fornecedor com os novos valores
+    // ATUALIZAR produtoInfo
     if (fornecedor.produtoInfo) {
       fornecedor.produtoInfo.quantidade = novaQuantidade;
       fornecedor.produtoInfo.precoCompra = novoPrecoMedio;
       if (precoVenda) fornecedor.produtoInfo.precoVenda = precoVenda;
-      if (numeroLote) fornecedor.produtoInfo.numeroLote = numeroLote;
-      if (dataValidade) fornecedor.produtoInfo.dataValidade = new Date(dataValidade);
-      if (armazem) fornecedor.produtoInfo.armazem = armazem;
     }
 
     await fornecedor.save();
 
-    // RESPONDER COM SUCESSO
     res.json({
       sucesso: true,
-      mensagem: `✅ Compra registrada! Estoque: ${quantidadeAntiga} → ${novaQuantidade} ${produtoStock.unidadeMedida}`,
+      mensagem: `✅ Compra registrada! Contrato criado: ${contrato.descricao}`,
       dados: {
         produto: {
           nome: produtoStock.produto,
@@ -646,20 +557,18 @@ router.post('/:id/adicionar-quantidade', async (req, res) => {
           quantidadeAtual: novaQuantidade,
           precoMedio: novoPrecoMedio
         },
-        compra: {
-          quantidade: quantidade,
-          precoUnitario: precoCompra,
-          subtotal: subtotal,
-          iva: valorIVA,
-          total: valorTotal,
-          retencao: valorRetencao
-        },
-        pagamento: {
-          referencia: pagamento.referencia,
+        contrato: {
+          descricao: contrato.descricao,
           valor: valorTotal,
+          dataVencimento: contrato.dataFim,
+          status: 'Pendente'
+        },
+        pagamento: pagamento ? {
+          referencia: pagamento.referencia,
+          valor: pagamento.valor,
           status: pagamento.status,
           dataVencimento: pagamento.dataVencimento
-        }
+        } : null
       }
     });
     
@@ -668,8 +577,7 @@ router.post('/:id/adicionar-quantidade', async (req, res) => {
     res.status(500).json({ 
       sucesso: false, 
       mensagem: 'Erro ao registrar compra', 
-      erro: error.message,
-      stack: error.stack
+      erro: error.message
     });
   }
 });
