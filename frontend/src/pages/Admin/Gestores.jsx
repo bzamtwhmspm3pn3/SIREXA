@@ -15,11 +15,11 @@ const Gestores = () => {
 
   const carregarGestores = async () => {
     try {
-      const response = await fetch('https://sirexa-api.onrender.com/api/gestor', {
+      const response = await fetch('https://sirexa-api.onrender.com/api/gestor/admin/gestores', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await response.json();
-      setGestores(Array.isArray(data) ? data : []);
+      setGestores(data.gestores || []);
     } catch (error) {
       console.error('Erro ao carregar gestores:', error);
     } finally {
@@ -62,8 +62,8 @@ const Gestores = () => {
               </tr>
             </thead>
             <tbody>
-              {gestores.map((gestor, index) => (
-                <tr key={index} className="border-t border-gray-700 hover:bg-gray-700/50 transition">
+              {gestores.map((gestor) => (
+                <tr key={gestor._id} className="border-t border-gray-700 hover:bg-gray-700/50 transition">
                   <td className="p-4 text-white font-medium">{gestor.nome}</td>
                   <td className="p-4 text-gray-300">{gestor.email}</td>
                   <td className="p-4 text-gray-300">{gestor.telefone || '—'}</td>

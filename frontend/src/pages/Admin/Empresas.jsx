@@ -15,11 +15,11 @@ const Empresas = () => {
 
   const carregarEmpresas = async () => {
     try {
-      const response = await fetch('https://sirexa-api.onrender.com/api/empresa', {
+      const response = await fetch('https://sirexa-api.onrender.com/api/gestor/admin/empresas', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await response.json();
-      setEmpresas(Array.isArray(data) ? data : []);
+      setEmpresas(data.empresas || []);
     } catch (error) {
       console.error('Erro ao carregar empresas:', error);
     } finally {
@@ -63,8 +63,8 @@ const Empresas = () => {
               </tr>
             </thead>
             <tbody>
-              {empresas.map((empresa, index) => (
-                <tr key={index} className="border-t border-gray-700 hover:bg-gray-700/50 transition">
+              {empresas.map((empresa) => (
+                <tr key={empresa._id} className="border-t border-gray-700 hover:bg-gray-700/50 transition">
                   <td className="p-4 text-white font-medium">{empresa.nome}</td>
                   <td className="p-4 text-gray-300">{empresa.nif}</td>
                   <td className="p-4 text-gray-300">{empresa.contactos?.email || '—'}</td>

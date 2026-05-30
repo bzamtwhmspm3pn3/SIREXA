@@ -1,4 +1,4 @@
-// src/pages/Admin/DashboardAdmin.jsx (COMPLETO E CORRIGIDO)
+// src/pages/Admin/DashboardAdmin.jsx
 import React, { useState, useEffect } from 'react';
 import LayoutAdmin from './LayoutAdmin';
 import { useAuth } from '../../contexts/AuthContext';
@@ -32,22 +32,33 @@ const DashboardAdmin = () => {
     try {
       console.log("📊 Carregando dashboard administrativo...");
       
-      // Dados mockados para teste
+      // Buscar gestores
+      const gestoresRes = await fetch('https://sirexa-api.onrender.com/api/gestor/admin/gestores', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const gestoresData = await gestoresRes.json();
+      
+      // Buscar empresas
+      const empresasRes = await fetch('https://sirexa-api.onrender.com/api/gestor/admin/empresas', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const empresasData = await empresasRes.json();
+      
+      // Buscar licenças
+      const licencasRes = await fetch('https://sirexa-api.onrender.com/api/gestor/admin/licencas', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const licencasData = await licencasRes.json();
+      
+      const licencas = licencasData.licencas || [];
+      
       setStats({
-        totalGestores: 1,
-        totalEmpresas: 1,
-        totalLicencas: 5,
-        licencasAtivas: 3,
-        licencasExpiradas: 2,
-        ultimosCadastros: [
-          { 
-            nome: "Venâncio Martins", 
-            email: "venanciomartinse@gmail.com", 
-            telefone: "+244 923 456 789",
-            createdAt: new Date().toISOString(),
-            ativo: true 
-          }
-        ]
+        totalGestores: gestoresData.gestores?.length || 0,
+        totalEmpresas: empresasData.empresas?.length || 0,
+        totalLicencas: licencas.length,
+        licencasAtivas: licencas.filter(l => l.status === 'ativa').length,
+        licencasExpiradas: licencas.filter(l => l.status === 'expirada').length,
+        ultimosCadastros: gestoresData.gestores?.slice(0, 5) || []
       });
       
     } catch (error) {
@@ -140,7 +151,7 @@ const DashboardAdmin = () => {
           <ShieldCheck className="text-blue-400" size={20} />
           <div>
             <p className="text-blue-400 text-sm font-medium">Você está logado como Administrador</p>
-            <p className="text-gray-300 text-xs">Email: venanciomartinse@gmail.com | Role: admin_sistema</p>
+            <p className="text-gray-300 text-xs">Email: admin@sirexa.ao | Role: admin_sistema</p>
           </div>
         </div>
       </div>
@@ -150,7 +161,12 @@ const DashboardAdmin = () => {
         <div className="bg-gradient-to-r from-blue-600/20 to-purple-600/20 px-6 py-4 border-b border-gray-700">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-bold text-white">Últimos Gestores Cadastrados</h2>
-            <button className="text-sm text-purple-400 hover:text-purple-300 transition">Ver todos</button>
+            <button 
+              onClick={() => window.location.href = "/admin/gestores"}
+              className="text-sm text-purple-400 hover:text-purple-300 transition"
+            >
+              Ver todos
+            </button>
           </div>
         </div>
         <div className="overflow-x-auto">
@@ -159,7 +175,6 @@ const DashboardAdmin = () => {
               <tr className="text-gray-300 text-sm">
                 <th className="p-4 text-left">Nome</th>
                 <th className="p-4 text-left">Email</th>
-                <th className="p-4 text-left">Telefone</th>
                 <th className="p-4 text-left">Data Cadastro</th>
                 <th className="p-4 text-center">Status</th>
                 <th className="p-4 text-center">Ações</th>
@@ -170,22 +185,37 @@ const DashboardAdmin = () => {
                 <tr key={index} className="border-t border-gray-700 hover:bg-gray-700/50 transition">
                   <td className="p-4 text-white font-medium">{gestor.nome}</td>
                   <td className="p-4 text-gray-300">{gestor.email}</td>
-                  <td className="p-4 text-gray-300">{gestor.telefone || '—'}</td>
                   <td className="p-4 text-gray-300">
-                    {new Date().toLocaleDateString('pt-PT')}
+                    {gestor.createdAt ? new Date(gestor.createdAt).toLocaleDateString('pt-PT') : new Date().toLocaleDateString('pt-PT')}
                   </td>
                   <td className="p-4 text-center">
-                    <span className="px-2 py-1 bg-green-500/20 text-green-400 rounded-full text-xs flex items-center gap-1 justify-center w-20 mx-auto">
-                      <CheckCircle size={10} /> Ativo
-                    </span>
-                  </td>
+                    {gestor.ativo !== false ? (
+                      <span className="px-2 py-1 bg-green-500/20 text-green-400 rounded-full text-xs flex items-center gap-1 justify-center w-20 mx-auto">
+                        <CheckCircle size={10} /> Ativo
+                      </span>
+                    ) : (
+                      <span className="px-2 py-1 bg-red-500/20 text-red-400 rounded-full text-xs flex items-center gap-1 justify-center w-20 mx-auto">
+                        <XCircle size={10} /> Inativo
+                      </span>
+                    )}
+                  </tr>
                   <td className="p-4 text-center">
-                    <button className="p-1 text-blue-400 hover:text-blue-300 transition">
+                    <button 
+                      onClick={() => window.location.href = `/gestor/visualizar/${gestor._id}`}
+                      className="p-1 text-blue-400 hover:text-blue-300 transition"
+                    >
                       <Eye size={16} />
                     </button>
                   </td>
-                </tr>
+                <tr>
               ))}
+              {stats.ultimosCadastros.length === 0 && (
+                <tr>
+                  <td colSpan="5" className="p-8 text-center text-gray-500">
+                    Nenhum gestor cadastrado ainda
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
@@ -205,7 +235,7 @@ const DashboardAdmin = () => {
             </div>
             <div className="flex justify-between">
               <span className="text-gray-400">Usuário logado:</span>
-              <span className="text-white">Venâncio Martins (Admin)</span>
+              <span className="text-white">Administrador SIREXA</span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-400">Role:</span>

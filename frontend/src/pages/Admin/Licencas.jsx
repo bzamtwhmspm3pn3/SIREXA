@@ -1,15 +1,41 @@
 // src/pages/Admin/Licencas.jsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import LayoutAdmin from './LayoutAdmin';
-import { Key, CheckCircle, XCircle, Clock, Eye, Copy } from 'lucide-react';
+import { useAuth } from '../../contexts/AuthContext';
+import { Key, CheckCircle, XCircle, Eye, Copy, Loader2 } from 'lucide-react';
 
 const Licencas = () => {
-  // Dados mockados para exemplo
-  const [licencas] = useState([
-    { id: 1, chave: 'ABCD-1234-EFGH-5678', cliente: 'empresa1@gmail.com', plano: 'Empresarial', status: 'ativa', dataCriacao: '2024-01-15', dataExpiracao: '2025-01-15' },
-    { id: 2, chave: 'IJKL-9012-MNOP-3456', cliente: 'empresa2@gmail.com', plano: 'Profissional', status: 'ativa', dataCriacao: '2024-02-20', dataExpiracao: '2025-02-20' },
-    { id: 3, chave: 'QRST-7890-UVWX-1234', cliente: 'empresa3@gmail.com', plano: 'Básico', status: 'expirada', dataCriacao: '2023-03-10', dataExpiracao: '2024-03-10' },
-  ]);
+  const { token } = useAuth();
+  const [licencas, setLicencas] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    carregarLicencas();
+  }, []);
+
+  const carregarLicencas = async () => {
+    try {
+      const response = await fetch('https://sirexa-api.onrender.com/api/gestor/admin/licencas', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await response.json();
+      setLicencas(data.licencas || []);
+    } catch (error) {
+      console.error('Erro ao carregar licenças:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <LayoutAdmin title="Licenças">
+        <div className="flex items-center justify-center h-96">
+          <Loader2 className="animate-spin text-purple-400" size={40} />
+        </div>
+      </LayoutAdmin>
+    );
+  }
 
   return (
     <LayoutAdmin title="Gerenciar Licenças">
@@ -38,18 +64,22 @@ const Licencas = () => {
             </thead>
             <tbody>
               {licencas.map((licenca) => (
-                <tr key={licenca.id} className="border-t border-gray-700 hover:bg-gray-700/50 transition">
+                <tr key={licenca._id} className="border-t border-gray-700 hover:bg-gray-700/50 transition">
                   <td className="p-4">
                     <code className="text-yellow-400 text-sm font-mono">{licenca.chave}</code>
                   </td>
-                  <td className="p-4 text-gray-300">{licenca.cliente}</td>
+                  <td className="p-4 text-gray-300">{licenca.email}</td>
                   <td className="p-4">
                     <span className="px-2 py-1 bg-purple-500/20 text-purple-400 rounded-full text-xs">
                       {licenca.plano}
                     </span>
                   </td>
-                  <td className="p-4 text-gray-300">{new Date(licenca.dataCriacao).toLocaleDateString('pt-PT')}</td>
-                  <td className="p-4 text-gray-300">{new Date(licenca.dataExpiracao).toLocaleDateString('pt-PT')}</td>
+                  <td className="p-4 text-gray-300">
+                    {new Date(licenca.createdAt).toLocaleDateString('pt-PT')}
+                  </td>
+                  <td className="p-4 text-gray-300">
+                    {licenca.dataExpiracao ? new Date(licenca.dataExpiracao).toLocaleDateString('pt-PT') : '—'}
+                  </td>
                   <td className="p-4 text-center">
                     {licenca.status === 'ativa' ? (
                       <span className="px-2 py-1 bg-green-500/20 text-green-400 rounded-full text-xs flex items-center gap-1 justify-center w-24 mx-auto">
@@ -57,22 +87,26 @@ const Licencas = () => {
                       </span>
                     ) : (
                       <span className="px-2 py-1 bg-red-500/20 text-red-400 rounded-full text-xs flex items-center gap-1 justify-center w-24 mx-auto">
-                        <XCircle size={10} /> Expirada
+                        <XCircle size={10} /> {licenca.status}
                       </span>
                     )}
                   </td>
                   <td className="p-4 text-center">
                     <div className="flex items-center justify-center gap-2">
-                      <button className="p-1 text-blue-400 hover:text-blue-300 transition" title="Visualizar">
-                        <Eye size={16} />
-                      </button>
-                      <button className="p-1 text-yellow-400 hover:text-yellow-300 transition" title="Copiar chave">
+                      <button className="p-1 text-blue-400 hover:text-blue-300 transition" title="Copiar chave">
                         <Copy size={16} />
                       </button>
                     </div>
                   </td>
                 </tr>
               ))}
+              {licencas.length === 0 && (
+                <tr>
+                  <td colSpan="7" className="p-8 text-center text-gray-500">
+                    Nenhuma licença encontrada
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>

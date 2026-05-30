@@ -33,17 +33,31 @@ const GerarChave = () => {
     setMensagem({ texto: '', tipo: '' });
 
     try {
-      // Simular geração de chave (backend será implementado depois)
-      const chaveSimulada = `${Math.random().toString(36).substring(2, 6).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+      const response = await fetch('https://sirexa-api.onrender.com/api/gestor/admin/gerar-chave', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          email,
+          plano,
+          diasValidade
+        })
+      });
+
+      const data = await response.json();
       
-      setTimeout(() => {
-        setChaveGerada(chaveSimulada);
+      if (response.ok && data.sucesso) {
+        setChaveGerada(data.chave);
         setMensagem({ texto: '✅ Chave gerada com sucesso!', tipo: 'sucesso' });
-        setLoading(false);
-      }, 1000);
-      
+      } else {
+        setMensagem({ texto: data.mensagem || 'Erro ao gerar chave', tipo: 'erro' });
+      }
     } catch (error) {
-      setMensagem({ texto: 'Erro ao gerar chave', tipo: 'erro' });
+      console.error('Erro:', error);
+      setMensagem({ texto: 'Erro ao conectar ao servidor', tipo: 'erro' });
+    } finally {
       setLoading(false);
     }
   };
@@ -171,7 +185,6 @@ const GerarChave = () => {
           )}
         </div>
 
-        {/* Informação */}
         <div className="mt-4 p-4 bg-blue-600/10 rounded-xl border border-blue-500/20">
           <p className="text-blue-400 text-sm font-medium mb-1">ℹ️ Como funciona?</p>
           <p className="text-gray-400 text-xs">
