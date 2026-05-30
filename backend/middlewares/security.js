@@ -1,12 +1,11 @@
 // backend/middlewares/security.js
 const rateLimit = require('express-rate-limit');
 const helmet = require('helmet');
-const mongoSanitize = require('express-mongo-sanitize');
 const xss = require('xss-clean');
 const hpp = require('hpp');
 
 // ============================================
-// RATE LIMITING CONFIGURATIONS (NOVO)
+// RATE LIMITING CONFIGURATIONS
 // ============================================
 
 // Limite geral para API (100 requisições por 15 minutos)
@@ -46,7 +45,7 @@ const keyValidationLimiter = rateLimit({
 });
 
 // ============================================
-// HEADERS DE SEGURANÇA (NOVO)
+// HEADERS DE SEGURANÇA
 // ============================================
 
 const securityHeaders = helmet({
@@ -68,21 +67,20 @@ const securityHeaders = helmet({
 });
 
 // ============================================
-// SANITIZAÇÃO (NOVO)
+// SANITIZAÇÃO (DESABILITADA TEMPORARIAMENTE)
 // ============================================
 
-const sanitizeInput = mongoSanitize({
-  replaceWith: '_',
-  onSanitize: ({ req, key }) => {
-    console.log(`⚠️ [SECURITY] Sanitizado: ${key}`);
-  }
-});
+// Função sanitize desabilitada para evitar erro no Render
+const sanitizeInput = (req, res, next) => {
+  // Desabilitado - apenas passa para o próximo middleware
+  next();
+};
 
 const protectXSS = xss();
 const preventHpp = hpp();
 
 // ============================================
-// LOG DE REQUISIÇÕES (NOVO)
+// LOG DE REQUISIÇÕES
 // ============================================
 
 const requestLogger = (req, res, next) => {
@@ -98,7 +96,7 @@ const requestLogger = (req, res, next) => {
 };
 
 // ============================================
-// VALIDAÇÃO DE ACESSO À EMPRESA (JÁ EXISTENTE)
+// VALIDAÇÃO DE ACESSO À EMPRESA
 // ============================================
 
 const validateEmpresaAccess = (req, res, next) => {
@@ -167,7 +165,7 @@ const validateEmpresaAccess = (req, res, next) => {
 };
 
 // ============================================
-// VERIFICAÇÃO DE LICENÇA (NOVO)
+// VERIFICAÇÃO DE LICENÇA
 // ============================================
 
 const verificarLicenca = async (req, res, next) => {
@@ -223,7 +221,7 @@ const verificarLicenca = async (req, res, next) => {
 };
 
 // ============================================
-// VERIFICAÇÃO DE MÓDULO (NOVO)
+// VERIFICAÇÃO DE MÓDULO
 // ============================================
 
 const verificarModulo = (modulo) => {
@@ -256,7 +254,7 @@ const verificarModulo = (modulo) => {
 };
 
 // ============================================
-// VERIFICAÇÃO DE LIMITES (NOVO)
+// VERIFICAÇÃO DE LIMITES
 // ============================================
 
 const verificarLimite = (tipo) => {
