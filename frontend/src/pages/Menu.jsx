@@ -1,5 +1,5 @@
-// src/pages/Menu.jsx (CORRIGIDO - SEM DASHBOARD DA CONTABILIDADE)
-import { Link } from "react-router-dom";
+// src/pages/Menu.jsx (CORRIGIDO - COM REDIRECIONAMENTO PARA ADMIN)
+import { Link, Navigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import Layout from "../components/Layout";
 import { 
@@ -7,11 +7,16 @@ import {
   Truck, ArrowRightLeft, PieChart, Wallet, UserCog, ClipboardList,
   Calendar, Gift, Package, Fuel, Wrench, Boxes, ShoppingCart,
   Receipt, Sparkles, Rocket, Zap, Crown, Shield, Briefcase, Target, Globe,
-  BookOpen, RefreshCw, Calculator, BookCopy,Activity 
+  BookOpen, RefreshCw, Calculator, BookCopy, Activity 
 } from "lucide-react";
 
 export default function Menu() {
   const { user, isGestor, isTecnico, empresaId, empresaNome } = useAuth();
+
+  // 🔥 SE FOR ADMIN, REDIRECIONAR PARA /admin
+  if (user?.role === "admin_sistema") {
+    return <Navigate to="/admin" replace />;
+  }
 
   const getHoraSaudacao = () => {
     const hora = new Date().getHours();

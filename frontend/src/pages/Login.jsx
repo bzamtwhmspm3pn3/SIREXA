@@ -1,4 +1,4 @@
-// src/pages/Login.jsx (adicionar tratamento para email não confirmado)
+// src/pages/Login.jsx
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
@@ -30,7 +30,7 @@ const Login = () => {
   const [confirmarNovaSenha, setConfirmarNovaSenha] = useState("");
   const [showNovaSenha, setShowNovaSenha] = useState(false);
 
-  // 🔥 Estado para email não confirmado
+  // Estado para email não confirmado
   const [precisaConfirmacao, setPrecisaConfirmacao] = useState(false);
   const [emailNaoConfirmado, setEmailNaoConfirmado] = useState("");
   const [reenviando, setReenviando] = useState(false);
@@ -49,7 +49,17 @@ const Login = () => {
     const result = await login(email, senha, tipoLogin);
     
     if (result.success) {
-      navigate("/menu");
+      // 🔥 REDIRECIONAR BASEADO NO ROLE
+      const userRole = result.user?.role;
+      console.log("⭐ Role do usuário:", userRole);
+      
+      if (userRole === "admin_sistema") {
+        console.log("👑 Redirecionando para /admin");
+        navigate("/admin");
+      } else {
+        console.log("📋 Redirecionando para /menu");
+        navigate("/menu");
+      }
     } else if (result.precisaConfirmacao) {
       setPrecisaConfirmacao(true);
       setEmailNaoConfirmado(result.email || email);
@@ -60,7 +70,7 @@ const Login = () => {
     setLoading(false);
   };
 
-  // 🔥 Função para reenviar link de validação
+  // Função para reenviar link de validação
   const handleReenviarValidacao = async () => {
     setReenviando(true);
     setMensagemReenvio("");
@@ -261,7 +271,7 @@ const Login = () => {
               </div>
             </div>
 
-            {/* 🔥 MENSAGEM DE EMAIL NÃO CONFIRMADO */}
+            {/* Mensagem de email não confirmado */}
             {precisaConfirmacao && (
               <div className="mb-6 p-4 rounded-xl bg-yellow-600/20 border border-yellow-500/30">
                 <div className="flex items-center gap-2 text-yellow-400 mb-2">
@@ -417,9 +427,7 @@ const Login = () => {
         </div>
       </div>
 
-      {/* ========================================== */}
-      {/* MODAL DE RECUPERAÇÃO DE SENHA */}
-      {/* ========================================== */}
+      {/* Modal de Recuperação de Senha */}
       {mostrarRecuperacao && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
           <div className="bg-gray-900 rounded-2xl max-w-md w-full shadow-2xl border border-gray-700 animate-scale-in">
