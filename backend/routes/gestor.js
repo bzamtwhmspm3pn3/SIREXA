@@ -38,9 +38,6 @@ router.post("/", async (req, res) => {
     
     console.log('📝 Tentativa de registo:', email);
 
-    // ============================================
-    // 1. VALIDAÇÕES BÁSICAS
-    // ============================================
     if (!nome || !email || !senha) {
       return res.status(400).json({ 
         sucesso: false, 
@@ -55,13 +52,10 @@ router.post("/", async (req, res) => {
       });
     }
 
-    // ============================================
-    // 2. VALIDAR CHAVE DE ATIVAÇÃO (OBRIGATÓRIA)
-    // ============================================
     if (!chaveAtivacao) {
       return res.status(400).json({ 
         sucesso: false, 
-        mensagem: "Chave de ativação é obrigatória. Adquira uma licença para acessar o sistema." 
+        mensagem: "Chave de ativação é obrigatória." 
       });
     }
 
@@ -71,14 +65,14 @@ router.post("/", async (req, res) => {
     if (!licenca) {
       return res.status(400).json({ 
         sucesso: false, 
-        mensagem: "Chave de ativação inválida. Verifique e tente novamente." 
+        mensagem: "Chave de ativação inválida." 
       });
     }
 
     if (licenca.status !== 'ativa' && licenca.status !== 'trial') {
       return res.status(403).json({ 
         sucesso: false, 
-        mensagem: `Licença ${licenca.status}. Contacte o suporte para ativação.` 
+        mensagem: `Licença ${licenca.status}.` 
       });
     }
 
@@ -87,24 +81,21 @@ router.post("/", async (req, res) => {
       await licenca.save();
       return res.status(403).json({ 
         sucesso: false, 
-        mensagem: `Licença expirada em ${new Date(licenca.dataExpiracao).toLocaleDateString()}. Faça a renovação.` 
+        mensagem: `Licença expirada em ${new Date(licenca.dataExpiracao).toLocaleDateString()}.` 
       });
     }
 
     if (licenca.empresaId) {
       return res.status(400).json({ 
         sucesso: false, 
-        mensagem: "Esta chave já foi utilizada por outra empresa." 
+        mensagem: "Esta chave já foi utilizada." 
       });
     }
 
-    // ============================================
-    // 3. VALIDAR DADOS DA EMPRESA
-    // ============================================
     if (!empresaNome || !empresaNif) {
       return res.status(400).json({ 
         sucesso: false, 
-        mensagem: "Nome da empresa e NIF são obrigatórios para ativação." 
+        mensagem: "Nome da empresa e NIF são obrigatórios." 
       });
     }
 
@@ -112,24 +103,19 @@ router.post("/", async (req, res) => {
     if (empresaExistente) {
       return res.status(400).json({ 
         sucesso: false, 
-        mensagem: "Já existe uma empresa cadastrada com este NIF." 
+        mensagem: "Já existe uma empresa com este NIF." 
       });
     }
 
-    // ============================================
-    // 4. VERIFICAR SE GESTOR JÁ EXISTE
-    // ============================================
     const gestorExistente = await Gestor.findOne({ email });
     if (gestorExistente) {
       return res.status(400).json({ 
         sucesso: false, 
-        mensagem: "Este email já está registado. Faça login ou recupere sua senha." 
+        mensagem: "Este email já está registado." 
       });
     }
 
-    // ============================================
-    // 5. CRIAR EMPRESA
-    // ============================================
+    // Criar empresa
     const empresa = new Empresa({
       nome: empresaNome,
       nif: empresaNif,
@@ -141,20 +127,15 @@ router.post("/", async (req, res) => {
 
     await empresa.save();
 
-    // Vincular licença à empresa
     licenca.empresaId = empresa._id;
     licenca.empresaNome = empresa.nome;
     licenca.ipAtivacao = req.ip;
     licenca.status = 'ativa';
     await licenca.save();
 
-    // ============================================
-    // 6. CRIAR GESTOR
-    // ============================================
+    // Criar gestor
     const salt = await bcrypt.genSalt(10);
     const senhaHash = await bcrypt.hash(senha, salt);
-
-    // Gerar token de validação de email
     const tokenValidacao = crypto.randomBytes(32).toString('hex');
 
     const gestor = new Gestor({
@@ -164,39 +145,26 @@ router.post("/", async (req, res) => {
       telefone: telefone || "",
       empresas: [empresa._id],
       role: "gestor",
-      ativo: false, // ⚠️ Inativo até confirmar email
+      ativo: false,
       chaveAtivacao: chaveNormalizada,
       licencaId: licenca._id,
       tokenValidacao,
-      tokenValidacaoExpira: new Date(Date.now() + 24 * 60 * 60 * 1000) // 24 horas
+      tokenValidacaoExpira: new Date(Date.now() + 24 * 60 * 60 * 1000)
     });
 
     await gestor.save();
 
-    // Adicionar gestor à empresa
     empresa.gestorId = gestor._id;
     await empresa.save();
 
     console.log(`✅ Gestor registado: ${email} (aguardando validação)`);
 
-    // ============================================
-    // 7. ENVIAR EMAIL DE VALIDAÇÃO (OBRIGATÓRIO)
-    // ============================================
     const emailEnviado = await enviarEmailValidacao(email, nome, tokenValidacao);
 
-    if (!emailEnviado.sucesso) {
-      console.error(`❌ Falha ao enviar email de validação para ${email}`);
-      // Não impedir o cadastro, mas logar o erro
-    }
-
-    // ============================================
-    // 8. RESPOSTA (NÃO GERAR TOKEN AINDA - AGUARDAR VALIDAÇÃO)
-    // ============================================
     res.status(201).json({
       sucesso: true,
-      mensagem: "Cadastro realizado com sucesso! Enviamos um link de confirmação para seu email. Por favor, confirme seu email antes de fazer login.",
+      mensagem: "Cadastro realizado! Enviamos um link de confirmação para seu email.",
       aguardarConfirmacao: true,
-      emailConfirmacaoEnviado: emailEnviado.sucesso,
       empresa: { id: empresa._id, nome: empresa.nome, plano: licenca.plano }
     });
 
@@ -211,7 +179,7 @@ router.post("/", async (req, res) => {
 });
 
 // ============================================
-// 🆕 CONFIRMAR EMAIL (validação obrigatória)
+// CONFIRMAR EMAIL
 // ============================================
 router.get("/confirmar-email", async (req, res) => {
   try {
@@ -224,7 +192,6 @@ router.get("/confirmar-email", async (req, res) => {
       });
     }
 
-    // Buscar gestor pelo token
     const gestor = await Gestor.findOne({ 
       tokenValidacao: token,
       tokenValidacaoExpira: { $gt: new Date() }
@@ -233,24 +200,21 @@ router.get("/confirmar-email", async (req, res) => {
     if (!gestor) {
       return res.status(400).json({ 
         sucesso: false, 
-        mensagem: "Token inválido ou expirado. Solicite um novo link de validação." 
+        mensagem: "Token inválido ou expirado." 
       });
     }
 
-    // Ativar gestor
     gestor.ativo = true;
     gestor.tokenValidacao = null;
     gestor.tokenValidacaoExpira = null;
     gestor.dataConfirmacaoEmail = new Date();
     await gestor.save();
 
-    // Enviar email de boas-vindas
     const empresa = await Empresa.findById(gestor.empresas[0]);
     await enviarEmailBoasVindas(gestor.email, gestor.nome, empresa?.nome || 'Sua empresa');
 
     console.log(`✅ Email confirmado para: ${gestor.email}`);
 
-    // Redirecionar para o frontend (login)
     const frontendUrl = process.env.FRONTEND_URL || 'https://sirexa.vercel.app';
     res.redirect(`${frontendUrl}/login?confirmado=true`);
 
@@ -264,7 +228,7 @@ router.get("/confirmar-email", async (req, res) => {
 });
 
 // ============================================
-// 🆕 REENVIAR LINK DE VALIDAÇÃO
+// REENVIAR LINK DE VALIDAÇÃO
 // ============================================
 router.post("/reenviar-validacao", async (req, res) => {
   try {
@@ -289,35 +253,33 @@ router.post("/reenviar-validacao", async (req, res) => {
     if (gestor.ativo) {
       return res.status(400).json({ 
         sucesso: false, 
-        mensagem: "Este email já foi confirmado. Pode fazer login normalmente." 
+        mensagem: "Este email já foi confirmado." 
       });
     }
 
-    // Gerar novo token
     const tokenValidacao = crypto.randomBytes(32).toString('hex');
     gestor.tokenValidacao = tokenValidacao;
     gestor.tokenValidacaoExpira = new Date(Date.now() + 24 * 60 * 60 * 1000);
     await gestor.save();
 
-    // Reenviar email
     await enviarEmailValidacao(email, gestor.nome, tokenValidacao);
 
     res.json({ 
       sucesso: true, 
-      mensagem: "Novo link de validação enviado para seu email." 
+      mensagem: "Novo link de validação enviado." 
     });
 
   } catch (error) {
     console.error('❌ Erro ao reenviar validação:', error);
     res.status(500).json({ 
       sucesso: false, 
-      mensagem: "Erro ao reenviar link de validação." 
+      mensagem: "Erro ao reenviar link." 
     });
   }
 });
 
 // ============================================
-// LOGIN de gestor (apenas se email confirmado)
+// 🔥 LOGIN DE GESTOR (CORRIGIDO - COM ROLE)
 // ============================================
 router.post("/login", async (req, res) => {
   try {
@@ -335,12 +297,11 @@ router.post("/login", async (req, res) => {
       });
     }
     
-    // ⚠️ VERIFICAR SE EMAIL FOI CONFIRMADO
     if (!gestor.ativo) {
       console.log(`⚠️ Email não confirmado: ${email}`);
       return res.status(403).json({ 
         sucesso: false, 
-        mensagem: "Por favor, confirme seu email antes de fazer login. Verifique sua caixa de entrada ou spam.", 
+        mensagem: "Confirme seu email antes de fazer login.", 
         precisaConfirmacao: true,
         email: gestor.email
       });
@@ -355,7 +316,14 @@ router.post("/login", async (req, res) => {
       });
     }
     
-    console.log(`✅ Login realizado: ${gestor.nome}`);
+    // 🔥 DETERMINAR O ROLE (admin_sistema para email específico)
+    let role = gestor.role;
+    if (email === "admin@sirexa.ao") {
+      role = "admin_sistema";
+      console.log("👑 ADMINISTRADOR DETECTADO! Role: admin_sistema");
+    }
+    
+    console.log(`✅ Login realizado: ${gestor.nome} (${role})`);
     
     const empresasIds = gestor.empresas.map(emp => emp._id.toString());
     const primeiraEmpresaId = empresasIds.length > 0 ? empresasIds[0] : null;
@@ -365,7 +333,7 @@ router.post("/login", async (req, res) => {
         id: gestor._id, 
         email: gestor.email, 
         nome: gestor.nome, 
-        role: gestor.role,
+        role: role,
         empresaId: primeiraEmpresaId,
         empresasPermitidas: empresasIds
       },
@@ -373,13 +341,16 @@ router.post("/login", async (req, res) => {
       { expiresIn: "7d" }
     );
     
+    // 🔥 RETORNAR O ROLE NA RESPOSTA
     res.json({
       sucesso: true,
       token,
       gestor: {
+        _id: gestor._id,
         id: gestor._id,
         nome: gestor.nome,
         email: gestor.email,
+        role: role,  // 🔥 CAMPO CRÍTICO - ADICIONADO!
         empresas: gestor.empresas,
         empresaAtual: primeiraEmpresaId
       }
@@ -399,7 +370,6 @@ router.post("/login", async (req, res) => {
 // RECUPERAÇÃO DE SENHA
 // ============================================
 
-// Solicitar código de recuperação
 router.post("/recuperar-senha", async (req, res) => {
   try {
     const { email } = req.body;
@@ -415,24 +385,21 @@ router.post("/recuperar-senha", async (req, res) => {
     
     if (!gestor) {
       return res.status(404).json({ 
-        mensagem: "Email não encontrado. Verifique se digitou corretamente." 
+        mensagem: "Email não encontrado." 
       });
     }
 
-    // Verificar se já existe um código válido
     const existente = codigosRecuperacao.get(emailNormalizado);
     if (existente && Date.now() < existente.expiraEm) {
       const minutosRestantes = Math.ceil((existente.expiraEm - Date.now()) / 60000);
       return res.status(429).json({ 
-        mensagem: `Já enviamos um código. Aguarde ${minutosRestantes} minuto(s) ou verifique seu email.` 
+        mensagem: `Aguarde ${minutosRestantes} minuto(s).` 
       });
     }
 
-    // Gerar código de 6 dígitos
     const codigo = Math.floor(100000 + Math.random() * 900000).toString();
     const token = crypto.randomBytes(32).toString('hex');
     
-    // Guardar código (15 minutos de validade)
     codigosRecuperacao.set(emailNormalizado, {
       codigo,
       token,
@@ -440,36 +407,34 @@ router.post("/recuperar-senha", async (req, res) => {
       tentativas: 0
     });
 
-    // Enviar email
     await enviarEmailRecuperacao(emailNormalizado, gestor.nome, token, codigo);
 
     console.log(`✅ Código enviado para ${emailNormalizado}`);
 
     res.json({ 
       sucesso: true,
-      mensagem: "Código de verificação enviado para o seu email.",
-      ...(process.env.NODE_ENV === 'development' && { debug_codigo: codigo, debug_token: token })
+      mensagem: "Código enviado para seu email.",
+      ...(process.env.NODE_ENV === 'development' && { debug_codigo: codigo })
     });
 
   } catch (error) {
     console.error('❌ Erro na recuperação:', error);
     res.status(500).json({ 
-      mensagem: "Erro ao enviar email de recuperação." 
+      mensagem: "Erro ao enviar email." 
     });
   }
 });
 
-// Redefinir senha com código
 router.post("/redefinir-senha", async (req, res) => {
   try {
     const { email, codigo, novaSenha } = req.body;
 
     if (!email || !codigo || !novaSenha) {
-      return res.status(400).json({ mensagem: "Email, código e nova senha são obrigatórios." });
+      return res.status(400).json({ mensagem: "Todos os campos são obrigatórios." });
     }
 
     if (novaSenha.length < 6) {
-      return res.status(400).json({ mensagem: "A nova senha deve ter no mínimo 6 caracteres." });
+      return res.status(400).json({ mensagem: "A senha deve ter no mínimo 6 caracteres." });
     }
 
     const emailNormalizado = email.toLowerCase().trim();
@@ -477,34 +442,32 @@ router.post("/redefinir-senha", async (req, res) => {
 
     if (!dadosRecuperacao) {
       return res.status(400).json({ 
-        mensagem: "Nenhum código solicitado. Clique em 'Esqueceu a senha?' para receber um código." 
+        mensagem: "Nenhum código solicitado." 
       });
     }
 
     if (Date.now() > dadosRecuperacao.expiraEm) {
       codigosRecuperacao.delete(emailNormalizado);
       return res.status(400).json({ 
-        mensagem: "Código expirado. Solicite um novo código." 
+        mensagem: "Código expirado." 
       });
     }
 
     if (dadosRecuperacao.tentativas >= 5) {
       codigosRecuperacao.delete(emailNormalizado);
       return res.status(400).json({ 
-        mensagem: "Muitas tentativas inválidas. Solicite um novo código." 
+        mensagem: "Muitas tentativas." 
       });
     }
 
     if (dadosRecuperacao.codigo !== codigo.trim()) {
       dadosRecuperacao.tentativas++;
       codigosRecuperacao.set(emailNormalizado, dadosRecuperacao);
-      const restantes = 5 - dadosRecuperacao.tentativas;
       return res.status(400).json({ 
-        mensagem: `Código inválido. ${restantes} tentativa(s) restante(s).` 
+        mensagem: `Código inválido.` 
       });
     }
 
-    // Código válido - atualizar senha
     const salt = await bcrypt.genSalt(10);
     const senhaHash = await bcrypt.hash(novaSenha, salt);
 
@@ -519,7 +482,7 @@ router.post("/redefinir-senha", async (req, res) => {
 
     res.json({ 
       sucesso: true,
-      mensagem: "Senha redefinida com sucesso! Já pode fazer login." 
+      mensagem: "Senha redefinida com sucesso!" 
     });
 
   } catch (error) {
@@ -531,7 +494,7 @@ router.post("/redefinir-senha", async (req, res) => {
 });
 
 // ============================================
-// ROTAS PROTEGIDAS (com token)
+// ROTAS PROTEGIDAS
 // ============================================
 
 router.get("/me", verifyToken, async (req, res) => {
@@ -546,10 +509,9 @@ router.get("/me", verifyToken, async (req, res) => {
       return res.status(404).json({ mensagem: "Gestor não encontrado" });
     }
     
-    // Verificar se email foi confirmado
     if (!gestor.ativo) {
       return res.status(403).json({ 
-        mensagem: "Email não confirmado. Verifique sua caixa de entrada.",
+        mensagem: "Email não confirmado.",
         precisaConfirmacao: true 
       });
     }
