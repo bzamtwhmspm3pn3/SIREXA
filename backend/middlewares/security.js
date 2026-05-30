@@ -1,7 +1,6 @@
 // backend/middlewares/security.js
 const rateLimit = require('express-rate-limit');
 const helmet = require('helmet');
-const xss = require('xss-clean');
 const hpp = require('hpp');
 
 // ============================================
@@ -49,16 +48,7 @@ const keyValidationLimiter = rateLimit({
 // ============================================
 
 const securityHeaders = helmet({
-  contentSecurityPolicy: {
-    directives: {
-      defaultSrc: ["'self'"],
-      styleSrc: ["'self'", "'unsafe-inline'"],
-      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
-      imgSrc: ["'self'", "data:", "https:"],
-      connectSrc: ["'self'", "https://sirexa-api.onrender.com", "https://sirexa.vercel.app"],
-      fontSrc: ["'self'", "https:", "data:"],
-    },
-  },
+  contentSecurityPolicy: false,
   hsts: {
     maxAge: 31536000,
     includeSubDomains: true,
@@ -67,16 +57,17 @@ const securityHeaders = helmet({
 });
 
 // ============================================
-// SANITIZAÇÃO (DESABILITADA TEMPORARIAMENTE)
+// SANITIZAÇÃO (DESABILITADA)
 // ============================================
 
-// Função sanitize desabilitada para evitar erro no Render
 const sanitizeInput = (req, res, next) => {
-  // Desabilitado - apenas passa para o próximo middleware
   next();
 };
 
-const protectXSS = xss();
+const protectXSS = (req, res, next) => {
+  next();
+};
+
 const preventHpp = hpp();
 
 // ============================================
@@ -89,7 +80,7 @@ const requestLogger = (req, res, next) => {
   res.on('finish', () => {
     const duration = Date.now() - start;
     const logLevel = res.statusCode >= 500 ? '❌' : res.statusCode >= 400 ? '⚠️' : '✅';
-    console.log(`${logLevel} [${new Date().toISOString()}] ${req.method} ${req.originalUrl} - ${res.statusCode} - ${duration}ms - IP: ${req.ip}`);
+    console.log(`${logLevel} [${new Date().toISOString()}] ${req.method} ${req.originalUrl} - ${res.statusCode} - ${duration}ms`);
   });
   
   next();
@@ -170,7 +161,6 @@ const validateEmpresaAccess = (req, res, next) => {
 
 const verificarLicenca = async (req, res, next) => {
   try {
-    // Rotas que não precisam de licença
     const rotasPublicas = [
       '/api/licenca/validar',
       '/api/gestor',
@@ -202,7 +192,6 @@ const verificarLicenca = async (req, res, next) => {
       });
     }
     
-    // Verificar expiração
     if (licenca.dataExpiracao && new Date() > licenca.dataExpiracao) {
       licenca.status = 'expirada';
       await licenca.save();
