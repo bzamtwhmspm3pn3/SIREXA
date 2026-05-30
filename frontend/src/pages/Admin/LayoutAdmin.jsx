@@ -4,8 +4,7 @@ import { Link, useNavigate, Outlet } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { 
   LayoutDashboard, Key, FileText, Users, Building2, LogOut, 
-  Menu, X, Package, Truck, CreditCard, Settings, ChevronLeft,
-  Home, TrendingUp, Shield
+  Menu, X, Shield
 } from 'lucide-react';
 import logo from '../../assets/sirexa-logo.ico';
 
@@ -19,19 +18,13 @@ const LayoutAdmin = ({ children, title }) => {
     navigate('/login');
   };
 
+  // 🔥 MENU SIMPLIFICADO DO ADMINISTRADOR (APENAS 5 ITENS)
   const menuItems = [
     { icon: LayoutDashboard, label: 'Dashboard', path: '/admin', color: 'blue' },
     { icon: Key, label: 'Gerar Chave', path: '/admin/gerar-chave', color: 'yellow' },
     { icon: FileText, label: 'Licenças', path: '/admin/licencas', color: 'purple' },
     { icon: Users, label: 'Gestores', path: '/admin/gestores', color: 'green' },
     { icon: Building2, label: 'Empresas', path: '/admin/empresas', color: 'cyan' },
-    { divider: true },
-    { icon: Package, label: 'Stock (Global)', path: '/stock', color: 'indigo' },
-    { icon: Truck, label: 'Fornecedores', path: '/fornecedores', color: 'orange' },
-    { icon: CreditCard, label: 'Pagamentos', path: '/pagamentos', color: 'pink' },
-    { icon: TrendingUp, label: 'Relatórios', path: '/relatorios', color: 'teal' },
-    { divider: true },
-    { icon: Settings, label: 'Configurações', path: '/admin/config', color: 'gray' },
   ];
 
   return (
@@ -54,26 +47,22 @@ const LayoutAdmin = ({ children, title }) => {
           </button>
         </div>
 
-        {/* Menu */}
-        <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
+        {/* Menu - APENAS 5 ITENS */}
+        <nav className="flex-1 p-4 space-y-1">
           {menuItems.map((item, index) => (
-            item.divider ? (
-              <div key={index} className="border-t border-gray-700 my-2"></div>
-            ) : (
-              <Link
-                key={index}
-                to={item.path}
-                className={`flex items-center gap-3 px-3 py-2 rounded-lg text-gray-300 hover:bg-gray-700 hover:text-white transition-all group`}
-              >
-                <item.icon size={20} className={`text-${item.color}-400`} />
-                {sidebarOpen && <span className="text-sm">{item.label}</span>}
-                {!sidebarOpen && (
-                  <div className="absolute left-full ml-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition whitespace-nowrap z-50">
-                    {item.label}
-                  </div>
-                )}
-              </Link>
-            )
+            <Link
+              key={index}
+              to={item.path}
+              className={`flex items-center gap-3 px-3 py-2 rounded-lg text-gray-300 hover:bg-gray-700 hover:text-white transition-all group`}
+            >
+              <item.icon size={20} className={`text-${item.color}-400`} />
+              {sidebarOpen && <span className="text-sm">{item.label}</span>}
+              {!sidebarOpen && (
+                <div className="absolute left-full ml-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition whitespace-nowrap z-50">
+                  {item.label}
+                </div>
+              )}
+            </Link>
           ))}
         </nav>
 
