@@ -521,11 +521,37 @@ router.get("/me", verifyToken, async (req, res) => {
   }
 });
 
+// 🔥 ROTA ADICIONADA - GET /api/gestor
+router.get("/", verifyToken, async (req, res) => {
+  try {
+    // Verificar se é admin
+    if (req.user?.role !== 'admin_sistema') {
+      return res.status(403).json({ 
+        sucesso: false, 
+        mensagem: 'Acesso negado. Apenas administradores.' 
+      });
+    }
+    
+    const gestores = await Gestor.find()
+      .select('-senha')
+      .populate('empresas', 'nome nif')
+      .sort({ createdAt: -1 });
+    
+    res.json({
+      sucesso: true,
+      total: gestores.length,
+      gestores
+    });
+  } catch (error) {
+    console.error('Erro ao listar gestores:', error);
+    res.status(500).json({ sucesso: false, mensagem: error.message });
+  }
+});
+
 // ============================================
 // ROTAS ADMINISTRATIVAS (requer role admin_sistema)
 // ============================================
 
-// Middleware para verificar se é admin
 const verificarAdmin = (req, res, next) => {
   if (req.user?.role !== 'admin_sistema') {
     return res.status(403).json({ 
@@ -536,7 +562,7 @@ const verificarAdmin = (req, res, next) => {
   next();
 };
 
-// GET - Listar todos os gestores
+// GET - Listar todos os gestores (admin)
 router.get("/admin/gestores", verifyToken, verificarAdmin, async (req, res) => {
   try {
     const gestores = await Gestor.find()
@@ -555,7 +581,7 @@ router.get("/admin/gestores", verifyToken, verificarAdmin, async (req, res) => {
   }
 });
 
-// GET - Listar todas as empresas
+// GET - Listar todas as empresas (admin)
 router.get("/admin/empresas", verifyToken, verificarAdmin, async (req, res) => {
   try {
     const empresas = await Empresa.find().sort({ createdAt: -1 });
@@ -571,7 +597,7 @@ router.get("/admin/empresas", verifyToken, verificarAdmin, async (req, res) => {
   }
 });
 
-// GET - Listar todas as licenças
+// GET - Listar todas as licenças (admin)
 router.get("/admin/licencas", verifyToken, verificarAdmin, async (req, res) => {
   try {
     const licencas = await Licenca.find().sort({ createdAt: -1 });
@@ -587,7 +613,7 @@ router.get("/admin/licencas", verifyToken, verificarAdmin, async (req, res) => {
   }
 });
 
-// POST - Gerar chave de ativação
+// POST - Gerar chave de ativação (admin)
 router.post("/admin/gerar-chave", verifyToken, verificarAdmin, async (req, res) => {
   try {
     const { email, plano, diasValidade } = req.body;
@@ -658,7 +684,7 @@ router.post("/admin/gerar-chave", verifyToken, verificarAdmin, async (req, res) 
   }
 });
 
-// PUT - Atualizar status de um gestor
+// PUT - Atualizar status de um gestor (admin)
 router.put("/admin/gestores/:id", verifyToken, verificarAdmin, async (req, res) => {
   try {
     const { id } = req.params;
@@ -685,7 +711,7 @@ router.put("/admin/gestores/:id", verifyToken, verificarAdmin, async (req, res) 
   }
 });
 
-// DELETE - Revogar licença
+// DELETE - Revogar licença (admin)
 router.delete("/admin/licencas/:chave", verifyToken, verificarAdmin, async (req, res) => {
   try {
     const { chave } = req.params;
