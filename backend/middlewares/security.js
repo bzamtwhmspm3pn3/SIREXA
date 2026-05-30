@@ -4,42 +4,84 @@ const helmet = require('helmet');
 const hpp = require('hpp');
 
 // ============================================
-// RATE LIMITING CONFIGURATIONS
+// RATE LIMITING POR USUÁRIO (não por IP)
 // ============================================
 
-// Limite geral para API (100 requisições por 15 minutos)
+// Função para obter identificador único do usuário (email ou IP como fallback)
+const getKey = (req) => {
+  // Se tem usuário autenticado, usa o email
+  if (req.user && req.user.email) {
+    return `user:${req.user.email}`;
+  }
+  // Se tem email no body (login), usa o email
+  if (req.body && req.body.email) {
+    return `login:${req.body.email}`;
+  }
+  // Fallback: IP
+  return req.ip;
+};
+
+// Limite geral para API (100 requisições por 15 minutos por usuário)
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 100,
+  keyGenerator: getKey,
+  skip: (req) => {
+    // Pular rate limit para admins
+    if (req.user && req.user.role === 'admin_sistema') return true;
+    return false;
+  },
   message: {
     sucesso: false,
-    mensagem: 'Muitas requisições deste IP. Tente novamente em 15 minutos.'
+    mensagem: 'Muitas requisições. Tente novamente em 15 minutos.'
   },
   standardHeaders: true,
-  legacyHeaders: false,
-  skip: (req) => {
-    const whitelist = ['127.0.0.1', '::1'];
-    return whitelist.includes(req.ip);
-  }
+  legacyHeaders: false
 });
 
-// Limite para autenticação (5 tentativas por hora)
+// Limite para autenticação (5 tentativas por hora por EMAIL)
 const authLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
   max: 5,
+  keyGenerator: (req) => {
+    // Usa o email como chave única
+    const email = req.body.email || 'unknown';
+    return `auth:${email.toLowerCase()}`;
+  },
+  skipSuccessfulRequests: true, // Não contar tentativas bem-sucedidas
   message: {
     sucesso: false,
     mensagem: 'Muitas tentativas de login. Tente novamente em 1 hora.'
-  }
+  },
+  standardHeaders: true,
+  legacyHeaders: false
 });
 
 // Limite para validação de chave (10 tentativas por hora)
 const keyValidationLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
   max: 10,
+  keyGenerator: (req) => {
+    const chave = req.body.chave || 'unknown';
+    return `chave:${chave}`;
+  },
   message: {
     sucesso: false,
     mensagem: 'Muitas tentativas de validação de chave. Tente novamente em 1 hora.'
+  }
+});
+
+// Limite para registro (3 registros por hora por email)
+const registerLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 3,
+  keyGenerator: (req) => {
+    const email = req.body.email || 'unknown';
+    return `register:${email.toLowerCase()}`;
+  },
+  message: {
+    sucesso: false,
+    mensagem: 'Muitas tentativas de registro. Tente novamente em 1 hora.'
   }
 });
 
@@ -290,6 +332,7 @@ module.exports = {
   apiLimiter,
   authLimiter,
   keyValidationLimiter,
+  registerLimiter,
   securityHeaders,
   sanitizeInput,
   protectXSS,
