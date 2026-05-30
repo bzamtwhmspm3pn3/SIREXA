@@ -279,7 +279,7 @@ router.post("/reenviar-validacao", async (req, res) => {
 });
 
 // ============================================
-// 🔥 LOGIN DE GESTOR (CORRIGIDO - COM ROLE)
+// LOGIN DE GESTOR (COM ROLE)
 // ============================================
 router.post("/login", async (req, res) => {
   try {
@@ -316,7 +316,6 @@ router.post("/login", async (req, res) => {
       });
     }
     
-    // 🔥 DETERMINAR O ROLE (admin_sistema para email específico)
     let role = gestor.role;
     if (email === "admin@sirexa.ao") {
       role = "admin_sistema";
@@ -341,7 +340,6 @@ router.post("/login", async (req, res) => {
       { expiresIn: "7d" }
     );
     
-    // 🔥 RETORNAR O ROLE NA RESPOSTA
     res.json({
       sucesso: true,
       token,
@@ -350,7 +348,7 @@ router.post("/login", async (req, res) => {
         id: gestor._id,
         nome: gestor.nome,
         email: gestor.email,
-        role: role,  // 🔥 CAMPO CRÍTICO - ADICIONADO!
+        role: role,
         empresas: gestor.empresas,
         empresaAtual: primeiraEmpresaId
       }
@@ -494,7 +492,7 @@ router.post("/redefinir-senha", async (req, res) => {
 });
 
 // ============================================
-// ROTAS PROTEGIDAS
+// ROTAS PROTEGIDAS (requer token)
 // ============================================
 
 router.get("/me", verifyToken, async (req, res) => {
@@ -523,4 +521,194 @@ router.get("/me", verifyToken, async (req, res) => {
   }
 });
 
+// ============================================
+// ROTAS ADMINISTRATIVAS (requer role admin_sistema)
+// ============================================
+
+// Middleware para verificar se é admin
+const verificarAdmin = (req, res, next) => {
+  if (req.user?.role !== 'admin_sistema') {
+    return res.status(403).json({ 
+      sucesso: false, 
+      mensagem: 'Acesso negado. Apenas administradores do sistema.' 
+    });
+  }
+  next();
+};
+
+// GET - Listar todos os gestores
+router.get("/admin/gestores", verifyToken, verificarAdmin, async (req, res) => {
+  try {
+    const gestores = await Gestor.find()
+      .select('-senha')
+      .populate('empresas', 'nome nif')
+      .sort({ createdAt: -1 });
+    
+    res.json({
+      sucesso: true,
+      total: gestores.length,
+      gestores
+    });
+  } catch (error) {
+    console.error('Erro ao listar gestores:', error);
+    res.status(500).json({ sucesso: false, mensagem: error.message });
+  }
+});
+
+// GET - Listar todas as empresas
+router.get("/admin/empresas", verifyToken, verificarAdmin, async (req, res) => {
+  try {
+    const empresas = await Empresa.find().sort({ createdAt: -1 });
+    
+    res.json({
+      sucesso: true,
+      total: empresas.length,
+      empresas
+    });
+  } catch (error) {
+    console.error('Erro ao listar empresas:', error);
+    res.status(500).json({ sucesso: false, mensagem: error.message });
+  }
+});
+
+// GET - Listar todas as licenças
+router.get("/admin/licencas", verifyToken, verificarAdmin, async (req, res) => {
+  try {
+    const licencas = await Licenca.find().sort({ createdAt: -1 });
+    
+    res.json({
+      sucesso: true,
+      total: licencas.length,
+      licencas
+    });
+  } catch (error) {
+    console.error('Erro ao listar licenças:', error);
+    res.status(500).json({ sucesso: false, mensagem: error.message });
+  }
+});
+
+// POST - Gerar chave de ativação
+router.post("/admin/gerar-chave", verifyToken, verificarAdmin, async (req, res) => {
+  try {
+    const { email, plano, diasValidade } = req.body;
+    
+    if (!email) {
+      return res.status(400).json({ sucesso: false, mensagem: 'Email é obrigatório' });
+    }
+    
+    const chave = crypto.randomBytes(16).toString('hex').toUpperCase().match(/.{1,4}/g).join('-');
+    
+    const dataExpiracao = new Date();
+    dataExpiracao.setDate(dataExpiracao.getDate() + (diasValidade || 365));
+    
+    const planosConfig = {
+      trial: { 
+        modulos: { stock: true, fornecedores: true, gestaoCompras: true, rh: false, contabilidade: false, financas: false, relatorios: true, dashboard: true, config: true },
+        limites: { maxUsuarios: 1, maxFuncionarios: 3, maxProdutos: 50, maxFornecedores: 10, maxClientes: 20 },
+        diasValidade: 30
+      },
+      basico: { 
+        modulos: { stock: true, fornecedores: true, gestaoCompras: true, rh: false, contabilidade: false, financas: false, relatorios: true, dashboard: true, config: true },
+        limites: { maxUsuarios: 1, maxFuncionarios: 5, maxProdutos: 100, maxFornecedores: 20, maxClientes: 50 },
+        diasValidade: 365
+      },
+      profissional: { 
+        modulos: { stock: true, fornecedores: true, gestaoCompras: true, rh: true, contabilidade: false, financas: false, relatorios: true, dashboard: true, config: true },
+        limites: { maxUsuarios: 3, maxFuncionarios: 20, maxProdutos: 500, maxFornecedores: 100, maxClientes: 200 },
+        diasValidade: 365
+      },
+      empresarial: { 
+        modulos: { stock: true, fornecedores: true, gestaoCompras: true, rh: true, contabilidade: true, financas: true, relatorios: true, dashboard: true, config: true },
+        limites: { maxUsuarios: 10, maxFuncionarios: 100, maxProdutos: 5000, maxFornecedores: 500, maxClientes: 1000 },
+        diasValidade: 365
+      },
+      enterprise: { 
+        modulos: { stock: true, fornecedores: true, gestaoCompras: true, rh: true, contabilidade: true, financas: true, relatorios: true, dashboard: true, config: true },
+        limites: { maxUsuarios: -1, maxFuncionarios: -1, maxProdutos: -1, maxFornecedores: -1, maxClientes: -1 },
+        diasValidade: 365
+      }
+    };
+    
+    const config = planosConfig[plano] || planosConfig.basico;
+    
+    const licenca = new Licenca({
+      chave,
+      email,
+      plano: plano || 'basico',
+      modulos: config.modulos,
+      limites: config.limites,
+      dataExpiracao,
+      status: 'ativa',
+      ativadoPor: req.user.nome || req.user.email
+    });
+    
+    await licenca.save();
+    
+    res.json({
+      sucesso: true,
+      chave,
+      plano: plano || 'basico',
+      dataExpiracao,
+      mensagem: `Chave gerada com sucesso! Válida até ${dataExpiracao.toLocaleDateString()}`
+    });
+    
+  } catch (error) {
+    console.error('Erro ao gerar chave:', error);
+    res.status(500).json({ sucesso: false, mensagem: error.message });
+  }
+});
+
+// PUT - Atualizar status de um gestor
+router.put("/admin/gestores/:id", verifyToken, verificarAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { ativo } = req.body;
+    
+    const gestor = await Gestor.findByIdAndUpdate(
+      id,
+      { ativo },
+      { new: true }
+    ).select('-senha');
+    
+    if (!gestor) {
+      return res.status(404).json({ sucesso: false, mensagem: 'Gestor não encontrado' });
+    }
+    
+    res.json({
+      sucesso: true,
+      mensagem: `Gestor ${gestor.nome} ${ativo ? 'ativado' : 'desativado'} com sucesso`,
+      gestor
+    });
+  } catch (error) {
+    console.error('Erro ao atualizar gestor:', error);
+    res.status(500).json({ sucesso: false, mensagem: error.message });
+  }
+});
+
+// DELETE - Revogar licença
+router.delete("/admin/licencas/:chave", verifyToken, verificarAdmin, async (req, res) => {
+  try {
+    const { chave } = req.params;
+    
+    const licenca = await Licenca.findOne({ chave });
+    if (!licenca) {
+      return res.status(404).json({ sucesso: false, mensagem: 'Licença não encontrada' });
+    }
+    
+    licenca.status = 'cancelada';
+    await licenca.save();
+    
+    res.json({
+      sucesso: true,
+      mensagem: `Licença ${chave} cancelada com sucesso`
+    });
+  } catch (error) {
+    console.error('Erro ao cancelar licença:', error);
+    res.status(500).json({ sucesso: false, mensagem: error.message });
+  }
+});
+
+// ============================================
+// EXPORTAR ROUTER
+// ============================================
 module.exports = router;
