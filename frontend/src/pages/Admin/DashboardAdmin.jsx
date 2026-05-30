@@ -1,11 +1,10 @@
-// src/pages/Admin/DashboardAdmin.jsx
+// frontend/src/pages/Admin/DashboardAdmin.jsx
 import React, { useState, useEffect } from 'react';
 import LayoutAdmin from './LayoutAdmin';
 import { useAuth } from '../../contexts/AuthContext';
 import { 
-  Users, Building2, Key, CreditCard, TrendingUp, 
-  DollarSign, Calendar, CheckCircle, XCircle,
-  Loader2, Eye, ShieldCheck, AlertTriangle
+  Users, Building2, Key, CheckCircle, XCircle,
+  Loader2, Eye, ShieldCheck, AlertTriangle, Calendar
 } from 'lucide-react';
 
 const DashboardAdmin = () => {
@@ -15,7 +14,6 @@ const DashboardAdmin = () => {
     totalEmpresas: 0,
     totalLicencas: 0,
     licencasAtivas: 0,
-    licencasExpiradas: 0,
     ultimosCadastros: []
   });
   const [loading, setLoading] = useState(true);
@@ -30,21 +28,16 @@ const DashboardAdmin = () => {
     setError(null);
     
     try {
-      console.log("📊 Carregando dashboard administrativo...");
-      
-      // Buscar gestores
       const gestoresRes = await fetch('https://sirexa-api.onrender.com/api/gestor/admin/gestores', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const gestoresData = await gestoresRes.json();
       
-      // Buscar empresas
       const empresasRes = await fetch('https://sirexa-api.onrender.com/api/gestor/admin/empresas', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const empresasData = await empresasRes.json();
       
-      // Buscar licenças
       const licencasRes = await fetch('https://sirexa-api.onrender.com/api/gestor/admin/licencas', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -57,7 +50,6 @@ const DashboardAdmin = () => {
         totalEmpresas: empresasData.empresas?.length || 0,
         totalLicencas: licencas.length,
         licencasAtivas: licencas.filter(l => l.status === 'ativa').length,
-        licencasExpiradas: licencas.filter(l => l.status === 'expirada').length,
         ultimosCadastros: gestoresData.gestores?.slice(0, 5) || []
       });
       
@@ -150,7 +142,7 @@ const DashboardAdmin = () => {
         <div className="flex items-center gap-3">
           <ShieldCheck className="text-blue-400" size={20} />
           <div>
-            <p className="text-blue-400 text-sm font-medium">Você está logado como Administrador</p>
+            <p className="text-blue-400 text-sm font-medium">Painel Administrativo</p>
             <p className="text-gray-300 text-xs">Email: admin@sirexa.ao | Role: admin_sistema</p>
           </div>
         </div>
@@ -159,15 +151,7 @@ const DashboardAdmin = () => {
       {/* Últimos Cadastros */}
       <div className="bg-gray-800 rounded-2xl border border-gray-700 overflow-hidden">
         <div className="bg-gradient-to-r from-blue-600/20 to-purple-600/20 px-6 py-4 border-b border-gray-700">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-bold text-white">Últimos Gestores Cadastrados</h2>
-            <button 
-              onClick={() => window.location.href = "/admin/gestores"}
-              className="text-sm text-purple-400 hover:text-purple-300 transition"
-            >
-              Ver todos
-            </button>
-          </div>
+          <h2 className="text-lg font-bold text-white">Últimos Gestores Cadastrados</h2>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full">
@@ -175,9 +159,8 @@ const DashboardAdmin = () => {
               <tr className="text-gray-300 text-sm">
                 <th className="p-4 text-left">Nome</th>
                 <th className="p-4 text-left">Email</th>
-                <th className="p-4 text-left">Data Cadastro</th>
+                <th className="p-4 text-left">Data</th>
                 <th className="p-4 text-center">Status</th>
-                <th className="p-4 text-center">Ações</th>
               </tr>
             </thead>
             <tbody>
@@ -186,89 +169,24 @@ const DashboardAdmin = () => {
                   <td className="p-4 text-white font-medium">{gestor.nome}</td>
                   <td className="p-4 text-gray-300">{gestor.email}</td>
                   <td className="p-4 text-gray-300">
-                    {gestor.createdAt ? new Date(gestor.createdAt).toLocaleDateString('pt-PT') : new Date().toLocaleDateString('pt-PT')}
+                    {gestor.createdAt ? new Date(gestor.createdAt).toLocaleDateString('pt-PT') : '—'}
                   </td>
                   <td className="p-4 text-center">
-                    {gestor.ativo !== false ? (
-                      <span className="px-2 py-1 bg-green-500/20 text-green-400 rounded-full text-xs flex items-center gap-1 justify-center w-20 mx-auto">
-                        <CheckCircle size={10} /> Ativo
-                      </span>
-                    ) : (
-                      <span className="px-2 py-1 bg-red-500/20 text-red-400 rounded-full text-xs flex items-center gap-1 justify-center w-20 mx-auto">
-                        <XCircle size={10} /> Inativo
-                      </span>
-                    )}
-                  </tr>
-                  <td className="p-4 text-center">
-                    <button 
-                      onClick={() => window.location.href = `/gestor/visualizar/${gestor._id}`}
-                      className="p-1 text-blue-400 hover:text-blue-300 transition"
-                    >
-                      <Eye size={16} />
-                    </button>
+                    <span className="px-2 py-1 bg-green-500/20 text-green-400 rounded-full text-xs">
+                      Ativo
+                    </span>
                   </td>
-                <tr>
+                </tr>
               ))}
               {stats.ultimosCadastros.length === 0 && (
                 <tr>
-                  <td colSpan="5" className="p-8 text-center text-gray-500">
+                  <td colSpan="4" className="p-8 text-center text-gray-500">
                     Nenhum gestor cadastrado ainda
                   </td>
                 </tr>
               )}
             </tbody>
           </table>
-        </div>
-      </div>
-
-      {/* Informações do Sistema */}
-      <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="bg-gray-800 rounded-2xl border border-gray-700 p-5">
-          <h3 className="text-md font-semibold text-white mb-3 flex items-center gap-2">
-            <ShieldCheck size={18} className="text-purple-400" />
-            Status do Sistema
-          </h3>
-          <div className="space-y-2 text-sm">
-            <div className="flex justify-between">
-              <span className="text-gray-400">API Backend:</span>
-              <span className="text-green-400 flex items-center gap-1"><CheckCircle size={12} /> Online</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-400">Usuário logado:</span>
-              <span className="text-white">Administrador SIREXA</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-400">Role:</span>
-              <span className="text-purple-400">admin_sistema</span>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-gray-800 rounded-2xl border border-gray-700 p-5">
-          <h3 className="text-md font-semibold text-white mb-3 flex items-center gap-2">
-            <Calendar size={18} className="text-blue-400" />
-            Ações Rápidas
-          </h3>
-          <div className="space-y-2">
-            <button 
-              onClick={() => window.location.href = "/admin/gerar-chave"}
-              className="w-full text-left px-3 py-2 rounded-lg bg-gray-700/50 hover:bg-gray-700 transition text-gray-300 text-sm"
-            >
-              🔑 Gerar nova chave de ativação
-            </button>
-            <button 
-              onClick={() => window.location.href = "/admin/licencas"}
-              className="w-full text-left px-3 py-2 rounded-lg bg-gray-700/50 hover:bg-gray-700 transition text-gray-300 text-sm"
-            >
-              📜 Ver todas as licenças
-            </button>
-            <button 
-              onClick={() => window.location.href = "/admin/gestores"}
-              className="w-full text-left px-3 py-2 rounded-lg bg-gray-700/50 hover:bg-gray-700 transition text-gray-300 text-sm"
-            >
-              👥 Listar todos os gestores
-            </button>
-          </div>
         </div>
       </div>
     </LayoutAdmin>
