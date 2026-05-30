@@ -1,4 +1,4 @@
-// src/pages/Login.jsx
+// src/pages/Login.jsx (adicionar tratamento para email não confirmado)
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
@@ -16,7 +16,7 @@ const Login = () => {
   const [erro, setErro] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [tipoLogin, setTipoLogin] = useState("gestor");
-  const { login } = useAuth();
+  const { login, reenviarValidacao } = useAuth();
   const navigate = useNavigate();
 
   // Estados para recuperação de senha
@@ -24,11 +24,17 @@ const Login = () => {
   const [emailRecuperacao, setEmailRecuperacao] = useState("");
   const [loadingRecuperacao, setLoadingRecuperacao] = useState(false);
   const [mensagemRecuperacao, setMensagemRecuperacao] = useState({ texto: "", tipo: "" });
-  const [etapaRecuperacao, setEtapaRecuperacao] = useState(1); // 1: email, 2: código, 3: nova senha
+  const [etapaRecuperacao, setEtapaRecuperacao] = useState(1);
   const [codigoRecuperacao, setCodigoRecuperacao] = useState("");
   const [novaSenha, setNovaSenha] = useState("");
   const [confirmarNovaSenha, setConfirmarNovaSenha] = useState("");
   const [showNovaSenha, setShowNovaSenha] = useState(false);
+
+  // 🔥 Estado para email não confirmado
+  const [precisaConfirmacao, setPrecisaConfirmacao] = useState(false);
+  const [emailNaoConfirmado, setEmailNaoConfirmado] = useState("");
+  const [reenviando, setReenviando] = useState(false);
+  const [mensagemReenvio, setMensagemReenvio] = useState("");
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -38,18 +44,38 @@ const Login = () => {
     }
     setLoading(true);
     setErro("");
+    setPrecisaConfirmacao(false);
     
     const result = await login(email, senha, tipoLogin);
     
     if (result.success) {
       navigate("/menu");
+    } else if (result.precisaConfirmacao) {
+      setPrecisaConfirmacao(true);
+      setEmailNaoConfirmado(result.email || email);
+      setErro("");
     } else {
       setErro(result.error || "Email ou senha incorretos");
     }
     setLoading(false);
   };
 
-  // 🔑 ENVIAR EMAIL DE RECUPERAÇÃO
+  // 🔥 Função para reenviar link de validação
+  const handleReenviarValidacao = async () => {
+    setReenviando(true);
+    setMensagemReenvio("");
+    
+    const result = await reenviarValidacao(emailNaoConfirmado);
+    
+    if (result.success) {
+      setMensagemReenvio("✅ Novo link de confirmação enviado! Verifique seu email.");
+    } else {
+      setMensagemReenvio(`❌ ${result.message}`);
+    }
+    
+    setReenviando(false);
+  };
+
   const handleEnviarEmailRecuperacao = async (e) => {
     e.preventDefault();
     
@@ -92,7 +118,6 @@ const Login = () => {
     }
   };
 
-  // 🔑 VERIFICAR CÓDIGO E REDEFINIR SENHA
   const handleRedefinirSenha = async (e) => {
     e.preventDefault();
 
@@ -133,7 +158,6 @@ const Login = () => {
           tipo: "sucesso" 
         });
         
-        // Fechar modal e redirecionar após 2 segundos
         setTimeout(() => {
           setMostrarRecuperacao(false);
           setEtapaRecuperacao(1);
@@ -159,7 +183,6 @@ const Login = () => {
     }
   };
 
-  // Fechar modal e resetar estados
   const fecharRecuperacao = () => {
     setMostrarRecuperacao(false);
     setEtapaRecuperacao(1);
@@ -194,7 +217,6 @@ const Login = () => {
 
         {/* Card de Login */}
         <div className="bg-gray-800/90 backdrop-blur-sm rounded-2xl shadow-2xl border border-gray-700/50 overflow-hidden">
-          {/* Header do Card */}
           <div className="bg-gradient-to-r from-[#003366] to-[#0055A5] px-6 py-4 border-b border-white/10">
             <div className="flex items-center gap-3">
               <div className="bg-white/15 p-2 rounded-xl backdrop-blur-sm">
@@ -207,7 +229,6 @@ const Login = () => {
             </div>
           </div>
 
-          {/* Corpo do Card */}
           <div className="p-6">
             {/* Seletor de Tipo de Login */}
             <div className="mb-6">
@@ -240,93 +261,121 @@ const Login = () => {
               </div>
             </div>
 
-            {/* Mensagem de Erro */}
-            {erro && (
-              <div className="bg-red-900/30 border border-red-500/30 rounded-xl p-3 mb-6 flex items-center gap-2 animate-shake">
-                <AlertCircle className="text-red-400 flex-shrink-0" size={18} />
-                <p className="text-red-200 text-sm flex-1">{erro}</p>
+            {/* 🔥 MENSAGEM DE EMAIL NÃO CONFIRMADO */}
+            {precisaConfirmacao && (
+              <div className="mb-6 p-4 rounded-xl bg-yellow-600/20 border border-yellow-500/30">
+                <div className="flex items-center gap-2 text-yellow-400 mb-2">
+                  <AlertCircle size={18} />
+                  <span className="font-medium">Email não confirmado</span>
+                </div>
+                <p className="text-sm text-gray-300 mb-3">
+                  Por favor, confirme seu email antes de fazer login. 
+                  Verifique sua caixa de entrada ou spam.
+                </p>
+                {mensagemReenvio && (
+                  <p className={`text-sm mb-3 ${mensagemReenvio.includes('✅') ? 'text-green-400' : 'text-red-400'}`}>
+                    {mensagemReenvio}
+                  </p>
+                )}
+                <button
+                  type="button"
+                  onClick={handleReenviarValidacao}
+                  disabled={reenviando}
+                  className="w-full bg-yellow-600 hover:bg-yellow-700 py-2 rounded-lg text-sm font-medium transition flex items-center justify-center gap-2"
+                >
+                  {reenviando ? <Loader2 className="animate-spin" size={16} /> : <Send size={16} />}
+                  {reenviando ? 'Enviando...' : 'Reenviar link de confirmação'}
+                </button>
               </div>
             )}
 
-            {/* Formulário */}
-            <form onSubmit={handleSubmit} className="space-y-5">
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  <Mail className="w-4 h-4 inline mr-2 text-blue-400" />
-                  Email
-                </label>
-                <input
-                  type="email"
-                  className="w-full p-3 rounded-xl bg-gray-700/50 border border-gray-600 text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all duration-200 placeholder-gray-500"
-                  placeholder="seu@email.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                  autoComplete="email"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  <Lock className="w-4 h-4 inline mr-2 text-green-400" />
-                  Senha
-                </label>
-                <div className="relative">
-                  <input
-                    type={showPassword ? "text" : "password"}
-                    className="w-full p-3 rounded-xl bg-gray-700/50 border border-gray-600 text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all duration-200 placeholder-gray-500 pr-12"
-                    placeholder="••••••••"
-                    value={senha}
-                    onChange={(e) => setSenha(e.target.value)}
-                    required
-                    autoComplete="current-password"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white transition"
-                  >
-                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                  </button>
-                </div>
-                
-                {/* 🔑 LINK ESQUECEU A SENHA */}
-                {tipoLogin === "gestor" && (
-                  <div className="mt-2 text-right">
-                    <button
-                      type="button"
-                      onClick={() => setMostrarRecuperacao(true)}
-                      className="text-blue-400 hover:text-blue-300 text-xs font-medium transition flex items-center gap-1 ml-auto"
-                    >
-                      <KeyRound size={12} />
-                      Esqueceu a senha?
-                    </button>
+            {!precisaConfirmacao && (
+              <>
+                {/* Mensagem de Erro */}
+                {erro && (
+                  <div className="bg-red-900/30 border border-red-500/30 rounded-xl p-3 mb-6 flex items-center gap-2 animate-shake">
+                    <AlertCircle className="text-red-400 flex-shrink-0" size={18} />
+                    <p className="text-red-200 text-sm flex-1">{erro}</p>
                   </div>
                 )}
-              </div>
 
-              <button
-                type="submit"
-                disabled={loading}
-                className={`w-full py-3 rounded-xl transition-all duration-300 flex items-center justify-center gap-2 shadow-lg ${
-                  tipoLogin === "gestor"
-                    ? "bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 shadow-blue-500/25"
-                    : "bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 shadow-purple-500/25"
-                } disabled:opacity-50 text-white font-medium`}
-              >
-                {loading ? (
-                  <>
-                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                    <span>Autenticando...</span>
-                  </>
-                ) : (
-                  <>
-                    <LogIn size={18} />
-                    <span>Entrar no Sistema</span>
-                  </>
-                )}
-              </button>
-            </form>
+                <form onSubmit={handleSubmit} className="space-y-5">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      <Mail className="w-4 h-4 inline mr-2 text-blue-400" />
+                      Email
+                    </label>
+                    <input
+                      type="email"
+                      className="w-full p-3 rounded-xl bg-gray-700/50 border border-gray-600 text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all duration-200 placeholder-gray-500"
+                      placeholder="seu@email.com"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      <Lock className="w-4 h-4 inline mr-2 text-green-400" />
+                      Senha
+                    </label>
+                    <div className="relative">
+                      <input
+                        type={showPassword ? "text" : "password"}
+                        className="w-full p-3 rounded-xl bg-gray-700/50 border border-gray-600 text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all duration-200 placeholder-gray-500 pr-12"
+                        placeholder="••••••••"
+                        value={senha}
+                        onChange={(e) => setSenha(e.target.value)}
+                        required
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white transition"
+                      >
+                        {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                      </button>
+                    </div>
+                    
+                    {tipoLogin === "gestor" && (
+                      <div className="mt-2 text-right">
+                        <button
+                          type="button"
+                          onClick={() => setMostrarRecuperacao(true)}
+                          className="text-blue-400 hover:text-blue-300 text-xs font-medium transition flex items-center gap-1 ml-auto"
+                        >
+                          <KeyRound size={12} />
+                          Esqueceu a senha?
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className={`w-full py-3 rounded-xl transition-all duration-300 flex items-center justify-center gap-2 shadow-lg ${
+                      tipoLogin === "gestor"
+                        ? "bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 shadow-blue-500/25"
+                        : "bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 shadow-purple-500/25"
+                    } disabled:opacity-50 text-white font-medium`}
+                  >
+                    {loading ? (
+                      <>
+                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                        <span>Autenticando...</span>
+                      </>
+                    ) : (
+                      <>
+                        <LogIn size={18} />
+                        <span>Entrar no Sistema</span>
+                      </>
+                    )}
+                  </button>
+                </form>
+              </>
+            )}
 
             {/* Links Extras */}
             <div className="mt-6 pt-4 border-t border-gray-700">
@@ -334,13 +383,15 @@ const Login = () => {
                 <p className="text-gray-400 text-sm">
                   {tipoLogin === "gestor" ? "Gestor de empresas" : "Técnico especializado"}
                 </p>
-                <button
-                  onClick={() => navigate("/gestor/cadastro")}
-                  className="text-blue-400 hover:text-blue-300 text-sm font-medium transition flex items-center gap-1"
-                >
-                  <Briefcase size={14} />
-                  Cadastrar Gestor
-                </button>
+                {!precisaConfirmacao && (
+                  <button
+                    onClick={() => navigate("/gestor/cadastro")}
+                    className="text-blue-400 hover:text-blue-300 text-sm font-medium transition flex items-center gap-1"
+                  >
+                    <Briefcase size={14} />
+                    Cadastrar Gestor
+                  </button>
+                )}
               </div>
             </div>
 
@@ -373,7 +424,6 @@ const Login = () => {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
           <div className="bg-gray-900 rounded-2xl max-w-md w-full shadow-2xl border border-gray-700 animate-scale-in">
             
-            {/* Cabeçalho */}
             <div className="bg-gradient-to-r from-[#003366] to-[#0055A5] px-6 py-5 rounded-t-2xl border-b border-white/10">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
@@ -382,8 +432,7 @@ const Login = () => {
                   </div>
                   <div>
                     <h3 className="text-lg font-bold text-white">
-                      {etapaRecuperacao === 1 ? "Recuperar Senha" : 
-                       etapaRecuperacao === 2 ? "Verificar Código" : "Nova Senha"}
+                      {etapaRecuperacao === 1 ? "Recuperar Senha" : "Nova Senha"}
                     </h3>
                     <p className="text-blue-200 text-sm">
                       {etapaRecuperacao === 1 ? "Etapa 1 de 2" : "Etapa 2 de 2"}
@@ -399,9 +448,7 @@ const Login = () => {
               </div>
             </div>
 
-            {/* Corpo */}
             <div className="p-6">
-              {/* Mensagem */}
               {mensagemRecuperacao.texto && (
                 <div className={`p-3 rounded-xl mb-4 flex items-center gap-2 ${
                   mensagemRecuperacao.tipo === "sucesso" 
@@ -409,15 +456,14 @@ const Login = () => {
                     : "bg-red-600/20 border border-red-500/30"
                 }`}>
                   {mensagemRecuperacao.tipo === "sucesso" ? (
-                    <CheckCircle className="w-4 h-4 text-green-400 flex-shrink-0" />
+                    <CheckCircle className="w-4 h-4 text-green-400" />
                   ) : (
-                    <AlertCircle className="w-4 h-4 text-red-400 flex-shrink-0" />
+                    <AlertCircle className="w-4 h-4 text-red-400" />
                   )}
                   <p className="text-sm text-gray-200">{mensagemRecuperacao.texto}</p>
                 </div>
               )}
 
-              {/* ETAPA 1: Email */}
               {etapaRecuperacao === 1 && (
                 <form onSubmit={handleEnviarEmailRecuperacao} className="space-y-4">
                   <div>
@@ -435,29 +481,22 @@ const Login = () => {
                     />
                   </div>
                   <p className="text-gray-500 text-xs">
-                    Enviaremos um código de verificação para seu email cadastrado.
+                    Enviaremos um código de verificação para seu email.
                   </p>
                   <button
                     type="submit"
                     disabled={loadingRecuperacao}
-                    className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 py-3 rounded-xl text-white font-medium transition-all disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg"
+                    className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 py-3 rounded-xl text-white font-medium transition-all disabled:opacity-50 flex items-center justify-center gap-2"
                   >
                     {loadingRecuperacao ? (
-                      <>
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                        Enviando...
-                      </>
+                      <><Loader2 className="w-4 h-4 animate-spin" /> Enviando...</>
                     ) : (
-                      <>
-                        <Send size={16} />
-                        Enviar Código
-                      </>
+                      <><Send size={16} /> Enviar Código</>
                     )}
                   </button>
                 </form>
               )}
 
-              {/* ETAPA 2: Código + Nova Senha */}
               {etapaRecuperacao === 2 && (
                 <form onSubmit={handleRedefinirSenha} className="space-y-4">
                   <div>
@@ -467,7 +506,7 @@ const Login = () => {
                     </label>
                     <input
                       type="text"
-                      className="w-full p-3 rounded-xl bg-gray-700/50 border border-gray-600 text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all placeholder-gray-500 text-center text-2xl tracking-widest"
+                      className="w-full p-3 rounded-xl bg-gray-700/50 border border-gray-600 text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all text-center text-2xl tracking-widest"
                       placeholder="000000"
                       maxLength={6}
                       value={codigoRecuperacao}
@@ -475,7 +514,7 @@ const Login = () => {
                       required
                     />
                     <p className="text-gray-500 text-xs mt-1">
-                      Digite o código de 6 dígitos enviado para <span className="text-blue-400">{emailRecuperacao}</span>
+                      Digite o código enviado para {emailRecuperacao}
                     </p>
                   </div>
 
@@ -487,7 +526,7 @@ const Login = () => {
                     <div className="relative">
                       <input
                         type={showNovaSenha ? "text" : "password"}
-                        className="w-full p-3 rounded-xl bg-gray-700/50 border border-gray-600 text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all placeholder-gray-500 pr-12"
+                        className="w-full p-3 rounded-xl bg-gray-700/50 border border-gray-600 text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all pr-12"
                         placeholder="Mínimo 6 caracteres"
                         value={novaSenha}
                         onChange={(e) => setNovaSenha(e.target.value)}
@@ -496,7 +535,7 @@ const Login = () => {
                       <button
                         type="button"
                         onClick={() => setShowNovaSenha(!showNovaSenha)}
-                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white transition"
+                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white"
                       >
                         {showNovaSenha ? <EyeOff size={18} /> : <Eye size={18} />}
                       </button>
@@ -510,7 +549,7 @@ const Login = () => {
                     </label>
                     <input
                       type="password"
-                      className="w-full p-3 rounded-xl bg-gray-700/50 border border-gray-600 text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all placeholder-gray-500"
+                      className="w-full p-3 rounded-xl bg-gray-700/50 border border-gray-600 text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
                       placeholder="Confirme a nova senha"
                       value={confirmarNovaSenha}
                       onChange={(e) => setConfirmarNovaSenha(e.target.value)}
@@ -521,18 +560,12 @@ const Login = () => {
                   <button
                     type="submit"
                     disabled={loadingRecuperacao}
-                    className="w-full bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 py-3 rounded-xl text-white font-medium transition-all disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg"
+                    className="w-full bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 py-3 rounded-xl text-white font-medium transition-all disabled:opacity-50 flex items-center justify-center gap-2"
                   >
                     {loadingRecuperacao ? (
-                      <>
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                        Redefinindo...
-                      </>
+                      <><Loader2 className="w-4 h-4 animate-spin" /> Redefinindo...</>
                     ) : (
-                      <>
-                        <CheckCircle size={16} />
-                        Redefinir Senha
-                      </>
+                      <><CheckCircle size={16} /> Redefinir Senha</>
                     )}
                   </button>
 
@@ -545,15 +578,13 @@ const Login = () => {
                       }}
                       className="text-gray-400 hover:text-white text-sm transition flex items-center gap-1 mx-auto"
                     >
-                      <ArrowLeft size={14} />
-                      Voltar e reenviar código
+                      <ArrowLeft size={14} /> Voltar
                     </button>
                   </div>
                 </form>
               )}
             </div>
 
-            {/* Rodapé */}
             <div className="px-6 py-3 border-t border-gray-700 bg-gray-800/50 rounded-b-2xl">
               <p className="text-gray-500 text-xs text-center">
                 SIREXA © {new Date().getFullYear()} — Segurança garantida

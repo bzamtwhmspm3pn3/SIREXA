@@ -1,4 +1,4 @@
-// server.js (ATUALIZADO COM MÓDULO DE CONTABILIDADE)
+// server.js (VERSÃO COMPLETA E CORRIGIDA)
 // 📦 Carrega variáveis de ambiente
 require('dotenv').config();
 
@@ -7,7 +7,21 @@ const express = require('express');
 const cors = require('cors');
 const morgan = require('morgan');
 const path = require('path');
-const mongoose = require('mongoose'); 
+const mongoose = require('mongoose');
+
+// ============================================
+// MIDDLEWARES DE SEGURANÇA
+// ============================================
+const { 
+  apiLimiter, 
+  authLimiter, 
+  securityHeaders, 
+  sanitizeInput, 
+  protectXSS, 
+  preventHpp,
+  requestLogger,
+  verificarLicenca
+} = require('./middlewares/security');
 
 // 📡 Conexão com o MongoDB
 const connectDB = require('./config/database');
@@ -31,7 +45,7 @@ const analiseGeralRoutes = require('./routes/analisegeral');
 const inventarioRoutes = require('./routes/inventario');
 const configuracaoBancoRoutes = require('./routes/configuracaoBanco');
 
-// 📁 Rotas do Módulo de Contabilidade (NOVO)
+// 📁 Rotas do Módulo de Contabilidade
 const contabilidadeRoutes = require('./routes/contabilidadeRoutes');
 
 // 🚀 Inicialização da app
@@ -40,6 +54,7 @@ const app = express();
 // Importar cron jobs
 const { iniciarCronJobs } = require('./cronJobs');
 
+// Criar diretório de uploads
 const fs = require('fs');
 const uploadsDir = path.join(__dirname, 'uploads', 'extratos');
 if (!fs.existsSync(uploadsDir)) {
@@ -47,7 +62,17 @@ if (!fs.existsSync(uploadsDir)) {
   console.log('✅ Diretório de uploads criado:', uploadsDir);
 }
 
-// 🌐 Middlewares globais
+// ============================================
+// 🌐 MIDDLEWARES GLOBAIS (ORDEM IMPORTANTE!)
+// ============================================
+
+// 1. Headers de segurança
+app.use(securityHeaders);
+
+// 2. Logging de requisições
+app.use(requestLogger);
+
+// 3. CORS
 app.use(cors({
   origin: ["http://localhost:5173", "http://localhost:5174", "http://localhost:3000", "https://sirexa.vercel.app", "https://sirexa-git-main-bzamtwhmspm3pn3s-projects.vercel.app"],
   credentials: true,
@@ -55,21 +80,46 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization', 'Accept']
 }));
 
+// 4. Morgan (logging HTTP)
 app.use(morgan('dev'));
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+
+// 5. Parse JSON e URL encoded
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// 6. Arquivos estáticos
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
+// 7. Sanitização de entrada (ANTES das rotas)
+app.use(sanitizeInput);
+app.use(protectXSS);
+app.use(preventHpp);
+
+// 8. Rate limiting GLOBAL (para todas as rotas API)
+app.use('/api/', apiLimiter);
+
+// 9. Rate limiting específico para autenticação
+app.use('/api/gestor', authLimiter);
 
 // ============================================
 // 📁 ROTAS PÚBLICAS (sem token)
 // ============================================
+
+// Rota de licença (pública para validação)
+app.use('/api/licenca', require('./routes/licenca'));
+
+// Rotas de autenticação
 app.use('/api/gestor', require('./routes/gestor'));
 app.use('/api/tecnico', require('./routes/tecnico'));
 
 // ============================================
+// 📁 MIDDLEWARE DE VERIFICAÇÃO DE LICENÇA
+// Aplica-se a todas as rotas protegidas após autenticação
+// ============================================
+app.use('/api/', verificarLicenca);
+
+// ============================================
 // 📁 MIDDLEWARE DE AUTOMAÇÃO CONTABILÍSTICA
-// Aplica-se automaticamente às rotas de Vendas e Pagamentos
 // ============================================
 app.use('/api/vendas', integrarAutomaticamente);
 app.use('/api/pagamentos', integrarAutomaticamente);
@@ -126,7 +176,7 @@ app.use('/api/fluxocaixa', verifyToken, require('./routes/fluxoCaixa'));
 app.use('/api/graficos', verifyToken, require('./routes/graficos'));
 app.use('/api/relatorios', verifyToken, require('./routes/relatorios'));
 
-// 🛒 Vendas (protegida após middleware de integração)
+// 🛒 Vendas e Stock
 app.use('/api/stock', verifyToken, stockRoutes);
 app.use('/api/vendas', verifyToken, vendasRoutes);
 app.use('/api/clientes', verifyToken, clienteRoutes);
@@ -141,7 +191,6 @@ app.use('/api/estimativa', verifyToken, require('./routes/estimativa'));
 // ============================================
 // 📁 MÓDULO DE CONTABILIDADE - PGCA ANGOLA
 // ============================================
-// Todas as rotas de contabilidade requerem autenticação
 app.use('/api/contabilidade', verifyToken, contabilidadeRoutes);
 
 // Rota especial para inicializar plano de contas padrão
@@ -162,14 +211,21 @@ app.get('/api/status', (req, res) => {
   res.json({
     sucesso: true,
     mensagem: 'API SIREXA está funcionando',
-    versao: '2.0.0',
+    versao: '2.1.0',
+    seguranca: {
+      rateLimiting: true,
+      helmet: true,
+      sanitization: true,
+      licenseVerification: true
+    },
     modulos: [
       'Gestão de Empresas',
       'Recursos Humanos',
       'Gestão Patrimonial',
       'Financeiro',
       'Operacional',
-      'Contabilidade (PGCA Angola)'
+      'Contabilidade (PGCA Angola)',
+      'Licenciamento'
     ],
     contabilidade: {
       classes: 9,
@@ -180,13 +236,16 @@ app.get('/api/status', (req, res) => {
   });
 });
 
+// ============================================
 // 🔚 Middleware de tratamento de erro (global)
+// ============================================
 app.use(errorHandler);
 
+// ============================================
 // 🔊 Iniciar o servidor
+// ============================================
 const PORT = process.env.PORT || 5000;
 
-// Função para iniciar o servidor
 async function startServer() {
   try {
     if (mongoose.connection.readyState === 0) {
@@ -197,27 +256,31 @@ async function startServer() {
     iniciarCronJobs();
     
     app.listen(PORT, () => {
-      console.log(`🚀 Servidor rodando em http://localhost:${PORT}`);
+      console.log(`\n🚀 Servidor rodando em http://localhost:${PORT}`);
       console.log(`📊 Ambiente: ${process.env.NODE_ENV || 'development'}`);
-      console.log(`📁 Rotas registradas:`);
-      console.log(`   - /api/empresa (protegida)`);
-      console.log(`   - /api/gestor (pública: POST /, POST /login)`);
-      console.log(`   - /api/gestor/me (protegida)`);
-      console.log(`   - /api/bancos`);
-      console.log(`   - /api/transferencias`);
-      console.log(`   - /api/analisegeral`);
-      console.log(`   - /api/contabilidade (NOVO - PGCA Angola)`);
-      console.log(`     - GET  /plano-contas`);
-      console.log(`     - POST /plano-contas`);
-      console.log(`     - POST /plano-contas/auto`);
-      console.log(`     - POST /plano-contas/inicializar`);
-      console.log(`     - GET  /lancamentos`);
-      console.log(`     - POST /lancamentos/manual`);
-      console.log(`     - POST /reconciliar`);
-      console.log(`     - GET  /relatorios/balancete`);
-      console.log(`     - GET  /relatorios/dre`);
-      console.log(`   - 🔄 Integração automática Vendas → Contabilidade`);
-      console.log(`   - 🔄 Integração automática Pagamentos → Contabilidade`);
+      console.log(`\n📁 ROTAS REGISTRADAS:`);
+      console.log(`   🔓 Públicas:`);
+      console.log(`   - POST   /api/gestor (cadastro)`);
+      console.log(`   - POST   /api/gestor/login (autenticação)`);
+      console.log(`   - POST   /api/licenca/validar (validação de chave)`);
+      console.log(`   - GET    /api/status (status do sistema)`);
+      console.log(`\n   🔒 Protegidas (requer token):`);
+      console.log(`   - /api/empresa`);
+      console.log(`   - /api/fornecedores`);
+      console.log(`   - /api/stock`);
+      console.log(`   - /api/vendas`);
+      console.log(`   - /api/pagamentos`);
+      console.log(`   - /api/contabilidade (PGCA Angola)`);
+      console.log(`   - /api/licenca/status (status da licença)`);
+      console.log(`\n🛡️ Segurança ativa:`);
+      console.log(`   - Rate Limiting: ✅`);
+      console.log(`   - Helmet (headers): ✅`);
+      console.log(`   - Sanitização: ✅`);
+      console.log(`   - XSS Protection: ✅`);
+      console.log(`   - License Verification: ✅`);
+      console.log(`\n📧 Serviços:`);
+      console.log(`   - Email: ${process.env.EMAIL_USER ? '✅ Configurado' : '❌ Não configurado'}`);
+      console.log(`   - SMS: ${process.env.SMS_API_KEY ? '✅ Configurado' : '❌ Não configurado'}`);
     });
     
   } catch (error) {

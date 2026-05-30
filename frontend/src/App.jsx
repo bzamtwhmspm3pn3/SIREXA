@@ -9,6 +9,14 @@ import Login from "./pages/Login";
 import Sobre from "./pages/Sobre";
 import CadastroGestor from "./pages/Gestor/CadastroGestor";
 
+// 👑 ADMIN (NOVO)
+import CadastroAdmin from "./pages/Admin/CadastroAdmin";
+import DashboardAdmin from "./pages/Admin/DashboardAdmin";
+import GerarChave from "./pages/Admin/GerarChave";
+import Licencas from "./pages/Admin/Licencas";
+import Gestores from "./pages/Admin/Gestores";
+import Empresas from "./pages/Admin/Empresas";
+
 // Empresa
 import Empresa from "./pages/Empresa/ListaEmpresas";
 import CadastroEmpresa from "./pages/Empresa/CadastroEmpresa";
@@ -101,6 +109,9 @@ export default function App() {
       <Route path="/login" element={<Login />} />
       <Route path="/gestor/cadastro" element={<CadastroGestor />} />
       <Route path="/sobre" element={<Sobre />} />
+      
+      {/* 👑 ROTAS PÚBLICAS DO ADMIN (cadastro inicial) */}
+      <Route path="/admin/cadastro" element={<CadastroAdmin />} />
 
       {/* Rotas protegidas (requer autenticação) */}
       <Route path="/" element={
@@ -111,6 +122,33 @@ export default function App() {
       <Route path="/menu" element={
         <ProtectedRoute>
           <Menu />
+        </ProtectedRoute>
+      } />
+
+      {/* 👑 ROTAS DO ADMINISTRADOR (protegidas) */}
+      <Route path="/admin" element={
+        <ProtectedRoute allowedRoles={['admin_sistema']}>
+          <DashboardAdmin />
+        </ProtectedRoute>
+      } />
+      <Route path="/admin/gerar-chave" element={
+        <ProtectedRoute allowedRoles={['admin_sistema']}>
+          <GerarChave />
+        </ProtectedRoute>
+      } />
+      <Route path="/admin/licencas" element={
+        <ProtectedRoute allowedRoles={['admin_sistema']}>
+          <Licencas />
+        </ProtectedRoute>
+      } />
+      <Route path="/admin/gestores" element={
+        <ProtectedRoute allowedRoles={['admin_sistema']}>
+          <Gestores />
+        </ProtectedRoute>
+      } />
+      <Route path="/admin/empresas" element={
+        <ProtectedRoute allowedRoles={['admin_sistema']}>
+          <Empresas />
         </ProtectedRoute>
       } />
 

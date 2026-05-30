@@ -56,36 +56,31 @@ const EmpresaSchema = new mongoose.Schema({
   // CONFIGURAÇÕES DE INSS (Segurança Social)
   // ============================================
   
-  // Indica se a empresa é de baixos rendimentos (INSS reduzido)
   isBaixosRendimentos: {
     type: Boolean,
     default: false
   },
   
-  // Regime INSS (normal = 3%/8%, baixos_rendimentos = 1.5%/4%)
   regimeINSS: {
     type: String,
     enum: ['normal', 'baixos_rendimentos'],
     default: 'normal'
   },
   
-  // Taxa INSS do colaborador (pode ser personalizada)
   inssColaboradorTaxa: {
     type: Number,
-    default: 0.03,  // 3% padrão
+    default: 0.03,
     min: 0,
     max: 1
   },
   
-  // Taxa INSS do empregador (pode ser personalizada)
   inssEmpregadorTaxa: {
     type: Number,
-    default: 0.08,  // 8% padrão
+    default: 0.08,
     min: 0,
     max: 1
   },
   
-  // Limite para considerar baixos rendimentos (padrão: 350.000 Kz)
   limiteBaixosRendimentos: {
     type: Number,
     default: 350000
@@ -95,17 +90,15 @@ const EmpresaSchema = new mongoose.Schema({
   // CONFIGURAÇÕES DE IRT
   // ============================================
   
-  // Tipo de cálculo IRT padrão (progressivo ou fixo)
   irtTipoCalculo: {
     type: String,
     enum: ['progressivo', 'fixo'],
     default: 'progressivo'
   },
   
-  // Taxa IRT fixa para empresas que usam regime especial
   irtTaxaFixa: {
     type: Number,
-    default: 0.065,  // 6.5%
+    default: 0.065,
     min: 0,
     max: 1
   },
@@ -141,6 +134,53 @@ const EmpresaSchema = new mongoose.Schema({
   // Status
   ativo: { type: Boolean, default: true },
   
+  // ============================================
+  // 🔥 NOVOS CAMPOS PARA LICENÇA E COMERCIALIZAÇÃO
+  // ============================================
+  
+  // Licença
+  licencaId: { type: mongoose.Schema.Types.ObjectId, ref: 'Licenca', default: null },
+  plano: { 
+    type: String, 
+    enum: ['trial', 'basico', 'profissional', 'empresarial', 'enterprise'], 
+    default: 'trial' 
+  },
+  dataAtivacao: { type: Date, default: Date.now },
+  dataExpiracaoLicenca: { type: Date, default: null },
+  
+  // Status da licença
+  statusLicenca: { 
+    type: String, 
+    enum: ['ativa', 'expirada', 'suspensa', 'trial'], 
+    default: 'trial' 
+  },
+  
+  // Módulos habilitados (sobrescreve os da licença se necessário)
+  modulosHabilitados: {
+    stock: { type: Boolean, default: true },
+    fornecedores: { type: Boolean, default: true },
+    gestaoCompras: { type: Boolean, default: true },
+    rh: { type: Boolean, default: false },
+    contabilidade: { type: Boolean, default: false },
+    financas: { type: Boolean, default: false },
+    relatorios: { type: Boolean, default: true },
+    dashboard: { type: Boolean, default: true },
+    config: { type: Boolean, default: true },
+    manutencoes: { type: Boolean, default: false },
+    abastecimentos: { type: Boolean, default: false },
+    viaturas: { type: Boolean, default: false }
+  },
+  
+  // Limites da empresa
+  limites: {
+    maxUsuarios: { type: Number, default: 1 },
+    maxFuncionarios: { type: Number, default: 5 },
+    maxProdutos: { type: Number, default: 100 },
+    maxFornecedores: { type: Number, default: 20 },
+    maxClientes: { type: Number, default: 50 },
+    espacoArmazenamento: { type: Number, default: 100 } // MB
+  },
+  
   // Datas
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now }
@@ -150,6 +190,9 @@ const EmpresaSchema = new mongoose.Schema({
 
 // Índices para busca
 EmpresaSchema.index({ nome: 'text', nif: 'text', 'contactos.email': 'text' });
+EmpresaSchema.index({ licencaId: 1 });
+EmpresaSchema.index({ plano: 1 });
+EmpresaSchema.index({ statusLicenca: 1 });
 
 // Middleware para atualizar updatedAt
 EmpresaSchema.pre('save', function(next) {
@@ -168,6 +211,20 @@ EmpresaSchema.virtual('descricaoRegimeINSS').get(function() {
     return `Baixos Rendimentos (${this.inssColaboradorTaxa * 100}% / ${this.inssEmpregadorTaxa * 100}%)`;
   }
   return `Normal (${this.inssColaboradorTaxa * 100}% / ${this.inssEmpregadorTaxa * 100}%)`;
+});
+
+// 🔥 Virtual para verificar se licença está ativa
+EmpresaSchema.virtual('licencaAtiva').get(function() {
+  if (this.statusLicenca !== 'ativa') return false;
+  if (this.dataExpiracaoLicenca && new Date() > this.dataExpiracaoLicenca) return false;
+  return true;
+});
+
+// 🔥 Virtual para dias restantes de licença
+EmpresaSchema.virtual('diasRestantesLicenca').get(function() {
+  if (!this.dataExpiracaoLicenca) return null;
+  const diff = this.dataExpiracaoLicenca - new Date();
+  return Math.ceil(diff / (1000 * 60 * 60 * 24));
 });
 
 module.exports = mongoose.models.Empresa || mongoose.model('Empresa', EmpresaSchema);

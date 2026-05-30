@@ -30,6 +30,8 @@ const EditarFornecedor = () => {
     precoCompra: 0,
     precoVenda: 0,
     dataCompra: new Date().toISOString().split('T')[0],
+    dataVencimento: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    modalidadePagamento: "Único",
     numeroLote: "",
     dataValidade: "",
     armazem: "Principal",
@@ -66,7 +68,6 @@ const EditarFornecedor = () => {
   const usuarioEhTecnico = role === 'tecnico';
   const [empresaNomeTecnico, setEmpresaNomeTecnico] = useState("");
 
-  // Carregar empresa do técnico
   useEffect(() => {
     if (usuarioEhTecnico && userEmpresaId && !empresaNomeTecnico) {
       const buscarEmpresa = async () => {
@@ -137,7 +138,6 @@ const EditarFornecedor = () => {
       }
       
       const data = await response.json();
-      
       setFornecedor(data);
       
       setFormData({
@@ -174,7 +174,6 @@ const EditarFornecedor = () => {
     }
   };
 
-  // FUNÇÃO PARA ADICIONAR QUANTIDADE (NOVA ENTRADA)
   const handleAdicionarQuantidade = async (e) => {
     e.preventDefault();
     
@@ -191,6 +190,7 @@ const EditarFornecedor = () => {
     
     try {
       const token = localStorage.getItem("token");
+      
       const response = await fetch(`${BASE_URL}/api/fornecedores/${id}/adicionar-quantidade`, {
         method: "POST",
         headers: {
@@ -202,6 +202,8 @@ const EditarFornecedor = () => {
           precoCompra: novaQuantidade.precoCompra,
           precoVenda: novaQuantidade.precoVenda || undefined,
           dataCompra: novaQuantidade.dataCompra,
+          dataVencimento: novaQuantidade.dataVencimento,
+          modalidadePagamento: novaQuantidade.modalidadePagamento,
           numeroLote: novaQuantidade.numeroLote || undefined,
           dataValidade: novaQuantidade.dataValidade || undefined,
           armazem: novaQuantidade.armazem,
@@ -219,12 +221,13 @@ const EditarFornecedor = () => {
           precoCompra: 0,
           precoVenda: 0,
           dataCompra: new Date().toISOString().split('T')[0],
+          dataVencimento: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+          modalidadePagamento: "Único",
           numeroLote: "",
           dataValidade: "",
           armazem: "Principal",
           observacoes: ""
         });
-        // Recarregar fornecedor para atualizar os dados exibidos
         await carregarFornecedor();
       } else {
         mostrarMensagem(result.mensagem || "Erro ao registrar compra", "erro");
@@ -275,7 +278,6 @@ const EditarFornecedor = () => {
     return new Intl.NumberFormat('pt-AO').format(valor);
   };
 
-  // Calcular o valor total do estoque atual
   const calcularValorTotalEstoque = () => {
     if (!fornecedor?.produtoInfo) return 0;
     const quantidade = fornecedor.produtoInfo.quantidade || 0;
@@ -283,23 +285,18 @@ const EditarFornecedor = () => {
     return quantidade * precoCompra;
   };
 
-  // Verificar se o fornecedor suporta IVA
   const suportaIVA = () => {
     return fornecedor?.fiscal?.suportaIVA !== false;
   };
 
-  // Calcular o valor total da nova compra (respeitando IVA ou não)
   const calcularValorTotalNovaCompra = () => {
     const subtotal = novaQuantidade.quantidade * novaQuantidade.precoCompra;
-    if (!suportaIVA()) {
-      return subtotal;
-    }
+    if (!suportaIVA()) return subtotal;
     const taxaIVA = fornecedor?.fiscal?.taxaIVA || 14;
     const iva = subtotal * taxaIVA / 100;
     return subtotal + iva;
   };
 
-  // Calcular o valor do IVA da nova compra
   const calcularValorIVANovaCompra = () => {
     if (!suportaIVA()) return 0;
     const subtotal = novaQuantidade.quantidade * novaQuantidade.precoCompra;
@@ -307,7 +304,6 @@ const EditarFornecedor = () => {
     return subtotal * taxaIVA / 100;
   };
 
-  // Tela de carregamento
   if (loading) {
     return (
       <Layout title="Editar Fornecedor" showBackButton={true} backToRoute="/fornecedores">
@@ -319,7 +315,6 @@ const EditarFornecedor = () => {
     );
   }
 
-  // Se não encontrou o fornecedor
   if (!fornecedor) {
     return (
       <Layout title="Editar Fornecedor" showBackButton={true} backToRoute="/fornecedores">
@@ -353,7 +348,7 @@ const EditarFornecedor = () => {
         </div>
       )}
 
-      {/* MODAL PARA ADICIONAR QUANTIDADE */}
+      {/* MODAL PARA ADICIONAR QUANTIDADE (MERCADORIA) */}
       {modalQuantidadeOpen && isMercadoria && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
           <div className="bg-gray-800 rounded-2xl max-w-lg w-full max-h-[85vh] overflow-y-auto">
@@ -369,6 +364,7 @@ const EditarFornecedor = () => {
               </div>
             </div>
             <form onSubmit={handleAdicionarQuantidade} className="p-6 space-y-4">
+              {/* Informação do Produto */}
               <div className="bg-blue-600/10 rounded-xl p-3 mb-2">
                 <p className="text-blue-400 text-sm flex items-center gap-2">
                   <Package size={14} /> Produto: <strong>{fornecedor?.produtoInfo?.produto || "Produto"}</strong>
@@ -378,6 +374,7 @@ const EditarFornecedor = () => {
                 </p>
               </div>
               
+              {/* Dados da Compra */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-2">Quantidade *</label>
@@ -425,16 +422,90 @@ const EditarFornecedor = () => {
                 </div>
               </div>
               
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">Data da Compra</label>
-                <input 
-                  type="date" 
-                  className="w-full p-3 rounded-xl bg-gray-700/50 border border-gray-600 text-white"
-                  value={novaQuantidade.dataCompra}
-                  onChange={(e) => setNovaQuantidade({...novaQuantidade, dataCompra: e.target.value})}
-                />
+              {/* Informações do Contrato (preenchidas pelo usuário) */}
+              <div className="bg-purple-600/10 rounded-xl p-3 border border-purple-500/30">
+                <h4 className="text-sm font-semibold text-purple-400 mb-3 flex items-center gap-2">
+                  <FileText size={14} /> Informações do Contrato
+                </h4>
+                
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">Descrição do Contrato *</label>
+                    <input 
+                      type="text"
+                      className="w-full p-3 rounded-xl bg-gray-700/50 border border-gray-600 text-white"
+                      value={`Compra de ${novaQuantidade.quantidade || 0} ${fornecedor?.produtoInfo?.unidadeMedida || 'unidade'}(s) de ${fornecedor?.produtoInfo?.produto || 'produto'}`}
+                      disabled
+                    />
+                    <p className="text-xs text-gray-400 mt-1">✓ Gerado automaticamente</p>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">Data Início *</label>
+                      <input 
+                        type="date"
+                        className="w-full p-3 rounded-xl bg-gray-700/50 border border-gray-600 text-white"
+                        value={novaQuantidade.dataCompra}
+                        onChange={(e) => setNovaQuantidade({...novaQuantidade, dataCompra: e.target.value})}
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">Data Fim / Vencimento *</label>
+                      <input 
+                        type="date"
+                        className="w-full p-3 rounded-xl bg-gray-700/50 border border-gray-600 text-white"
+                        value={novaQuantidade.dataVencimento}
+                        onChange={(e) => setNovaQuantidade({...novaQuantidade, dataVencimento: e.target.value})}
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">Modalidade de Pagamento *</label>
+                    <select 
+                      className="w-full p-3 rounded-xl bg-gray-700/50 border border-gray-600 text-white"
+                      value={novaQuantidade.modalidadePagamento}
+                      onChange={(e) => setNovaQuantidade({...novaQuantidade, modalidadePagamento: e.target.value})}
+                    >
+                      <option value="Único">Único</option>
+                      <option value="Mensal">Mensal</option>
+                      <option value="Trimestral">Trimestral</option>
+                      <option value="Semestral">Semestral</option>
+                      <option value="Anual">Anual</option>
+                    </select>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">Dia Vencimento</label>
+                      <input 
+                        type="number"
+                        min="1"
+                        max="31"
+                        className="w-full p-3 rounded-xl bg-gray-700/50 border border-gray-600 text-white"
+                        value={new Date(novaQuantidade.dataVencimento).getDate()}
+                        disabled
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">Dia Pagamento</label>
+                      <input 
+                        type="number"
+                        min="1"
+                        max="31"
+                        className="w-full p-3 rounded-xl bg-gray-700/50 border border-gray-600 text-white"
+                        value={new Date(novaQuantidade.dataVencimento).getDate()}
+                        disabled
+                      />
+                    </div>
+                  </div>
+                </div>
               </div>
               
+              {/* Dados Adicionais */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-2">Nº Lote</label>
@@ -466,17 +537,7 @@ const EditarFornecedor = () => {
                 />
               </div>
               
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">Observações</label>
-                <textarea 
-                  rows="2" 
-                  className="w-full p-3 rounded-xl bg-gray-700/50 border border-gray-600 text-white resize-none"
-                  value={novaQuantidade.observacoes}
-                  onChange={(e) => setNovaQuantidade({...novaQuantidade, observacoes: e.target.value})}
-                />
-              </div>
-              
-              {/* Resumo da Compra - Respeitando a condição de IVA */}
+              {/* Resumo da Compra */}
               {novaQuantidade.quantidade > 0 && novaQuantidade.precoCompra > 0 && (
                 <div className="bg-gradient-to-r from-blue-600/10 to-purple-600/10 rounded-xl p-4 border border-blue-500/30">
                   <h4 className="text-sm font-semibold text-blue-400 mb-2">Resumo da Compra</h4>
@@ -497,10 +558,20 @@ const EditarFornecedor = () => {
                     </div>
                   </div>
                   <p className="text-xs text-yellow-400 mt-2">
-                    ⚠️ Este valor será registrado como pagamento pendente
+                    ⚠️ Será gerado um contrato e pagamento pendente com vencimento em {new Date(novaQuantidade.dataVencimento).toLocaleDateString('pt-PT')}
                   </p>
                 </div>
               )}
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Observações</label>
+                <textarea 
+                  rows="2" 
+                  className="w-full p-3 rounded-xl bg-gray-700/50 border border-gray-600 text-white resize-none"
+                  value={novaQuantidade.observacoes}
+                  onChange={(e) => setNovaQuantidade({...novaQuantidade, observacoes: e.target.value})}
+                />
+              </div>
               
               <div className="flex gap-3 pt-4">
                 <button 
@@ -624,7 +695,7 @@ const EditarFornecedor = () => {
                   </div>
                 </div>
                 
-                {/* Botão para adicionar nova entrada - AGORA DENTRO DO FORMULÁRIO */}
+                {/* Botão para adicionar nova entrada */}
                 <div className="mt-4 pt-3 border-t border-gray-600">
                   <button
                     type="button"
@@ -634,8 +705,40 @@ const EditarFornecedor = () => {
                     <PlusCircle size={18} /> Registrar Nova Entrada (+ Estoque)
                   </button>
                   <p className="text-xs text-gray-400 mt-2 text-center">
-                    Adicione novas quantidades ao estoque. Será gerado um pagamento automático.
+                    Adicione novas quantidades ao estoque. Será gerado um contrato e pagamento automático.
                   </p>
+                </div>
+              </div>
+            )}
+
+            {/* Contratos (para serviços) */}
+            {!isMercadoria && fornecedor.contratos && fornecedor.contratos.length > 0 && (
+              <div className="bg-gray-700/30 rounded-xl p-4">
+                <h3 className="text-md font-semibold text-purple-400 mb-4 flex items-center gap-2"><Calendar className="w-4 h-4" /> Contratos Ativos</h3>
+                <div className="space-y-3">
+                  {fornecedor.contratos.map((contrato, idx) => (
+                    <div key={idx} className="bg-gray-800/50 rounded-lg p-3">
+                      <p className="text-white font-medium">{contrato.descricao}</p>
+                      <div className="grid grid-cols-2 gap-2 text-sm mt-2">
+                        <div>
+                          <p className="text-xs text-gray-400">Valor</p>
+                          <p className="text-green-400">{formatarMoeda(contrato.valor)} Kz</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-400">Modalidade</p>
+                          <p className="text-purple-400">{contrato.modalidadePagamento}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-400">Data Início</p>
+                          <p className="text-white">{new Date(contrato.dataInicio).toLocaleDateString('pt-PT')}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-400">Data Fim</p>
+                          <p className="text-white">{new Date(contrato.dataFim).toLocaleDateString('pt-PT')}</p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             )}

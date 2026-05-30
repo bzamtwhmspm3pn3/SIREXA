@@ -6,7 +6,7 @@ import { useNavigate } from "react-router-dom";
 import { 
   UserPlus, Mail, Lock, Phone, Eye, EyeOff, CheckCircle, 
   AlertCircle, Shield, FileText, ChevronRight, ArrowLeft,
-  Loader2, Building, Users, Briefcase, X
+  Loader2, Building, Users, Briefcase, X, Key
 } from "lucide-react";
 import logo from "../../assets/sirexa-logo.ico";
 
@@ -16,7 +16,8 @@ const CadastroGestor = () => {
     email: "",
     senha: "",
     confirmarSenha: "",
-    telefone: ""
+    telefone: "",
+    chaveAtivacao: ""  // 🔥 ADICIONADO: campo da chave
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -59,6 +60,11 @@ const CadastroGestor = () => {
       return;
     }
     
+    if (!formData.chaveAtivacao) {
+      mostrarMensagem("Chave de ativação é obrigatória", "erro");
+      return;
+    }
+    
     setLoading(true);
     try {
       const response = await fetch("https://sirexa-api.onrender.com/api/gestor", {
@@ -68,7 +74,8 @@ const CadastroGestor = () => {
           nome: formData.nome,
           email: formData.email,
           senha: formData.senha,
-          telefone: formData.telefone
+          telefone: formData.telefone,
+          chaveAtivacao: formData.chaveAtivacao  // 🔥 ADICIONADO: enviar chave
         })
       });
       const data = await response.json();
@@ -353,6 +360,27 @@ const CadastroGestor = () => {
                 onChange={(e) => setFormData({...formData, email: e.target.value})}
                 required
               />
+            </div>
+
+            {/* 🔥 CAMPO DA CHAVE DE ATIVAÇÃO (ADICIONADO) */}
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">
+                <Key className="w-4 h-4 inline mr-2 text-yellow-400" />
+                Chave de Ativação <span className="text-red-400">*</span>
+              </label>
+              <div className="relative">
+                <input
+                  type="text"
+                  className="w-full p-3 rounded-xl bg-gray-700/50 border border-gray-600 text-white font-mono uppercase"
+                  placeholder="XXXX-XXXX-XXXX-XXXX"
+                  value={formData.chaveAtivacao}
+                  onChange={(e) => setFormData({...formData, chaveAtivacao: e.target.value.toUpperCase()})}
+                  required
+                />
+              </div>
+              <p className="text-xs text-gray-400 mt-1">
+                Insira a chave fornecida no momento da compra da licença
+              </p>
             </div>
 
             {/* Telefone */}

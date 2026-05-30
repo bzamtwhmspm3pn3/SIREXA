@@ -7,7 +7,7 @@ import {
   Save, ArrowLeft, Truck, Building2, Mail, Phone, MapPin, 
   Briefcase, CreditCard, Hash, CheckCircle, AlertCircle, 
   Loader2, Plus, X, Calendar, DollarSign, Award, FileText,
-  Package, Wrench, Home, Globe, TrendingUp, Edit
+  Package, Wrench, Home, Globe, TrendingUp, Edit,Trash2 
 } from "lucide-react";
 
 const CadastroFornecedor = () => {
