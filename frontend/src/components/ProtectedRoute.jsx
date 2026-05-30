@@ -2,7 +2,7 @@
 import { Navigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 
-const ProtectedRoute = ({ children, requiredRole }) => {
+const ProtectedRoute = ({ children, requiredRole, allowedRoles = [] }) => {
   const { isAuthenticated, user, loading } = useAuth();
 
   if (loading) {
@@ -20,7 +20,20 @@ const ProtectedRoute = ({ children, requiredRole }) => {
     return <Navigate to="/login" replace />;
   }
 
+  // Verificar roles permitidas
   if (requiredRole && user?.role !== requiredRole) {
+    // Redirecionar admin para /admin
+    if (user?.role === "admin_sistema") {
+      return <Navigate to="/admin" replace />;
+    }
+    return <Navigate to="/menu" replace />;
+  }
+
+  // Verificar se a role está na lista de permitidas
+  if (allowedRoles.length > 0 && !allowedRoles.includes(user?.role)) {
+    if (user?.role === "admin_sistema") {
+      return <Navigate to="/admin" replace />;
+    }
     return <Navigate to="/menu" replace />;
   }
 

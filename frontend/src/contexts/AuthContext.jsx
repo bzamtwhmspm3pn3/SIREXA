@@ -39,6 +39,7 @@ export const AuthProvider = ({ children }) => {
           }
           
           console.log("✅ Usuário carregado:", userData?.nome);
+          console.log("⭐ Role:", userData?.role);
           console.log("🏢 Empresa ID:", userData?.empresaId);
           console.log("🏢 Empresa NIF:", userData?.empresaNif);
         }
@@ -60,30 +61,41 @@ export const AuthProvider = ({ children }) => {
     try {
       console.log("📝 Tentando login:", email);
       
-      const endpoint = tipo === "gestor" ? `${API_URL}/gestor/login` : `${API_URL}/tecnico/login`;
+      // 🔥 ADMINISTRADOR - forçar usar rota de gestor
+      const isAdmin = email === "admin@sirexa.ao";
+      const endpoint = isAdmin || tipo === "gestor" 
+        ? `${API_URL}/gestor/login` 
+        : `${API_URL}/tecnico/login`;
+      
+      console.log("📍 Endpoint:", endpoint);
       
       const response = await axios.post(endpoint, { email, senha });
       
       const { token, gestor, usuario } = response.data;
-      const userData = gestor || usuario;
+      let userData = gestor || usuario;
       
       if (!userData) {
         throw new Error("Dados do usuário não encontrados");
       }
       
+      // 🔥 FORÇAR ROLE ADMIN PARA O EMAIL ADMIN
+      if (isAdmin) {
+        userData.role = "admin_sistema";
+        console.log("👑 Usuário promovido a ADMIN_SISTEMA");
+      }
+      
       // Buscar dados completos da empresa se for técnico
       let empresaCompleta = null;
       if (tipo === "tecnico" && userData.empresaId) {
-  try {
-    // Usar a rota pública em vez da rota restrita
-    const empresaResponse = await axios.get(`${API_URL}/empresa/public/${userData.empresaId}`, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
-    empresaCompleta = empresaResponse.data.dados || empresaResponse.data;
-  } catch (err) {
-    console.log("Erro ao buscar empresa:", err.message);
-  }
-}
+        try {
+          const empresaResponse = await axios.get(`${API_URL}/empresa/public/${userData.empresaId}`, {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          empresaCompleta = empresaResponse.data.dados || empresaResponse.data;
+        } catch (err) {
+          console.log("Erro ao buscar empresa:", err.message);
+        }
+      }
       
       const finalUserData = {
         ...userData,
@@ -114,8 +126,8 @@ export const AuthProvider = ({ children }) => {
       }
       
       console.log("✅ Login realizado com sucesso!");
+      console.log("⭐ Role final:", finalUserData.role);
       console.log("🏢 Empresa associada:", finalUserData.empresaId);
-      console.log("🏢 NIF da empresa:", finalUserData.empresaNif);
       
       return { success: true, user: finalUserData };
       
@@ -147,6 +159,7 @@ export const AuthProvider = ({ children }) => {
 
   const isGestor = () => user?.role === "gestor";
   const isTecnico = () => user?.role === "tecnico";
+  const isAdmin = () => user?.role === "admin_sistema";
   
   const getEmpresaAtiva = () => {
     if (isTecnico() && empresaId) {
@@ -172,6 +185,7 @@ export const AuthProvider = ({ children }) => {
       isAuthenticated,
       isGestor,
       isTecnico,
+      isAdmin,
       empresaId,
       empresaNome,
       empresaNif,
