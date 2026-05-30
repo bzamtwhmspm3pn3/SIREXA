@@ -4,13 +4,13 @@ const helmet = require('helmet');
 const hpp = require('hpp');
 
 // ============================================
-// RATE LIMITING POR USUÁRIO (não por IP)
+// RATE LIMITING POR USUÁRIO (não por IP) - CORRIGIDO
 // ============================================
 
-// Função para obter identificador único do usuário (email ou IP como fallback)
+// Função para obter identificador único do usuário (com validação segura)
 const getKey = (req) => {
-  // Se tem usuário autenticado, usa o email
-  if (req.user && req.user.email) {
+  // Verificação SEGURA - só acessa req.user se existir
+  if (req.user && typeof req.user === 'object' && req.user.email) {
     return `user:${req.user.email}`;
   }
   // Se tem email no body (login), usa o email
@@ -18,7 +18,7 @@ const getKey = (req) => {
     return `login:${req.body.email}`;
   }
   // Fallback: IP
-  return req.ip;
+  return `ip:${req.ip || 'unknown'}`;
 };
 
 // Limite geral para API (100 requisições por 15 minutos por usuário)
@@ -27,7 +27,7 @@ const apiLimiter = rateLimit({
   max: 100,
   keyGenerator: getKey,
   skip: (req) => {
-    // Pular rate limit para admins
+    // Pular rate limit para admins (só se existir req.user)
     if (req.user && req.user.role === 'admin_sistema') return true;
     return false;
   },
@@ -44,11 +44,10 @@ const authLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
   max: 5,
   keyGenerator: (req) => {
-    // Usa o email como chave única
-    const email = req.body.email || 'unknown';
+    const email = req.body?.email || 'unknown';
     return `auth:${email.toLowerCase()}`;
   },
-  skipSuccessfulRequests: true, // Não contar tentativas bem-sucedidas
+  skipSuccessfulRequests: true,
   message: {
     sucesso: false,
     mensagem: 'Muitas tentativas de login. Tente novamente em 1 hora.'
@@ -62,7 +61,7 @@ const keyValidationLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
   max: 10,
   keyGenerator: (req) => {
-    const chave = req.body.chave || 'unknown';
+    const chave = req.body?.chave || 'unknown';
     return `chave:${chave}`;
   },
   message: {
@@ -76,7 +75,7 @@ const registerLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
   max: 3,
   keyGenerator: (req) => {
-    const email = req.body.email || 'unknown';
+    const email = req.body?.email || 'unknown';
     return `register:${email.toLowerCase()}`;
   },
   message: {
@@ -102,14 +101,8 @@ const securityHeaders = helmet({
 // SANITIZAÇÃO (DESABILITADA)
 // ============================================
 
-const sanitizeInput = (req, res, next) => {
-  next();
-};
-
-const protectXSS = (req, res, next) => {
-  next();
-};
-
+const sanitizeInput = (req, res, next) => next();
+const protectXSS = (req, res, next) => next();
 const preventHpp = hpp();
 
 // ============================================
@@ -118,13 +111,11 @@ const preventHpp = hpp();
 
 const requestLogger = (req, res, next) => {
   const start = Date.now();
-  
   res.on('finish', () => {
     const duration = Date.now() - start;
     const logLevel = res.statusCode >= 500 ? '❌' : res.statusCode >= 400 ? '⚠️' : '✅';
     console.log(`${logLevel} [${new Date().toISOString()}] ${req.method} ${req.originalUrl} - ${res.statusCode} - ${duration}ms`);
   });
-  
   next();
 };
 
@@ -259,20 +250,18 @@ const verificarModulo = (modulo) => {
   return async (req, res, next) => {
     try {
       const licenca = req.licenca;
-      
       if (!licenca) {
         return res.status(403).json({ 
           sucesso: false, 
-          mensagem: 'Licença não verificada. Contacte o suporte.' 
+          mensagem: 'Licença não verificada.' 
         });
       }
       
       const modulosHabilitados = licenca.modulos || {};
-      
       if (!modulosHabilitados[modulo]) {
         return res.status(403).json({ 
           sucesso: false, 
-          mensagem: `O módulo "${modulo}" não está disponível no seu plano (${licenca.plano}). Faça upgrade para acessar.` 
+          mensagem: `Módulo "${modulo}" não disponível no plano ${licenca.plano}.` 
         });
       }
       
@@ -303,7 +292,7 @@ const verificarLimite = (tipo) => {
         if (count >= limites.maxProdutos) {
           return res.status(403).json({
             sucesso: false,
-            mensagem: `Limite de produtos atingido (${count}/${limites.maxProdutos}). Faça upgrade do plano.`
+            mensagem: `Limite de produtos atingido (${count}/${limites.maxProdutos}).`
           });
         }
       }
@@ -314,7 +303,7 @@ const verificarLimite = (tipo) => {
         if (count >= limites.maxFornecedores) {
           return res.status(403).json({
             sucesso: false,
-            mensagem: `Limite de fornecedores atingido (${count}/${limites.maxFornecedores}). Faça upgrade do plano.`
+            mensagem: `Limite de fornecedores atingido (${count}/${limites.maxFornecedores}).`
           });
         }
       }
