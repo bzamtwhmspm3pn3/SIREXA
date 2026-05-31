@@ -1,5 +1,5 @@
 // src/pages/Menu.jsx (SEM o card Configurar Módulos)
-import { Link, Navigate } from "react-router-dom";
+import { Navigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import Layout from "../components/Layout";
 import { 
@@ -454,12 +454,17 @@ export default function Menu() {
   return null;
 }
 
-// Componente MenuCard
+// 🔥 COMPONENTE MenuCard CORRIGIDO - Usa window.location.href
 const MenuCard = ({ to, icon, title, description, gradient }) => {
+  const handleClick = () => {
+    console.log(`🔍 Navegando para: ${to}`);
+    window.location.href = to;
+  };
+
   return (
-    <Link
-      to={to}
-      className="group relative overflow-hidden bg-gray-800/50 backdrop-blur-sm rounded-2xl p-6 border border-gray-700/50 hover:border-blue-500/50 transition-all duration-300 hover:scale-105"
+    <button
+      onClick={handleClick}
+      className="group relative overflow-hidden bg-gray-800/50 backdrop-blur-sm rounded-2xl p-6 border border-gray-700/50 hover:border-blue-500/50 transition-all duration-300 hover:scale-105 w-full text-left cursor-pointer"
     >
       <div className={`absolute inset-0 bg-gradient-to-r ${gradient} opacity-0 group-hover:opacity-10 transition-opacity duration-300`}></div>
       <div className="relative z-10">
@@ -473,7 +478,7 @@ const MenuCard = ({ to, icon, title, description, gradient }) => {
           <Sparkles size={14} />
         </div>
       </div>
-    </Link>
+    </button>
   );
 };
 
