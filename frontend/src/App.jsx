@@ -8,6 +8,7 @@ import Menu from "./pages/Menu";
 import Login from "./pages/Login";
 import Sobre from "./pages/Sobre";
 import CadastroGestor from "./pages/Gestor/CadastroGestor";
+import RedefinirSenha from './pages/Gestor/RedefinirSenha';
 
 // 👑 ADMIN (NOVO)
 import CadastroAdmin from "./pages/Admin/CadastroAdmin";
@@ -110,6 +111,7 @@ export default function App() {
       {/* Rotas públicas */}
       <Route path="/login" element={<Login />} />
       <Route path="/gestor/cadastro" element={<CadastroGestor />} />
+      <Route path="/redefinir-senha" element={<RedefinirSenha />} />
       <Route path="/sobre" element={<Sobre />} />
       
       {/* 👑 ROTAS PÚBLICAS DO ADMIN (cadastro inicial) */}
