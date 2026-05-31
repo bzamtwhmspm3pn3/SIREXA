@@ -1,35 +1,81 @@
 // src/pages/Admin/GerarChave.jsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import LayoutAdmin from './LayoutAdmin';
-import { Key, Copy, CheckCircle, AlertCircle, Loader2, Mail, Calendar, Shield } from 'lucide-react';
+import { Key, Mail, Calendar, AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
 
 const GerarChave = () => {
-  const [email, setEmail] = useState('');
-  const [plano, setPlano] = useState('BASICO');
-  const [diasValidade, setDiasValidade] = useState(365);
+  const [formData, setFormData] = useState({
+    email: '',
+    plano: '',
+    diasValidade: 365
+  });
+  
+  const [planos, setPlanos] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [carregandoPlanos, setCarregandoPlanos] = useState(true);
   const [chaveGerada, setChaveGerada] = useState(null);
-  const [copiado, setCopiado] = useState(false);
   const [mensagem, setMensagem] = useState({ texto: '', tipo: '' });
 
-  const planos = [
-    { value: 'FREE', label: 'FREE', preco: 'Grátis', dias: 7 },
-    { value: 'BASICO', label: 'BÁSICO', preco: '29.900 Kz', dias: 365 },
-    { value: 'PROFISSIONAL', label: 'PROFISSIONAL', preco: '79.900 Kz', dias: 365 },
-    { value: 'EMPRESARIAL', label: 'EMPRESARIAL', preco: '149.900 Kz', dias: 365 },
-    { value: 'PLATINUM', label: 'PLATINUM', preco: '299.900 Kz', dias: 365 }
-  ];
+  // 🔥 CARREGAR PLANOS DO BACKEND
+  useEffect(() => {
+    carregarPlanos();
+  }, []);
 
-  const handleGerar = async (e) => {
+  const carregarPlanos = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch('https://sirexa-api.onrender.com/api/gestor/admin/planos', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        console.log('📋 Planos carregados:', data.planos);
+        setPlanos(data.planos || []);
+        
+        // Selecionar primeiro plano ativo como padrão
+        const primeiroPlano = data.planos?.find(p => p.ativo);
+        if (primeiroPlano && !formData.plano) {
+          setFormData(prev => ({ ...prev, plano: primeiroPlano.nome }));
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao carregar planos:', error);
+      // Fallback para planos padrão
+      setPlanos([
+        { nome: 'FREE', preco: 0, descricao: 'Teste gratuito' },
+        { nome: 'BÁSICO', preco: 29900, descricao: 'Para pequenas empresas' },
+        { nome: 'PROFISSIONAL', preco: 79900, descricao: 'Para empresas em crescimento' },
+        { nome: 'EMPRESARIAL', preco: 149900, descricao: 'Solução completa' },
+        { nome: 'PLATINUM', preco: 299900, descricao: 'Ilimitado + Suporte prioritário' }
+      ]);
+    } finally {
+      setCarregandoPlanos(false);
+    }
+  };
+
+  const formatarMoeda = (valor) => {
+    return new Intl.NumberFormat('pt-AO').format(valor);
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!email) {
-      setMensagem({ texto: 'Email do cliente é obrigatório', tipo: 'erro' });
+    
+    if (!formData.email) {
+      setMensagem({ texto: '❌ Email é obrigatório', tipo: 'erro' });
+      setTimeout(() => setMensagem({ texto: '', tipo: '' }), 3000);
+      return;
+    }
+    
+    if (!formData.plano) {
+      setMensagem({ texto: '❌ Selecione um plano', tipo: 'erro' });
+      setTimeout(() => setMensagem({ texto: '', tipo: '' }), 3000);
       return;
     }
     
     setLoading(true);
-    setMensagem({ texto: '', tipo: '' });
-
+    setChaveGerada(null);
+    
     try {
       const token = localStorage.getItem("token");
       const response = await fetch('https://sirexa-api.onrender.com/api/gestor/admin/gerar-chave', {
@@ -38,136 +84,151 @@ const GerarChave = () => {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ email, plano, diasValidade })
+        body: JSON.stringify({
+          email: formData.email,
+          plano: formData.plano,
+          diasValidade: formData.diasValidade
+        })
       });
-
+      
       const data = await response.json();
       
       if (response.ok && data.sucesso) {
         setChaveGerada(data.chave);
         setMensagem({ texto: '✅ Chave gerada com sucesso!', tipo: 'sucesso' });
+        setTimeout(() => setMensagem({ texto: '', tipo: '' }), 5000);
       } else {
-        setMensagem({ texto: data.mensagem || 'Erro ao gerar chave', tipo: 'erro' });
+        setMensagem({ texto: data.mensagem || '❌ Erro ao gerar chave', tipo: 'erro' });
+        setTimeout(() => setMensagem({ texto: '', tipo: '' }), 3000);
       }
     } catch (error) {
-      setMensagem({ texto: 'Erro ao conectar ao servidor', tipo: 'erro' });
+      setMensagem({ texto: '❌ Erro ao conectar ao servidor', tipo: 'erro' });
+      setTimeout(() => setMensagem({ texto: '', tipo: '' }), 3000);
     } finally {
       setLoading(false);
     }
   };
 
-  const copiarChave = () => {
-    navigator.clipboard.writeText(chaveGerada);
-    setCopiado(true);
-    setTimeout(() => setCopiado(false), 2000);
-  };
+  if (carregandoPlanos) {
+    return (
+      <LayoutAdmin title="Gerar Chave de Ativação">
+        <div className="flex items-center justify-center h-96">
+          <Loader2 className="animate-spin text-purple-400" size={40} />
+        </div>
+      </LayoutAdmin>
+    );
+  }
 
   return (
     <LayoutAdmin title="Gerar Chave de Ativação">
       <div className="max-w-2xl mx-auto">
-        <div className="bg-gray-800 rounded-2xl border border-gray-700 overflow-hidden">
-          <div className="bg-gradient-to-r from-yellow-600/20 to-orange-600/20 px-6 py-4 border-b border-gray-700">
-            <div className="flex items-center gap-3">
-              <Key className="w-6 h-6 text-yellow-400" />
-              <div>
-                <h2 className="text-xl font-bold text-white">Nova Chave de Ativação</h2>
-                <p className="text-gray-400 text-sm">Crie chaves para novos clientes</p>
-              </div>
+        {mensagem.texto && (
+          <div className="mb-4 p-3 rounded-lg flex items-center gap-2 text-sm animate-fade-in-out" style={{
+            backgroundColor: mensagem.tipo === 'sucesso' ? '#10b98120' : '#ef444420',
+            color: mensagem.tipo === 'sucesso' ? '#10b981' : '#ef4444',
+            border: `1px solid ${mensagem.tipo === 'sucesso' ? '#10b98140' : '#ef444440'}`
+          }}>
+            {mensagem.tipo === 'sucesso' ? <CheckCircle size={18} /> : <AlertCircle size={18} />}
+            {mensagem.texto}
+          </div>
+        )}
+
+        {chaveGerada && (
+          <div className="mb-6 p-4 bg-gradient-to-r from-green-600/20 to-emerald-600/20 rounded-xl border border-green-500/30">
+            <h3 className="text-green-400 font-semibold mb-2 flex items-center gap-2">
+              <CheckCircle size={18} /> Chave Gerada com Sucesso!
+            </h3>
+            <div className="bg-gray-900/50 p-3 rounded-lg">
+              <code className="text-green-400 font-mono text-sm break-all">{chaveGerada}</code>
             </div>
+            <p className="text-gray-400 text-xs mt-2">
+              Esta chave é válida por {formData.diasValidade} dias. Envie para o cliente.
+            </p>
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">
+              <Mail size={14} className="inline mr-1" /> Email do Cliente *
+            </label>
+            <input
+              type="email"
+              value={formData.email}
+              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+              className="w-full p-3 rounded-xl bg-gray-700/50 border border-gray-600 text-white focus:border-purple-500 focus:outline-none"
+              placeholder="cliente@empresa.com"
+              required
+            />
           </div>
 
-          <form onSubmit={handleGerar} className="p-6 space-y-5">
-            {mensagem.texto && (
-              <div className={`p-3 rounded-xl flex items-center gap-2 ${
-                mensagem.tipo === 'sucesso' ? 'bg-green-600/20 text-green-400' : 'bg-red-600/20 text-red-400'
-              }`}>
-                {mensagem.tipo === 'sucesso' ? <CheckCircle size={18} /> : <AlertCircle size={18} />}
-                {mensagem.texto}
-              </div>
-            )}
-
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                <Mail className="w-4 h-4 inline mr-2 text-blue-400" />
-                Email do Cliente *
-              </label>
-              <input
-                type="email"
-                className="w-full p-3 rounded-xl bg-gray-700/50 border border-gray-600 text-white"
-                placeholder="cliente@empresa.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                <Shield className="w-4 h-4 inline mr-2 text-purple-400" />
-                Plano *
-              </label>
-              <select
-                className="w-full p-3 rounded-xl bg-gray-700/50 border border-gray-600 text-white"
-                value={plano}
-                onChange={(e) => setPlano(e.target.value)}
-              >
-                {planos.map(p => (
-                  <option key={p.value} value={p.value}>{p.label} - {p.preco}</option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                <Calendar className="w-4 h-4 inline mr-2 text-green-400" />
-                Validade
-              </label>
-              <select
-                className="w-full p-3 rounded-xl bg-gray-700/50 border border-gray-600 text-white"
-                value={diasValidade}
-                onChange={(e) => setDiasValidade(parseInt(e.target.value))}
-              >
-                <option value="30">30 dias</option>
-                <option value="90">90 dias</option>
-                <option value="180">180 dias</option>
-                <option value="365">365 dias (1 ano)</option>
-                <option value="730">730 dias (2 anos)</option>
-              </select>
-            </div>
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-gradient-to-r from-yellow-600 to-orange-600 hover:from-yellow-700 hover:to-orange-700 py-3 rounded-xl font-semibold transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">
+              <Key size={14} className="inline mr-1" /> Plano *
+            </label>
+            <select
+              value={formData.plano}
+              onChange={(e) => setFormData({ ...formData, plano: e.target.value })}
+              className="w-full p-3 rounded-xl bg-gray-700/50 border border-gray-600 text-white focus:border-purple-500 focus:outline-none"
+              required
             >
-              {loading ? <Loader2 className="animate-spin" size={20} /> : <Key size={20} />}
-              {loading ? 'Gerando...' : 'Gerar Chave'}
-            </button>
-          </form>
+              <option value="">Selecione um plano</option>
+              {planos.filter(p => p.ativo !== false).map((plano) => (
+                <option key={plano.nome} value={plano.nome}>
+                  {plano.nome} - {formatarMoeda(plano.preco)} Kz {plano.descricao && `- ${plano.descricao}`}
+                </option>
+              ))}
+            </select>
+            <p className="text-xs text-gray-400 mt-1">
+              Planos disponíveis: {planos.filter(p => p.ativo !== false).map(p => p.nome).join(', ')}
+            </p>
+          </div>
 
-          {chaveGerada && (
-            <div className="border-t border-gray-700 p-6 bg-green-600/10">
-              <label className="block text-sm font-medium text-green-400 mb-2">Chave Gerada:</label>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  readOnly
-                  className="flex-1 p-3 rounded-xl bg-gray-700/50 border border-gray-600 text-white font-mono text-center text-lg"
-                  value={chaveGerada}
-                />
-                <button onClick={copiarChave} className="px-4 bg-green-600 hover:bg-green-700 rounded-xl transition flex items-center gap-2">
-                  {copiado ? <CheckCircle size={18} /> : <Copy size={18} />}
-                  {copiado ? 'Copiado!' : 'Copiar'}
-                </button>
-              </div>
-              <div className="mt-4 p-3 bg-blue-600/10 rounded-lg">
-                <p className="text-blue-400 text-sm">📧 Enviar para o cliente:</p>
-                <p className="text-gray-300 text-sm">Chave: <strong className="text-yellow-400">{chaveGerada}</strong></p>
-              </div>
-            </div>
-          )}
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">
+              <Calendar size={14} className="inline mr-1" /> Validade
+            </label>
+            <select
+              value={formData.diasValidade}
+              onChange={(e) => setFormData({ ...formData, diasValidade: parseInt(e.target.value) })}
+              className="w-full p-3 rounded-xl bg-gray-700/50 border border-gray-600 text-white focus:border-purple-500 focus:outline-none"
+            >
+              <option value={7}>7 dias (Trial)</option>
+              <option value={30}>30 dias (1 mês)</option>
+              <option value={90}>90 dias (3 meses)</option>
+              <option value={180}>180 dias (6 meses)</option>
+              <option value={365}>365 dias (1 ano)</option>
+              <option value={730}>730 dias (2 anos)</option>
+            </select>
+          </div>
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 py-3 rounded-xl flex items-center justify-center gap-2 transition"
+          >
+            {loading ? <Loader2 className="animate-spin" size={18} /> : <Key size={18} />}
+            {loading ? 'Gerando...' : 'Gerar Chave'}
+          </button>
+        </form>
+
+        <div className="mt-6 p-3 bg-gray-700/30 rounded-lg text-center">
+          <p className="text-gray-400 text-xs">
+            🔑 As chaves geradas são válidas por {formData.diasValidade} dias.<br />
+            O cliente deve usar esta chave no momento do registo.
+          </p>
         </div>
       </div>
+
+      <style jsx>{`
+        @keyframes fade-in-out {
+          0% { opacity: 0; transform: translateY(-10px); }
+          15% { opacity: 1; transform: translateY(0); }
+          85% { opacity: 1; transform: translateY(0); }
+          100% { opacity: 0; transform: translateY(-10px); }
+        }
+        .animate-fade-in-out { animation: fade-in-out 3s ease forwards; }
+      `}</style>
     </LayoutAdmin>
   );
 };
