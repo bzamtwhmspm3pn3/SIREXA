@@ -168,24 +168,27 @@ async function garantirPlanosExistentes() {
 }
 
 // ============================================
-// 🔥 FUNÇÃO: BUSCAR PLANOS COM CACHE
+// 🔥 FUNÇÃO: BUSCAR PLANOS COM CACHE (FORÇANDO LIMPEZA)
 // ============================================
-async function buscarPlanosComCache() {
+async function buscarPlanosComCache(ignorarCache = false) {
   const agora = Date.now();
   
-  // Verificar se cache é válido
-  if (planosCache && planosCacheExpira > agora) {
-    return planosCache;
+  // Se ignorar cache ou cache expirado/inválido, buscar do banco
+  if (ignorarCache || !planosCache || planosCacheExpira <= agora) {
+    console.log('📡 Buscando planos diretamente do banco de dados...');
+    const planos = await Plano.find().sort({ ordem: 1 });
+    
+    // Atualizar cache apenas se não for ignorado
+    if (!ignorarCache) {
+      planosCache = planos;
+      planosCacheExpira = agora + CACHE_TTL;
+    }
+    
+    return planos;
   }
   
-  // Buscar do banco
-  const planos = await Plano.find().sort({ ordem: 1 });
-  
-  // Atualizar cache
-  planosCache = planos;
-  planosCacheExpira = agora + CACHE_TTL;
-  
-  return planos;
+  console.log('💾 Usando cache de planos');
+  return planosCache;
 }
 
 // ============================================
@@ -759,19 +762,73 @@ const verificarAdmin = (req, res, next) => {
 // GET - Listar todos os planos (com cache)
 router.get("/admin/planos", verifyToken, verificarAdmin, async (req, res) => {
   try {
+    console.log('🎯 ROTA /admin/planos chamada');
+    
     // Garantir que planos existem (fallback automático)
     await garantirPlanosExistentes();
     
-    // Buscar com cache para performance
-    const planos = await buscarPlanosComCache();
+    // Buscar com cache - usar true para ignorar cache e forçar busca fresca
+    const forceRefresh = req.query.refresh === 'true';
+    const planos = await buscarPlanosComCache(forceRefresh);
+    
+    console.log(`📊 Retornando ${planos.length} planos`);
+    
+    // Verificar se os planos têm a estrutura correta (não são empresas)
+    if (planos.length > 0 && planos[0].nif) {
+      console.error('❌ ERRO CRÍTICO: planos está retornando EMPRESAS!');
+      return res.status(500).json({ 
+        sucesso: false, 
+        mensagem: 'Erro interno: configuração incorreta',
+        planos: []
+      });
+    }
     
     res.json({
       sucesso: true,
       total: planos.length,
-      planos
+      planos: planos
     });
   } catch (error) {
     console.error('Erro ao listar planos:', error);
+    res.status(500).json({ sucesso: false, mensagem: error.message });
+  }
+});
+
+// ============================================
+// 🔥 ROTA DE EMERGÊNCIA - FORÇA CRIAÇÃO DE PLANOS
+// ============================================
+router.post("/admin/planos/emergencia/criar", verifyToken, verificarAdmin, async (req, res) => {
+  try {
+    console.log('🚨 ROTA DE EMERGÊNCIA - Forçando criação de planos');
+    
+    // Limpar cache
+    planosCache = null;
+    
+    // Deletar planos existentes que possam estar corrompidos
+    await Plano.deleteMany({});
+    console.log('🗑️ Planos antigos removidos');
+    
+    // Criar planos padrão
+    const planosPadrao = [
+      { nome: 'FREE', descricao: 'Teste gratuito por 7 dias', preco: 0, duracaoDias: 7, ordem: 1, limites: { maxEmpresas: 1, maxUsuarios: 1, maxProdutos: 50 }, modulos: { stock: true, fornecedores: true, vendas: true }, ativo: true },
+      { nome: 'BÁSICO', descricao: 'Para pequenas empresas', preco: 29900, duracaoDias: 365, ordem: 2, limites: { maxEmpresas: 1, maxUsuarios: 1, maxProdutos: 100 }, modulos: { stock: true, fornecedores: true, vendas: true }, ativo: true },
+      { nome: 'PROFISSIONAL', descricao: 'Para empresas em crescimento', preco: 79900, duracaoDias: 365, ordem: 3, limites: { maxEmpresas: 3, maxUsuarios: 5, maxProdutos: 500 }, modulos: { stock: true, fornecedores: true, vendas: true, rh: true }, ativo: true },
+      { nome: 'EMPRESARIAL', descricao: 'Solução completa', preco: 149900, duracaoDias: 365, ordem: 4, limites: { maxEmpresas: 10, maxUsuarios: 20, maxProdutos: 5000 }, modulos: { stock: true, fornecedores: true, vendas: true, rh: true, contabilidade: true }, ativo: true },
+      { nome: 'PLATINUM', descricao: 'Ilimitado + Suporte prioritário', preco: 299900, duracaoDias: 365, ordem: 5, limites: { maxEmpresas: -1, maxUsuarios: -1, maxProdutos: -1 }, modulos: { stock: true, fornecedores: true, vendas: true, rh: true, contabilidade: true }, ativo: true }
+    ];
+    
+    await Plano.insertMany(planosPadrao);
+    console.log('✅ Planos recriados com sucesso!');
+    
+    const novosPlanos = await Plano.find().sort({ ordem: 1 });
+    
+    res.json({
+      sucesso: true,
+      mensagem: `${novosPlanos.length} planos criados com sucesso`,
+      planos: novosPlanos
+    });
+  } catch (error) {
+    console.error('❌ Erro na rota de emergência:', error);
     res.status(500).json({ sucesso: false, mensagem: error.message });
   }
 });
