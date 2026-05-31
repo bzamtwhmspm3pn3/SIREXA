@@ -4,7 +4,7 @@ const helmet = require('helmet');
 const hpp = require('hpp');
 
 // ============================================
-// RATE LIMITING POR USUÁRIO (não por IP) - CORRIGIDO
+// RATE LIMITING POR USUÁRIO (não por IP) - CORRIGIDO PARA ADMIN
 // ============================================
 
 // Função para obter identificador único do usuário (com validação segura)
@@ -21,14 +21,34 @@ const getKey = (req) => {
   return `ip:${req.ip || 'unknown'}`;
 };
 
+// Função para verificar se é admin (segura - não lança erro)
+const isAdmin = (req) => {
+  try {
+    // Se não tem user, não é admin
+    if (!req.user) return false;
+    // Verifica se o role existe e é admin_sistema
+    return req.user.role === 'admin_sistema';
+  } catch (error) {
+    return false;
+  }
+};
+
 // Limite geral para API (100 requisições por 15 minutos por usuário)
+// ADMIN NÃO TEM LIMITE
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 100,
   keyGenerator: getKey,
   skip: (req) => {
-    // Pular rate limit para admins (só se existir req.user)
-    if (req.user && req.user.role === 'admin_sistema') return true;
+    // ADMIN PULA O RATE LIMIT COMPLETAMENTE
+    try {
+      if (isAdmin(req)) {
+        console.log('👑 Admin bypassed rate limit');
+        return true;
+      }
+    } catch (err) {
+      console.error('Erro ao verificar admin:', err);
+    }
     return false;
   },
   message: {
@@ -40,12 +60,20 @@ const apiLimiter = rateLimit({
 });
 
 // Limite para autenticação (5 tentativas por hora por EMAIL)
+// ADMIN TAMBÉM PULA ESTE LIMITE
 const authLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
   max: 5,
   keyGenerator: (req) => {
     const email = req.body?.email || 'unknown';
     return `auth:${email.toLowerCase()}`;
+  },
+  skip: (req) => {
+    // Admin pula limite de autenticação
+    try {
+      if (isAdmin(req)) return true;
+    } catch (err) {}
+    return false;
   },
   skipSuccessfulRequests: true,
   message: {
@@ -64,6 +92,12 @@ const keyValidationLimiter = rateLimit({
     const chave = req.body?.chave || 'unknown';
     return `chave:${chave}`;
   },
+  skip: (req) => {
+    try {
+      if (isAdmin(req)) return true;
+    } catch (err) {}
+    return false;
+  },
   message: {
     sucesso: false,
     mensagem: 'Muitas tentativas de validação de chave. Tente novamente em 1 hora.'
@@ -77,6 +111,12 @@ const registerLimiter = rateLimit({
   keyGenerator: (req) => {
     const email = req.body?.email || 'unknown';
     return `register:${email.toLowerCase()}`;
+  },
+  skip: (req) => {
+    try {
+      if (isAdmin(req)) return true;
+    } catch (err) {}
+    return false;
   },
   message: {
     sucesso: false,
@@ -136,6 +176,11 @@ const validateEmpresaAccess = (req, res, next) => {
   const usuarioEmpresaId = req.user?.empresaId;
   const usuarioEmpresasPermitidas = req.user?.empresasPermitidas || [];
   const usuarioTipo = req.user?.role;
+  
+  // ADMIN tem acesso total
+  if (usuarioTipo === 'admin_sistema') {
+    return next();
+  }
   
   if (usuarioTipo === 'tecnico') {
     if (usuarioEmpresaId) {
@@ -206,6 +251,11 @@ const verificarLicenca = async (req, res, next) => {
       return next();
     }
     
+    // ADMIN não precisa de licença
+    if (req.user && req.user.role === 'admin_sistema') {
+      return next();
+    }
+    
     const empresaId = req.empresaAtual || req.user?.empresaId || req.body.empresaId;
     
     if (!empresaId) {
@@ -249,6 +299,11 @@ const verificarLicenca = async (req, res, next) => {
 const verificarModulo = (modulo) => {
   return async (req, res, next) => {
     try {
+      // ADMIN tem acesso a todos os módulos
+      if (req.user && req.user.role === 'admin_sistema') {
+        return next();
+      }
+      
       const licenca = req.licenca;
       if (!licenca) {
         return res.status(403).json({ 
@@ -280,6 +335,11 @@ const verificarModulo = (modulo) => {
 const verificarLimite = (tipo) => {
   return async (req, res, next) => {
     try {
+      // ADMIN não tem limites
+      if (req.user && req.user.role === 'admin_sistema') {
+        return next();
+      }
+      
       const licenca = req.licenca;
       if (!licenca) return next();
       
