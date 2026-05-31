@@ -455,6 +455,84 @@ router.post("/login", async (req, res) => {
   }
 });
 
+
+// ============================================
+// 🔥 VALIDAÇÃO DE LICENÇA (PÚBLICA)
+// ============================================
+
+router.post("/licenca/validar", async (req, res) => {
+  try {
+    const { chave } = req.body;
+    
+    if (!chave) {
+      return res.status(400).json({ 
+        sucesso: false, 
+        mensagem: "Chave de ativação é obrigatória" 
+      });
+    }
+    
+    // Normalizar a chave (remover traços e converter para maiúsculo)
+    const chaveNormalizada = chave.replace(/-/g, '').toUpperCase();
+    
+    console.log(`🔍 Validando chave: ${chaveNormalizada}`);
+    
+    // Buscar licença
+    const licenca = await Licenca.findOne({ chave: chaveNormalizada });
+    
+    if (!licenca) {
+      return res.status(404).json({ 
+        sucesso: false, 
+        mensagem: "Chave de ativação inválida" 
+      });
+    }
+    
+    // Verificar status
+    if (licenca.status !== 'ativa' && licenca.status !== 'trial') {
+      return res.status(403).json({ 
+        sucesso: false, 
+        mensagem: `Licença ${licenca.status}. Contacte o suporte.` 
+      });
+    }
+    
+    // Verificar expiração
+    if (licenca.dataExpiracao && new Date() > licenca.dataExpiracao) {
+      licenca.status = 'expirada';
+      await licenca.save();
+      return res.status(403).json({ 
+        sucesso: false, 
+        mensagem: `Licença expirada em ${new Date(licenca.dataExpiracao).toLocaleDateString()}` 
+      });
+    }
+    
+    // Verificar se já foi utilizada
+    if (licenca.empresaId) {
+      return res.status(400).json({ 
+        sucesso: false, 
+        mensagem: "Esta chave já foi utilizada" 
+      });
+    }
+    
+    // Retornar informações da licença
+    res.json({
+      sucesso: true,
+      mensagem: "Chave válida",
+      dados: {
+        plano: licenca.plano,
+        modulos: licenca.modulos,
+        limites: licenca.limites,
+        dataExpiracao: licenca.dataExpiracao
+      }
+    });
+    
+  } catch (error) {
+    console.error('❌ Erro ao validar chave:', error);
+    res.status(500).json({ 
+      sucesso: false, 
+      mensagem: "Erro ao validar chave" 
+    });
+  }
+});
+
 // ============================================
 // RECUPERAÇÃO DE SENHA
 // ============================================
