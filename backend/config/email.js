@@ -1,6 +1,9 @@
 // backend/config/email.js
 const nodemailer = require('nodemailer');
 
+// 🔥 REMETENTE VERIFICADO (use a variável de ambiente)
+const EMAIL_FROM = process.env.EMAIL_FROM || 'venanciomartinse@gmail.com';
+
 // Configuração para Brevo (Sendinblue)
 const transporter = nodemailer.createTransport({
   host: process.env.EMAIL_HOST || 'smtp-relay.brevo.com',
@@ -26,7 +29,10 @@ transporter.verify((error, success) => {
 
 // Enviar email de validação de cadastro
 const enviarEmailValidacao = async (email, nome, token) => {
-  const url = `${process.env.FRONTEND_URL || 'https://sirexa.vercel.app'}/validar-email?token=${token}`;
+  const url = `${process.env.FRONTEND_URL || 'https://sirexa.vercel.app'}/confirmar-email?token=${token}`;
+  
+  console.log(`📧 [VALIDACAO] Enviando para: ${email}`);
+  console.log(`🔗 Link: ${url}`);
   
   const html = `
     <!DOCTYPE html>
@@ -66,16 +72,17 @@ const enviarEmailValidacao = async (email, nome, token) => {
   `;
   
   try {
-    await transporter.sendMail({
-      from: `"SIREXA" <${process.env.EMAIL_FROM || 'no-reply@sirexa.ao'}>`,
+    const info = await transporter.sendMail({
+      from: `"SIREXA" <${EMAIL_FROM}>`,  // 🔥 REMETENTE VERIFICADO
       to: email,
       subject: '🐘 SIREXA - Confirme seu cadastro',
       html
     });
     console.log(`✅ Email de validação enviado para ${email}`);
+    console.log(`📬 MessageId: ${info.messageId}`);
     return { sucesso: true };
   } catch (error) {
-    console.error('❌ Erro ao enviar email:', error);
+    console.error('❌ Erro ao enviar email de validação:', error.message);
     return { sucesso: false, erro: error.message };
   }
 };
@@ -131,16 +138,17 @@ const enviarEmailRecuperacao = async (email, nome, token, codigo) => {
   `;
   
   try {
-    await transporter.sendMail({
-      from: `"SIREXA" <${process.env.EMAIL_FROM || 'no-reply@sirexa.ao'}>`,
+    const info = await transporter.sendMail({
+      from: `"SIREXA" <${EMAIL_FROM}>`,  // 🔥 REMETENTE VERIFICADO
       to: email,
       subject: '🔐 SIREXA - Recuperação de Senha',
       html
     });
     console.log(`✅ Email de recuperação enviado para ${email}`);
+    console.log(`📬 MessageId: ${info.messageId}`);
     return { sucesso: true };
   } catch (error) {
-    console.error('❌ Erro ao enviar email de recuperação:', error);
+    console.error('❌ Erro ao enviar email de recuperação:', error.message);
     return { sucesso: false, erro: error.message };
   }
 };
@@ -188,16 +196,17 @@ const enviarEmailBoasVindas = async (email, nome, empresaNome) => {
   `;
   
   try {
-    await transporter.sendMail({
-      from: `"SIREXA" <${process.env.EMAIL_FROM || 'no-reply@sirexa.ao'}>`,
+    const info = await transporter.sendMail({
+      from: `"SIREXA" <${EMAIL_FROM}>`,  // 🔥 REMETENTE VERIFICADO
       to: email,
       subject: '🎉 Bem-vindo ao SIREXA!',
       html
     });
     console.log(`✅ Email de boas-vindas enviado para ${email}`);
+    console.log(`📬 MessageId: ${info.messageId}`);
     return { sucesso: true };
   } catch (error) {
-    console.error('❌ Erro ao enviar email de boas-vindas:', error);
+    console.error('❌ Erro ao enviar email de boas-vindas:', error.message);
     return { sucesso: false, erro: error.message };
   }
 };
