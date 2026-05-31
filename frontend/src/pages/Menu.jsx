@@ -1,4 +1,4 @@
-// src/pages/Menu.jsx (SEM o card Configurar Módulos)
+// src/pages/Menu.jsx
 import { Navigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import Layout from "../components/Layout";
@@ -12,6 +12,14 @@ import {
 
 export default function Menu() {
   const { user, isGestor, isTecnico, empresaId, empresaNome, empresaModulos, empresaPlano } = useAuth();
+  
+  // 🔥 LISTA DE MÓDULOS ATIVOS DO GESTOR
+  const modulosAtivos = empresaModulos || [];
+
+  // 🔥 Função para verificar se o módulo está ativo
+  const moduloAtivo = (modulo) => {
+    return modulosAtivos.includes(modulo);
+  };
 
   // 🔥 SE FOR ADMIN, REDIRECIONAR PARA /admin
   if (user?.role === "admin_sistema") {
@@ -30,7 +38,7 @@ export default function Menu() {
     ? "Bem-vindo ao centro de comando do SIREXA"
     : `Bem-vindo ao seu espaço de trabalho`;
 
-  // Se for gestor, mostra o menu completo
+  // Se for gestor, mostra o menu completo (APENAS MÓDULOS ATIVOS)
   if (isGestor()) {
     return (
       <Layout title={titulo} showBackButton={false}>
@@ -73,7 +81,7 @@ export default function Menu() {
                   <Target size={16} />
                   <span className="text-xs">Módulos</span>
                 </div>
-                <p className="text-white font-semibold">{empresaModulos?.length || 0} ativos</p>
+                <p className="text-white font-semibold">{modulosAtivos.length} ativos</p>
               </div>
               <div className="bg-white/5 backdrop-blur-sm rounded-xl p-3 border border-white/10">
                 <div className="flex items-center gap-2 text-purple-400 mb-1">
@@ -94,7 +102,7 @@ export default function Menu() {
         </div>
 
         <div className="space-y-8">
-          {/* Gestão de Empresas e Técnicos */}
+          {/* Gestão de Empresas e Técnicos - SEMPRE VISÍVEL */}
           <div>
             <div className="flex items-center gap-3 mb-4">
               <div className="h-8 w-1 bg-gradient-to-b from-blue-500 to-purple-500 rounded-full"></div>
@@ -111,116 +119,136 @@ export default function Menu() {
             </div>
           </div>
 
-          {/* CONTABILIDADE */}
-          <div>
-            <div className="flex items-center gap-3 mb-4">
-              <div className="h-8 w-1 bg-gradient-to-b from-indigo-500 to-purple-500 rounded-full"></div>
-              <h2 className="text-2xl font-bold text-white flex items-center gap-2">
-                <BookOpen className="text-indigo-400" size={24} />
-                Contabilidade
-              </h2>
+          {/* CONTABILIDADE - APENAS MÓDULOS ATIVOS */}
+          {moduloAtivo('contabilidade') || moduloAtivo('planoContas') || moduloAtivo('lancamentos') || 
+           moduloAtivo('diarioGeral') || moduloAtivo('razaoGeral') || moduloAtivo('balancete') ||
+           moduloAtivo('saldosContas') || moduloAtivo('balancoPatrimonial') || moduloAtivo('periodosFiscais') ||
+           moduloAtivo('encerramento') ? (
+            <div>
+              <div className="flex items-center gap-3 mb-4">
+                <div className="h-8 w-1 bg-gradient-to-b from-indigo-500 to-purple-500 rounded-full"></div>
+                <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+                  <BookOpen className="text-indigo-400" size={24} />
+                  Contabilidade
+                </h2>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {moduloAtivo('planoContas') && <MenuCard to="/contabilidade/plano-contas" icon={<BookOpen size={28} />} title="Plano de Contas" description="Estrutura completa do PGC" gradient="from-blue-500 to-cyan-500" />}
+                {moduloAtivo('lancamentos') && <MenuCard to="/contabilidade/lancamentos" icon={<FileText size={28} />} title="Lançamentos" description="Partidas dobradas" gradient="from-green-500 to-emerald-500" />}
+                {moduloAtivo('diarioGeral') && <MenuCard to="/contabilidade/diario-geral" icon={<BookCopy size={28} />} title="Diário Geral" description="Registo cronológico" gradient="from-teal-500 to-green-500" />}
+                {moduloAtivo('razaoGeral') && <MenuCard to="/contabilidade/razao-geral" icon={<ClipboardList size={28} />} title="Razão Geral" description="Movimentos por conta" gradient="from-cyan-500 to-blue-500" />}
+                {moduloAtivo('balancete') && <MenuCard to="/contabilidade/balancete" icon={<TrendingUp size={28} />} title="Balancete" description="Verificação de saldos" gradient="from-yellow-500 to-orange-500" />}
+                {moduloAtivo('saldosContas') && <MenuCard to="/contabilidade/saldos" icon={<Wallet size={28} />} title="Saldos de Contas" description="Posição dos saldos" gradient="from-purple-500 to-pink-500" />}
+                {moduloAtivo('balancoPatrimonial') && <MenuCard to="/contabilidade/balanco-patrimonial" icon={<PieChart size={28} />} title="Balanço Patrimonial" description="Ativo e Passivo" gradient="from-red-500 to-rose-500" />}
+                {moduloAtivo('periodosFiscais') && <MenuCard to="/contabilidade/periodos-fiscais" icon={<Calendar size={28} />} title="Períodos Fiscais" description="Exercícios contabilísticos" gradient="from-indigo-500 to-purple-500" />}
+                {moduloAtivo('encerramento') && <MenuCard to="/contabilidade/encerramento" icon={<Lock size={28} />} title="Encerramento" description="Fecho do exercício" gradient="from-red-500 to-orange-500" />}
+              </div>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              <MenuCard to="/contabilidade/plano-contas" icon={<BookOpen size={28} />} title="Plano de Contas" description="Estrutura completa do PGC" gradient="from-blue-500 to-cyan-500" />
-              <MenuCard to="/contabilidade/lancamentos" icon={<FileText size={28} />} title="Lançamentos" description="Partidas dobradas" gradient="from-green-500 to-emerald-500" />
-              <MenuCard to="/contabilidade/diario-geral" icon={<BookCopy size={28} />} title="Diário Geral" description="Registo cronológico" gradient="from-teal-500 to-green-500" />
-              <MenuCard to="/contabilidade/razao-geral" icon={<ClipboardList size={28} />} title="Razão Geral" description="Movimentos por conta" gradient="from-cyan-500 to-blue-500" />
-              <MenuCard to="/contabilidade/balancete" icon={<TrendingUp size={28} />} title="Balancete" description="Verificação de saldos" gradient="from-yellow-500 to-orange-500" />
-              <MenuCard to="/contabilidade/saldos" icon={<Wallet size={28} />} title="Saldos de Contas" description="Posição dos saldos" gradient="from-purple-500 to-pink-500" />
-              <MenuCard to="/contabilidade/balanco-patrimonial" icon={<PieChart size={28} />} title="Balanço Patrimonial" description="Ativo e Passivo" gradient="from-red-500 to-rose-500" />
-              <MenuCard to="/contabilidade/periodos-fiscais" icon={<Calendar size={28} />} title="Períodos Fiscais" description="Exercícios contabilísticos" gradient="from-indigo-500 to-purple-500" />
-              <MenuCard to="/contabilidade/encerramento" icon={<Lock size={28} />} title="Encerramento" description="Fecho do exercício" gradient="from-red-500 to-orange-500" />
-            </div>
-          </div>
+          ) : null}
 
-          {/* Operacional */}
-          <div>
-            <div className="flex items-center gap-3 mb-4">
-              <div className="h-8 w-1 bg-gradient-to-b from-green-500 to-yellow-500 rounded-full"></div>
-              <h2 className="text-2xl font-bold text-white flex items-center gap-2">
-                <TrendingUp className="text-green-400" size={24} />
-                Operacional
-              </h2>
+          {/* Operacional - APENAS MÓDULOS ATIVOS */}
+          {moduloAtivo('vendas') || moduloAtivo('stock') || moduloAtivo('facturacao') ? (
+            <div>
+              <div className="flex items-center gap-3 mb-4">
+                <div className="h-8 w-1 bg-gradient-to-b from-green-500 to-yellow-500 rounded-full"></div>
+                <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+                  <TrendingUp className="text-green-400" size={24} />
+                  Operacional
+                </h2>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {moduloAtivo('vendas') && <MenuCard to="/vendas" icon={<ShoppingCart size={28} />} title="Vendas" description="Registo e facturação" gradient="from-green-500 to-emerald-500" />}
+                {moduloAtivo('stock') && <MenuCard to="/stock" icon={<Package size={28} />} title="Stock" description="Gestão de inventário" gradient="from-yellow-500 to-orange-500" />}
+                {moduloAtivo('facturacao') && <MenuCard to="/facturacao" icon={<Receipt size={28} />} title="Facturação" description="Histórico de facturas" gradient="from-blue-500 to-cyan-500" />}
+              </div>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              <MenuCard to="/vendas" icon={<ShoppingCart size={28} />} title="Vendas" description="Registo e facturação" gradient="from-green-500 to-emerald-500" />
-              <MenuCard to="/stock" icon={<Package size={28} />} title="Stock" description="Gestão de inventário" gradient="from-yellow-500 to-orange-500" />
-              <MenuCard to="/facturacao" icon={<Receipt size={28} />} title="Facturação" description="Histórico de facturas" gradient="from-blue-500 to-cyan-500" />
-            </div>
-          </div>
+          ) : null}
 
-          {/* Recursos Humanos */}
-          <div>
-            <div className="flex items-center gap-3 mb-4">
-              <div className="h-8 w-1 bg-gradient-to-b from-purple-500 to-pink-500 rounded-full"></div>
-              <h2 className="text-2xl font-bold text-white flex items-center gap-2">
-                <Users className="text-purple-400" size={24} />
-                Recursos Humanos
-              </h2>
+          {/* Recursos Humanos - APENAS MÓDULOS ATIVOS */}
+          {moduloAtivo('funcionarios') || moduloAtivo('folhaSalarial') || moduloAtivo('gestaoFaltas') || 
+           moduloAtivo('gestaoAbonos') || moduloAtivo('avaliacao') ? (
+            <div>
+              <div className="flex items-center gap-3 mb-4">
+                <div className="h-8 w-1 bg-gradient-to-b from-purple-500 to-pink-500 rounded-full"></div>
+                <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+                  <Users className="text-purple-400" size={24} />
+                  Recursos Humanos
+                </h2>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {moduloAtivo('funcionarios') && <MenuCard to="/funcionarios" icon={<ClipboardList size={28} />} title="Funcionários" description="Cadastro de colaboradores" gradient="from-blue-500 to-cyan-500" />}
+                {moduloAtivo('folhaSalarial') && <MenuCard to="/folha-salarial" icon={<Wallet size={28} />} title="Folha Salarial" description="Cálculo de salários" gradient="from-green-500 to-emerald-500" />}
+                {moduloAtivo('gestaoFaltas') && <MenuCard to="/gestao-faltas" icon={<Calendar size={28} />} title="Gestão de Faltas" description="Registo de ausências" gradient="from-red-500 to-orange-500" />}
+                {moduloAtivo('gestaoAbonos') && <MenuCard to="/gestao-abonos" icon={<Gift size={28} />} title="Gestão de Abonos" description="Bónus e complementos" gradient="from-yellow-500 to-amber-500" />}
+                {moduloAtivo('avaliacao') && <MenuCard to="/avaliacao-desempenho" icon={<BarChart3 size={28} />} title="Avaliação" description="Desempenho dos colaboradores" gradient="from-purple-500 to-pink-500" />}
+              </div>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              <MenuCard to="/funcionarios" icon={<ClipboardList size={28} />} title="Funcionários" description="Cadastro de colaboradores" gradient="from-blue-500 to-cyan-500" />
-              <MenuCard to="/folha-salarial" icon={<Wallet size={28} />} title="Folha Salarial" description="Cálculo de salários" gradient="from-green-500 to-emerald-500" />
-              <MenuCard to="/gestao-faltas" icon={<Calendar size={28} />} title="Gestão de Faltas" description="Registo de ausências" gradient="from-red-500 to-orange-500" />
-              <MenuCard to="/gestao-abonos" icon={<Gift size={28} />} title="Gestão de Abonos" description="Bónus e complementos" gradient="from-yellow-500 to-amber-500" />
-              <MenuCard to="/avaliacao-desempenho" icon={<BarChart3 size={28} />} title="Avaliação" description="Desempenho dos colaboradores" gradient="from-purple-500 to-pink-500" />
-            </div>
-          </div>
+          ) : null}
 
-          {/* Gestão Patrimonial */}
-          <div>
-            <div className="flex items-center gap-3 mb-4">
-              <div className="h-8 w-1 bg-gradient-to-b from-cyan-500 to-blue-500 rounded-full"></div>
-              <h2 className="text-2xl font-bold text-white flex items-center gap-2">
-                <Car className="text-cyan-400" size={24} />
-                Gestão Patrimonial
-              </h2>
+          {/* Gestão Patrimonial - APENAS MÓDULOS ATIVOS */}
+          {moduloAtivo('viaturas') || moduloAtivo('abastecimentos') || moduloAtivo('manutencoes') || moduloAtivo('inventario') ? (
+            <div>
+              <div className="flex items-center gap-3 mb-4">
+                <div className="h-8 w-1 bg-gradient-to-b from-cyan-500 to-blue-500 rounded-full"></div>
+                <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+                  <Car className="text-cyan-400" size={24} />
+                  Gestão Patrimonial
+                </h2>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {moduloAtivo('viaturas') && <MenuCard to="/cadastro-viaturas" icon={<Car size={28} />} title="Viaturas" description="Cadastro de veículos" gradient="from-blue-500 to-cyan-500" />}
+                {moduloAtivo('abastecimentos') && <MenuCard to="/abastecimentos" icon={<Fuel size={28} />} title="Abastecimentos" description="Controlo de combustível" gradient="from-green-500 to-emerald-500" />}
+                {moduloAtivo('manutencoes') && <MenuCard to="/manutencoes" icon={<Wrench size={28} />} title="Manutenções" description="Histórico de reparos" gradient="from-red-500 to-orange-500" />}
+                {moduloAtivo('inventario') && <MenuCard to="/inventario" icon={<Boxes size={28} />} title="Inventário" description="Gestão de ativos" gradient="from-yellow-500 to-amber-500" />}
+              </div>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              <MenuCard to="/cadastro-viaturas" icon={<Car size={28} />} title="Viaturas" description="Cadastro de veículos" gradient="from-blue-500 to-cyan-500" />
-              <MenuCard to="/abastecimentos" icon={<Fuel size={28} />} title="Abastecimentos" description="Controlo de combustível" gradient="from-green-500 to-emerald-500" />
-              <MenuCard to="/manutencoes" icon={<Wrench size={28} />} title="Manutenções" description="Histórico de reparos" gradient="from-red-500 to-orange-500" />
-              <MenuCard to="/inventario" icon={<Boxes size={28} />} title="Inventário" description="Gestão de ativos" gradient="from-yellow-500 to-amber-500" />
-            </div>
-          </div>
+          ) : null}
 
-          {/* FINANCEIRO */}
-          <div>
-            <div className="flex items-center gap-3 mb-4">
-              <div className="h-8 w-1 bg-gradient-to-b from-emerald-500 to-teal-500 rounded-full"></div>
-              <h2 className="text-2xl font-bold text-white flex items-center gap-2">
-                <DollarSign className="text-emerald-400" size={24} />
-                Financeiro
-              </h2>
+          {/* FINANCEIRO - APENAS MÓDULOS ATIVOS */}
+          {moduloAtivo('fornecedores') || moduloAtivo('fluxoCaixa') || moduloAtivo('contaCorrente') || 
+           moduloAtivo('controloPagamento') || moduloAtivo('custosReceitas') || moduloAtivo('orcamentos') ||
+           moduloAtivo('dre') || moduloAtivo('indicadores') || moduloAtivo('transferencias') ||
+           moduloAtivo('reconciliacao') ? (
+            <div>
+              <div className="flex items-center gap-3 mb-4">
+                <div className="h-8 w-1 bg-gradient-to-b from-emerald-500 to-teal-500 rounded-full"></div>
+                <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+                  <DollarSign className="text-emerald-400" size={24} />
+                  Financeiro
+                </h2>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {moduloAtivo('fornecedores') && <MenuCard to="/fornecedores" icon={<Truck size={28} />} title="Fornecedores" description="Cadastro de fornecedores" gradient="from-purple-500 to-pink-500" />}
+                {moduloAtivo('fluxoCaixa') && <MenuCard to="/fluxo-caixa" icon={<TrendingUp size={28} />} title="Fluxo de Caixa" description="Entradas e saídas" gradient="from-green-500 to-emerald-500" />}
+                {moduloAtivo('dre') && <MenuCard to="/dre" icon={<BarChart3 size={28} />} title="Demonstração Resultados" description="DRE - Lucros e perdas" gradient="from-red-500 to-rose-500" />}
+                {moduloAtivo('reconciliacao') && <MenuCard to="/folha-banco" icon={<RefreshCw size={28} />} title="Reconciliação Bancária" description="Conciliação com extratos" gradient="from-indigo-500 to-purple-500" />}
+                {moduloAtivo('contaCorrente') && <MenuCard to="/conta-corrente" icon={<Wallet size={28} />} title="Conta Corrente" description="Movimentações por fornecedor" gradient="from-blue-500 to-cyan-500" />}
+                {moduloAtivo('controloPagamento') && <MenuCard to="/controlo-pagamento" icon={<FileText size={28} />} title="Controlo de Pagamentos" description="Gestão de pagamentos" gradient="from-yellow-500 to-orange-500" />}
+                {moduloAtivo('custosReceitas') && <MenuCard to="/custos-receitas" icon={<PieChart size={28} />} title="Custos e Receitas" description="Análise financeira" gradient="from-purple-500 to-pink-500" />}
+                {moduloAtivo('orcamentos') && <MenuCard to="/orcamento" icon={<ClipboardList size={28} />} title="Orçamentos" description="Planeamento financeiro" gradient="from-orange-500 to-red-500" />}
+                {moduloAtivo('indicadores') && <MenuCard to="/indicadores" icon={<TrendingUp size={28} />} title="Indicadores" description="KPIs e métricas" gradient="from-cyan-500 to-blue-500" />}
+                {moduloAtivo('transferencias') && <MenuCard to="/transferencia-diaria" icon={<ArrowRightLeft size={28} />} title="Transferências" description="Entre contas" gradient="from-teal-500 to-green-500" />}
+              </div>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              <MenuCard to="/fluxo-caixa" icon={<TrendingUp size={28} />} title="Fluxo de Caixa" description="Entradas e saídas" gradient="from-green-500 to-emerald-500" />
-              <MenuCard to="/dre" icon={<BarChart3 size={28} />} title="Demonstração Resultados" description="DRE - Lucros e perdas" gradient="from-red-500 to-rose-500" />
-              <MenuCard to="/folha-banco" icon={<RefreshCw size={28} />} title="Reconciliação Bancária" description="Conciliação com extratos" gradient="from-indigo-500 to-purple-500" />
-              <MenuCard to="/conta-corrente" icon={<Wallet size={28} />} title="Conta Corrente" description="Movimentações por fornecedor" gradient="from-blue-500 to-cyan-500" />
-              <MenuCard to="/controlo-pagamento" icon={<FileText size={28} />} title="Controlo de Pagamentos" description="Gestão de pagamentos" gradient="from-yellow-500 to-orange-500" />
-              <MenuCard to="/custos-receitas" icon={<PieChart size={28} />} title="Custos e Receitas" description="Análise financeira" gradient="from-purple-500 to-pink-500" />
-              <MenuCard to="/orcamento" icon={<ClipboardList size={28} />} title="Orçamentos" description="Planeamento financeiro" gradient="from-orange-500 to-red-500" />
-              <MenuCard to="/indicadores" icon={<TrendingUp size={28} />} title="Indicadores" description="KPIs e métricas" gradient="from-cyan-500 to-blue-500" />
-              <MenuCard to="/transferencia-diaria" icon={<ArrowRightLeft size={28} />} title="Transferências" description="Entre contas" gradient="from-teal-500 to-green-500" />
-            </div>
-          </div>
+          ) : null}
 
-          {/* Relatórios e Análises */}
-          <div>
-            <div className="flex items-center gap-3 mb-4">
-              <div className="h-8 w-1 bg-gradient-to-b from-rose-500 to-pink-500 rounded-full"></div>
-              <h2 className="text-2xl font-bold text-white flex items-center gap-2">
-                <FileText className="text-rose-400" size={24} />
-                Relatórios e Análises
-              </h2>
+          {/* Relatórios e Análises - APENAS MÓDULOS ATIVOS */}
+          {moduloAtivo('relatorios') || moduloAtivo('graficos') || moduloAtivo('analise') ? (
+            <div>
+              <div className="flex items-center gap-3 mb-4">
+                <div className="h-8 w-1 bg-gradient-to-b from-rose-500 to-pink-500 rounded-full"></div>
+                <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+                  <FileText className="text-rose-400" size={24} />
+                  Relatórios e Análises
+                </h2>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {moduloAtivo('relatorios') && <MenuCard to="/relatorios" icon={<FileText size={28} />} title="Relatórios" description="Personalizados" gradient="from-blue-500 to-cyan-500" />}
+                {moduloAtivo('graficos') && <MenuCard to="/graficos" icon={<BarChart3 size={28} />} title="Gráficos" description="Visualização de dados" gradient="from-green-500 to-emerald-500" />}
+                {moduloAtivo('analise') && <MenuCard to="/analise" icon={<PieChart size={28} />} title="Análise Geral" description="Dashboard com IA" gradient="from-purple-500 to-pink-500" />}
+              </div>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              <MenuCard to="/relatorios" icon={<FileText size={28} />} title="Relatórios" description="Personalizados" gradient="from-blue-500 to-cyan-500" />
-              <MenuCard to="/graficos" icon={<BarChart3 size={28} />} title="Gráficos" description="Visualização de dados" gradient="from-green-500 to-emerald-500" />
-              <MenuCard to="/analise" icon={<PieChart size={28} />} title="Análise Geral" description="Dashboard com IA" gradient="from-purple-500 to-pink-500" />
-            </div>
-          </div>
+          ) : null}
         </div>
       </Layout>
     );
@@ -454,7 +482,7 @@ export default function Menu() {
   return null;
 }
 
-// 🔥 COMPONENTE MenuCard CORRIGIDO - Usa window.location.href
+// 🔥 COMPONENTE MenuCard - Usa window.location.href
 const MenuCard = ({ to, icon, title, description, gradient }) => {
   const handleClick = () => {
     console.log(`🔍 Navegando para: ${to}`);
