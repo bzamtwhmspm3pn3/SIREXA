@@ -1,6 +1,6 @@
 // src/components/Layout.jsx
 import { useAuth } from "../contexts/AuthContext";
-import { useNavigate, useLocation } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useState, useEffect, useCallback } from "react";
 import { 
   ArrowLeft, ChevronDown, ShoppingCart, Package, Receipt, ClipboardList, Wallet,
@@ -29,95 +29,73 @@ function Layout({ title, children, showBackButton = false, backToRoute = null })
     return modulosAtivos.includes(modulo);
   };
 
-  // Estrutura de módulos com verificação de ativação
-  const getEstruturaModulos = () => {
-    const todosModulos = {
-      "Operacional": {
-        icon: ShoppingCart,
-        modulos: {
-          vendas: { label: "Vendas", icon: ShoppingCart, rota: "/vendas" },
-          stock: { label: "Stock", icon: Package, rota: "/stock" },
-          facturacao: { label: "Facturação", icon: Receipt, rota: "/facturacao" }
-        }
-      },
-      "Recursos Humanos": {
-        icon: Users,
-        modulos: {
-          funcionarios: { label: "Funcionários", icon: ClipboardList, rota: "/funcionarios" },
-          folhaSalarial: { label: "Folha Salarial", icon: Wallet, rota: "/folha-salarial" },
-          gestaoFaltas: { label: "Gestão de Faltas", icon: Calendar, rota: "/gestao-faltas" },
-          gestaoAbonos: { label: "Gestão de Abonos", icon: Gift, rota: "/gestao-abonos" },
-          avaliacao: { label: "Avaliação", icon: BarChart3, rota: "/avaliacao-desempenho" }
-        }
-      },
-      "Gestão Patrimonial": {
-        icon: Car,
-        modulos: {
-          viaturas: { label: "Viaturas", icon: Car, rota: "/cadastro-viaturas" },
-          abastecimentos: { label: "Abastecimentos", icon: Fuel, rota: "/abastecimentos" },
-          manutencoes: { label: "Manutenções", icon: Wrench, rota: "/manutencoes" },
-          inventario: { label: "Inventário", icon: Boxes, rota: "/inventario" }
-        }
-      },
-      "Contabilidade": {
-        icon: BookOpen,
-        modulos: {
-          planoContas: { label: "Plano de Contas", icon: BookOpen, rota: "/contabilidade/plano-contas" },
-          lancamentos: { label: "Lançamentos", icon: FileText, rota: "/contabilidade/lancamentos" },
-          diarioGeral: { label: "Diário Geral", icon: ClipboardList, rota: "/contabilidade/diario-geral" },
-          razaoGeral: { label: "Razão Geral", icon: LayoutDashboard, rota: "/contabilidade/razao-geral" },
-          balancete: { label: "Balancete", icon: TrendingUp, rota: "/contabilidade/balancete" },
-          saldosContas: { label: "Saldos de Contas", icon: Wallet, rota: "/contabilidade/saldos" },
-          balancoPatrimonial: { label: "Balanço Patrimonial", icon: PieChart, rota: "/contabilidade/balanco-patrimonial" },
-          periodosFiscais: { label: "Períodos Fiscais", icon: Calendar, rota: "/contabilidade/periodos-fiscais" },
-          encerramento: { label: "Encerramento", icon: RefreshCw, rota: "/contabilidade/encerramento" }
-        }
-      },
-      "Financeiro": {
-        icon: DollarSign,
-        modulos: {
-          fornecedores: { label: "Fornecedores", icon: Truck, rota: "/fornecedores" },
-          fluxoCaixa: { label: "Fluxo de Caixa", icon: TrendingUp, rota: "/fluxo-caixa" },
-          contaCorrente: { label: "Conta Corrente", icon: Wallet, rota: "/conta-corrente" },
-          controloPagamento: { label: "Controlo Pagamento", icon: FileText, rota: "/controlo-pagamento" },
-          custosReceitas: { label: "Custos e Receitas", icon: PieChart, rota: "/custos-receitas" },
-          orcamentos: { label: "Orçamentos", icon: ClipboardList, rota: "/orcamento" },
-          dre: { label: "DRE", icon: BarChart3, rota: "/dre" },
-          indicadores: { label: "Indicadores", icon: Eye, rota: "/indicadores" },
-          transferencias: { label: "Transferências", icon: ArrowRightLeft, rota: "/transferencia-diaria" },
-          reconciliacao: { label: "Reconciliação Bancária", icon: RefreshCw, rota: "/folha-banco" }
-        }
-      },
-      "Relatórios": {
-        icon: BarChart3,
-        modulos: {
-          relatorios: { label: "Relatórios", icon: FileText, rota: "/relatorios" },
-          graficos: { label: "Gráficos", icon: BarChart3, rota: "/graficos" },
-          analise: { label: "Análise Geral", icon: PieChart, rota: "/analise" }
-        }
+  // Estrutura completa de módulos do sistema
+  const ESTRUTURA_MODULOS = {
+    "Operacional": {
+      icon: ShoppingCart,
+      modulos: {
+        vendas: { label: "Vendas", icon: ShoppingCart, rota: "/vendas" },
+        stock: { label: "Stock", icon: Package, rota: "/stock" },
+        facturacao: { label: "Facturação", icon: Receipt, rota: "/facturacao" }
       }
-    };
-
-    // Filtrar apenas módulos ativos
-    const estruturaFiltrada = {};
-    for (const [secao, dados] of Object.entries(todosModulos)) {
-      const modulosFiltrados = {};
-      for (const [id, modulo] of Object.entries(dados.modulos)) {
-        if (moduloAtivo(id)) {
-          modulosFiltrados[id] = modulo;
-        }
+    },
+    "Recursos Humanos": {
+      icon: Users,
+      modulos: {
+        funcionarios: { label: "Funcionários", icon: ClipboardList, rota: "/funcionarios" },
+        folhaSalarial: { label: "Folha Salarial", icon: Wallet, rota: "/folha-salarial" },
+        gestaoFaltas: { label: "Gestão de Faltas", icon: Calendar, rota: "/gestao-faltas" },
+        gestaoAbonos: { label: "Gestão de Abonos", icon: Gift, rota: "/gestao-abonos" },
+        avaliacao: { label: "Avaliação", icon: BarChart3, rota: "/avaliacao-desempenho" }
       }
-      if (Object.keys(modulosFiltrados).length > 0) {
-        estruturaFiltrada[secao] = {
-          icon: dados.icon,
-          modulos: modulosFiltrados
-        };
+    },
+    "Gestão Patrimonial": {
+      icon: Car,
+      modulos: {
+        viaturas: { label: "Viaturas", icon: Car, rota: "/cadastro-viaturas" },
+        abastecimentos: { label: "Abastecimentos", icon: Fuel, rota: "/abastecimentos" },
+        manutencoes: { label: "Manutenções", icon: Wrench, rota: "/manutencoes" },
+        inventario: { label: "Inventário", icon: Boxes, rota: "/inventario" }
+      }
+    },
+    "Contabilidade": {
+      icon: BookOpen,
+      modulos: {
+        planoContas: { label: "Plano de Contas", icon: BookOpen, rota: "/contabilidade/plano-contas" },
+        lancamentos: { label: "Lançamentos", icon: FileText, rota: "/contabilidade/lancamentos" },
+        diarioGeral: { label: "Diário Geral", icon: ClipboardList, rota: "/contabilidade/diario-geral" },
+        razaoGeral: { label: "Razão Geral", icon: LayoutDashboard, rota: "/contabilidade/razao-geral" },
+        balancete: { label: "Balancete", icon: TrendingUp, rota: "/contabilidade/balancete" },
+        saldosContas: { label: "Saldos de Contas", icon: Wallet, rota: "/contabilidade/saldos" },
+        balancoPatrimonial: { label: "Balanço Patrimonial", icon: PieChart, rota: "/contabilidade/balanco-patrimonial" },
+        periodosFiscais: { label: "Períodos Fiscais", icon: Calendar, rota: "/contabilidade/periodos-fiscais" },
+        encerramento: { label: "Encerramento", icon: RefreshCw, rota: "/contabilidade/encerramento" }
+      }
+    },
+    "Financeiro": {
+      icon: DollarSign,
+      modulos: {
+        fornecedores: { label: "Fornecedores", icon: Truck, rota: "/fornecedores" },
+        fluxoCaixa: { label: "Fluxo de Caixa", icon: TrendingUp, rota: "/fluxo-caixa" },
+        contaCorrente: { label: "Conta Corrente", icon: Wallet, rota: "/conta-corrente" },
+        controloPagamento: { label: "Controlo Pagamento", icon: FileText, rota: "/controlo-pagamento" },
+        custosReceitas: { label: "Custos e Receitas", icon: PieChart, rota: "/custos-receitas" },
+        orcamentos: { label: "Orçamentos", icon: ClipboardList, rota: "/orcamento" },
+        dre: { label: "DRE", icon: BarChart3, rota: "/dre" },
+        indicadores: { label: "Indicadores", icon: Eye, rota: "/indicadores" },
+        transferencias: { label: "Transferências", icon: ArrowRightLeft, rota: "/transferencia-diaria" },
+        reconciliacao: { label: "Reconciliação Bancária", icon: RefreshCw, rota: "/folha-banco" }
+      }
+    },
+    "Relatórios": {
+      icon: BarChart3,
+      modulos: {
+        relatorios: { label: "Relatórios", icon: FileText, rota: "/relatorios" },
+        graficos: { label: "Gráficos", icon: BarChart3, rota: "/graficos" },
+        analise: { label: "Análise Geral", icon: PieChart, rota: "/analise" }
       }
     }
-    return estruturaFiltrada;
   };
-
-  const ESTRUTURA_MODULOS = getEstruturaModulos();
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -132,7 +110,7 @@ function Layout({ title, children, showBackButton = false, backToRoute = null })
       if (encontrado) return secao;
     }
     return null;
-  }, [location.pathname, ESTRUTURA_MODULOS]);
+  }, [location.pathname]);
 
   useEffect(() => {
     const secaoAtiva = encontrarSecaoAtiva();
@@ -143,15 +121,21 @@ function Layout({ title, children, showBackButton = false, backToRoute = null })
     setSecoesExpandidas(novasSecoes);
   }, [location.pathname, encontrarSecaoAtiva]);
 
+  // 🔥 BOTÃO VOLTAR CORRIGIDO - usa window.history
   const handleVoltar = () => {
-    if (backToRoute) navigate(backToRoute);
-    else navigate(-1);
+    if (backToRoute) {
+      window.location.href = backToRoute;
+    } else {
+      window.history.back();
+    }
   };
 
   const handleLogout = () => {
     if (window.confirm("Tens certeza que desejas sair da sessão?")) {
       logout();
-      setTimeout(() => navigate("/login"), 500);
+      setTimeout(() => {
+        window.location.href = "/login";
+      }, 500);
     }
   };
 
@@ -166,7 +150,7 @@ function Layout({ title, children, showBackButton = false, backToRoute = null })
     });
   };
 
-  const secaoAtiva = encontrarSecaoAtiva;
+  const secaoAtiva = encontrarSecaoAtiva();
 
   // Layout para ADMIN
   if (isAdmin) {
@@ -235,7 +219,7 @@ function Layout({ title, children, showBackButton = false, backToRoute = null })
     );
   }
 
-  // Layout para GESTOR
+  // Layout para GESTOR - com todos os módulos na sidebar
   return (
     <div className="flex min-h-screen text-white" style={{ background: "linear-gradient(135deg, #003366 0%, #0055A5 50%, #00C0F9 100%)", backgroundAttachment: "fixed" }}>
       {sidebarAberta && <div className="fixed inset-0 bg-black/50 z-40 md:hidden" onClick={() => setSidebarAberta(false)} />}
@@ -272,6 +256,10 @@ function Layout({ title, children, showBackButton = false, backToRoute = null })
             </div>
 
             {Object.entries(ESTRUTURA_MODULOS).map(([secao, dados]) => {
+              // Verificar se a seção tem pelo menos um módulo ativo
+              const temModuloAtivo = Object.keys(dados.modulos).some(id => moduloAtivo(id));
+              if (!temModuloAtivo) return null;
+
               const IconeSecao = dados.icon;
               const expandido = secoesExpandidas[secao] ?? false;
               const ativa = secao === secaoAtiva;
@@ -285,6 +273,7 @@ function Layout({ title, children, showBackButton = false, backToRoute = null })
                   {expandido && (
                     <div className="ml-4 mt-1 space-y-0.5 border-l-2 border-indigo-500/30 pl-3 animate-fadeIn">
                       {Object.entries(dados.modulos).map(([id, modulo]) => {
+                        if (!moduloAtivo(id)) return null;
                         const ativo = location.pathname === modulo.rota || location.pathname.startsWith(modulo.rota + "/");
                         return (
                           <button
