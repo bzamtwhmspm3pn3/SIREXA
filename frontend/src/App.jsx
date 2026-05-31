@@ -131,39 +131,37 @@ export default function App() {
         </ProtectedRoute>
       } />
 
-      {/* ============================================ */}
-      {/* 👑 ROTAS DO ADMINISTRADOR */}
-      {/* ============================================ */}
-      <Route path="/admin" element={
-        <ProtectedRoute allowedRoles={['admin_sistema']}>
-          <DashboardAdmin />
-        </ProtectedRoute>
-      } />
-      <Route path="/admin/planos" element={
-        <ProtectedRoute allowedRoles={['admin_sistema']}>
-          <Planos />
-        </ProtectedRoute>
-      } />
-      <Route path="/admin/gerar-chave" element={
-        <ProtectedRoute allowedRoles={['admin_sistema']}>
-          <GerarChave />
-        </ProtectedRoute>
-      } />
-      <Route path="/admin/licencas" element={
-        <ProtectedRoute allowedRoles={['admin_sistema']}>
-          <Licencas />
-        </ProtectedRoute>
-      } />
-      <Route path="/admin/gestores" element={
-        <ProtectedRoute allowedRoles={['admin_sistema']}>
-          <Gestores />
-        </ProtectedRoute>
-      } />
-      <Route path="/admin/empresas" element={
-        <ProtectedRoute allowedRoles={['admin_sistema']}>
-          <Empresas />
-        </ProtectedRoute>
-      } />
+      {/* 👑 ROTAS DO ADMINISTRADOR - USAR requiredRole em vez de allowedRoles */}
+<Route path="/admin" element={
+  <ProtectedRoute requiredRole="admin_sistema">
+    <DashboardAdmin />
+  </ProtectedRoute>
+} />
+<Route path="/admin/planos" element={
+  <ProtectedRoute requiredRole="admin_sistema">
+    <Planos />
+  </ProtectedRoute>
+} />
+<Route path="/admin/gerar-chave" element={
+  <ProtectedRoute requiredRole="admin_sistema">
+    <GerarChave />
+  </ProtectedRoute>
+} />
+<Route path="/admin/licencas" element={
+  <ProtectedRoute requiredRole="admin_sistema">
+    <Licencas />
+  </ProtectedRoute>
+} />
+<Route path="/admin/gestores" element={
+  <ProtectedRoute requiredRole="admin_sistema">
+    <Gestores />
+  </ProtectedRoute>
+} />
+<Route path="/admin/empresas" element={
+  <ProtectedRoute requiredRole="admin_sistema">
+    <Empresas />
+  </ProtectedRoute>
+} />
      
 
       {/* Empresa */}

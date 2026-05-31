@@ -2,7 +2,7 @@
 import { Navigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 
-const ProtectedRoute = ({ children, allowedRoles = [] }) => {
+const ProtectedRoute = ({ children, requiredRole }) => {
   const { isAuthenticated, user, loading } = useAuth();
 
   if (loading) {
@@ -20,26 +20,11 @@ const ProtectedRoute = ({ children, allowedRoles = [] }) => {
     return <Navigate to="/login" replace />;
   }
 
-  // Se não há restrição de roles, permite acesso
-  if (allowedRoles.length === 0) {
-    return children;
-  }
-
-  // Verificar se a role do usuário está permitida
-  if (allowedRoles.includes(user?.role)) {
-    return children;
-  }
-
-  // Redirecionar conforme a role
-  if (user?.role === 'admin_sistema') {
-    return <Navigate to="/admin" replace />;
-  }
-  
-  if (user?.role === 'gestor') {
+  if (requiredRole && user?.role !== requiredRole) {
     return <Navigate to="/menu" replace />;
   }
 
-  return <Navigate to="/login" replace />;
+  return children;
 };
 
 export default ProtectedRoute;
