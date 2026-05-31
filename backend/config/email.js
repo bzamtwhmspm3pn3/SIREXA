@@ -46,8 +46,9 @@ const getTemplateBase = (content, title) => `
       text-align: center;
     }
     .logo {
-      font-size: 48px;
-      margin-bottom: 10px;
+      width: 60px;
+      height: 60px;
+      margin: 0 auto 15px;
     }
     .header h1 {
       color: white;
@@ -83,16 +84,18 @@ const getTemplateBase = (content, title) => `
 <body>
   <div class="container">
     <div class="header">
-      <div class="logo">🐘</div>
+      <div class="logo">
+        <img src="https://sirexa.vercel.app/sirexa-logo.ico" alt="SIREXA" style="width: 60px; height: 60px;">
+      </div>
       <h1>SIREXA</h1>
-      <p>Sistema Integrado de Recursos Empresariais</p>
+      <p>Plataforma Integrada</p>
     </div>
     <div class="content">
       ${content}
     </div>
     <div class="footer">
-      <p><strong>SIREXA - Gestão Empresarial</strong></p>
-      <p>📍 Angola | 📞 +244 928 565 837 | 📧 suporte@sirexa.ao</p>
+      <p><strong>SIREXA - Plataforma Integrada</strong></p>
+      <p>📍 Angola | 📞 +244 928 565 837 | 📧 andiotechinovacoes@gmail.com</p>
       <p>© ${new Date().getFullYear()} SIREXA - Todos os direitos reservados.</p>
       <p style="font-size: 11px;">Este é um email automático, por favor não responda.</p>
     </div>
