@@ -180,6 +180,11 @@ const EmpresaSchema = new mongoose.Schema({
     maxClientes: { type: Number, default: 50 },
     espacoArmazenamento: { type: Number, default: 100 } // MB
   },
+
+  modulosAtivos: { 
+    type: [String], 
+    default: ['stock', 'fornecedores'] 
+  },
   
   // Datas
   createdAt: { type: Date, default: Date.now },
