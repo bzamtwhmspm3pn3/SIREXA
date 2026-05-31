@@ -1,11 +1,9 @@
-// src/pages/Admin/Gestores.jsx
+// frontend/src/pages/Admin/Gestores.jsx
 import React, { useState, useEffect } from 'react';
 import LayoutAdmin from './LayoutAdmin';
-import { useAuth } from '../../contexts/AuthContext';
 import { Users, CheckCircle, XCircle, Eye, Loader2 } from 'lucide-react';
 
 const Gestores = () => {
-  const { token } = useAuth();
   const [gestores, setGestores] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -15,6 +13,12 @@ const Gestores = () => {
 
   const carregarGestores = async () => {
     try {
+      const token = localStorage.getItem("token");
+      
+      if (!token) {
+        throw new Error("Token não encontrado");
+      }
+      
       const response = await fetch('https://sirexa-api.onrender.com/api/gestor/admin/gestores', {
         headers: { 'Authorization': `Bearer ${token}` }
       });

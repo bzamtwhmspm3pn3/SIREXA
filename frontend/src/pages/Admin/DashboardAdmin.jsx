@@ -1,14 +1,12 @@
 // frontend/src/pages/Admin/DashboardAdmin.jsx
 import React, { useState, useEffect } from 'react';
 import LayoutAdmin from './LayoutAdmin';
-import { useAuth } from '../../contexts/AuthContext';
 import { 
-  Users, Building2, Key, CheckCircle, XCircle,
-  Loader2, Eye, ShieldCheck, AlertTriangle, Calendar
+  Users, Building2, Key, CheckCircle, 
+  Loader2, ShieldCheck, AlertTriangle
 } from 'lucide-react';
 
 const DashboardAdmin = () => {
-  const { token } = useAuth();
   const [stats, setStats] = useState({
     totalGestores: 0,
     totalEmpresas: 0,
@@ -28,29 +26,43 @@ const DashboardAdmin = () => {
     setError(null);
     
     try {
+      const token = localStorage.getItem("token");
+      
+      if (!token) {
+        throw new Error("Token não encontrado. Faça login novamente.");
+      }
+      
+      // Buscar gestores
       const gestoresRes = await fetch('https://sirexa-api.onrender.com/api/gestor/admin/gestores', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
-      const gestoresData = await gestoresRes.json();
       
+      if (!gestoresRes.ok) {
+        throw new Error(`Erro ${gestoresRes.status} ao buscar gestores`);
+      }
+      const gestoresData = await gestoresRes.json();
+      const gestores = gestoresData.gestores || [];
+      
+      // Buscar empresas
       const empresasRes = await fetch('https://sirexa-api.onrender.com/api/gestor/admin/empresas', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const empresasData = await empresasRes.json();
+      const empresas = empresasData.empresas || [];
       
+      // Buscar licenças
       const licencasRes = await fetch('https://sirexa-api.onrender.com/api/gestor/admin/licencas', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const licencasData = await licencasRes.json();
-      
       const licencas = licencasData.licencas || [];
       
       setStats({
-        totalGestores: gestoresData.gestores?.length || 0,
-        totalEmpresas: empresasData.empresas?.length || 0,
+        totalGestores: gestores.length,
+        totalEmpresas: empresas.length,
         totalLicencas: licencas.length,
         licencasAtivas: licencas.filter(l => l.status === 'ativa').length,
-        ultimosCadastros: gestoresData.gestores?.slice(0, 5) || []
+        ultimosCadastros: gestores.slice(0, 5)
       });
       
     } catch (error) {
@@ -73,7 +85,6 @@ const DashboardAdmin = () => {
 
   return (
     <LayoutAdmin title="Dashboard Administrativo">
-      {/* Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <div className="bg-gradient-to-br from-blue-600/20 to-blue-800/20 rounded-2xl p-5 border border-blue-500/30">
           <div className="flex items-center justify-between">
@@ -124,7 +135,6 @@ const DashboardAdmin = () => {
         </div>
       </div>
 
-      {/* Alertas */}
       {error && (
         <div className="bg-red-600/10 border border-red-500/30 rounded-xl p-4 mb-8">
           <div className="flex items-center gap-3">
@@ -137,7 +147,6 @@ const DashboardAdmin = () => {
         </div>
       )}
 
-      {/* Informações do Usuário */}
       <div className="bg-blue-600/10 border border-blue-500/30 rounded-xl p-4 mb-8">
         <div className="flex items-center gap-3">
           <ShieldCheck className="text-blue-400" size={20} />
@@ -148,7 +157,6 @@ const DashboardAdmin = () => {
         </div>
       </div>
 
-      {/* Últimos Cadastros */}
       <div className="bg-gray-800 rounded-2xl border border-gray-700 overflow-hidden">
         <div className="bg-gradient-to-r from-blue-600/20 to-purple-600/20 px-6 py-4 border-b border-gray-700">
           <h2 className="text-lg font-bold text-white">Últimos Gestores Cadastrados</h2>

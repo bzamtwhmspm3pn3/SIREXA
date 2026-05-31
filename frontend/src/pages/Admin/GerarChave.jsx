@@ -1,11 +1,9 @@
-// src/pages/Admin/GerarChave.jsx
+// frontend/src/pages/Admin/GerarChave.jsx
 import React, { useState } from 'react';
 import LayoutAdmin from './LayoutAdmin';
-import { useAuth } from '../../contexts/AuthContext';
 import { Key, Copy, CheckCircle, AlertCircle, Loader2, Mail, Calendar, Shield } from 'lucide-react';
 
 const GerarChave = () => {
-  const { token } = useAuth();
   const [email, setEmail] = useState('');
   const [plano, setPlano] = useState('basico');
   const [diasValidade, setDiasValidade] = useState(365);
@@ -33,6 +31,12 @@ const GerarChave = () => {
     setMensagem({ texto: '', tipo: '' });
 
     try {
+      const token = localStorage.getItem("token");
+      
+      if (!token) {
+        throw new Error("Token não encontrado");
+      }
+      
       const response = await fetch('https://sirexa-api.onrender.com/api/gestor/admin/gerar-chave', {
         method: 'POST',
         headers: {

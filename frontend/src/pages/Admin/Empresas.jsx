@@ -1,11 +1,9 @@
-// src/pages/Admin/Empresas.jsx
+// frontend/src/pages/Admin/Empresas.jsx
 import React, { useState, useEffect } from 'react';
 import LayoutAdmin from './LayoutAdmin';
-import { useAuth } from '../../contexts/AuthContext';
 import { Building2, CheckCircle, XCircle, Eye, Loader2 } from 'lucide-react';
 
 const Empresas = () => {
-  const { token } = useAuth();
   const [empresas, setEmpresas] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -15,6 +13,12 @@ const Empresas = () => {
 
   const carregarEmpresas = async () => {
     try {
+      const token = localStorage.getItem("token");
+      
+      if (!token) {
+        throw new Error("Token não encontrado");
+      }
+      
       const response = await fetch('https://sirexa-api.onrender.com/api/gestor/admin/empresas', {
         headers: { 'Authorization': `Bearer ${token}` }
       });

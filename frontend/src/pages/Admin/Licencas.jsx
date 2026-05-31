@@ -1,11 +1,9 @@
-// src/pages/Admin/Licencas.jsx
+// frontend/src/pages/Admin/Licencas.jsx
 import React, { useState, useEffect } from 'react';
 import LayoutAdmin from './LayoutAdmin';
-import { useAuth } from '../../contexts/AuthContext';
-import { Key, CheckCircle, XCircle, Eye, Copy, Loader2 } from 'lucide-react';
+import { Key, CheckCircle, XCircle, Copy, Loader2 } from 'lucide-react';
 
 const Licencas = () => {
-  const { token } = useAuth();
   const [licencas, setLicencas] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -15,6 +13,12 @@ const Licencas = () => {
 
   const carregarLicencas = async () => {
     try {
+      const token = localStorage.getItem("token");
+      
+      if (!token) {
+        throw new Error("Token não encontrado");
+      }
+      
       const response = await fetch('https://sirexa-api.onrender.com/api/gestor/admin/licencas', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -25,6 +29,11 @@ const Licencas = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const copiarChave = (chave) => {
+    navigator.clipboard.writeText(chave);
+    alert(`Chave ${chave} copiada!`);
   };
 
   if (loading) {
@@ -60,7 +69,7 @@ const Licencas = () => {
                 <th className="p-4 text-left">Expiração</th>
                 <th className="p-4 text-center">Status</th>
                 <th className="p-4 text-center">Ações</th>
-              </tr>
+              <tr>
             </thead>
             <tbody>
               {licencas.map((licenca) => (
@@ -92,11 +101,13 @@ const Licencas = () => {
                     )}
                   </td>
                   <td className="p-4 text-center">
-                    <div className="flex items-center justify-center gap-2">
-                      <button className="p-1 text-blue-400 hover:text-blue-300 transition" title="Copiar chave">
-                        <Copy size={16} />
-                      </button>
-                    </div>
+                    <button 
+                      onClick={() => copiarChave(licenca.chave)}
+                      className="p-1 text-blue-400 hover:text-blue-300 transition" 
+                      title="Copiar chave"
+                    >
+                      <Copy size={16} />
+                    </button>
                   </td>
                 </tr>
               ))}
