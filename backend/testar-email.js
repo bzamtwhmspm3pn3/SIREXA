@@ -1,4 +1,5 @@
-﻿require('dotenv').config();
+﻿// testar-email.js
+require('dotenv').config();
 const nodemailer = require('nodemailer');
 
 console.log('Host:', process.env.EMAIL_HOST);
@@ -17,8 +18,9 @@ const transporter = nodemailer.createTransport({
 
 console.log('📧 A enviar email de teste...');
 
+// 🔥 CORREÇÃO: Usar remetente verificado
 transporter.sendMail({
-  from: 'SIREXA <no-reply@sirexa.ao>',
+  from: '"SIREXA" <venanciomartinse@gmail.com>',  // ← REMETENTE VERIFICADO
   to: 'venanciomartinse@gmail.com',
   subject: '✅ SIREXA - Teste de Recuperacao de Senha',
   html: '<div style="font-family:Arial;padding:20px;"><h2 style="color:#003366;">Funcionou! 🎉</h2><p>Se recebeste este email, a <strong>recuperacao de senha</strong> do SIREXA esta pronta!</p><p style="color:#999;">SIREXA - One Platform</p></div>'
