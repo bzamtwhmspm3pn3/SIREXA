@@ -1,4 +1,4 @@
-// src/pages/Admin/Planos.jsx
+// frontend/src/pages/Admin/Planos.jsx
 import React, { useState, useEffect } from 'react';
 import LayoutAdmin from './LayoutAdmin';
 import { useAuth } from '../../contexts/AuthContext';
@@ -6,7 +6,9 @@ import {
   Package, Truck, ShoppingCart, Users, BookOpen, 
   BarChart3, Settings, Save, Loader2, CheckCircle,
   Building2, Zap, AlertCircle, Award, Calendar, Shield,
-  Edit, Plus, X, Trash2
+  Edit, Plus, X, Trash2, Car, Fuel, Wrench, Boxes,
+  TrendingUp, PieChart, Eye, ArrowRightLeft, DollarSign,
+  FileText, ClipboardList, Wallet, Gift, RefreshCw
 } from 'lucide-react';
 
 const Planos = () => {
@@ -18,7 +20,6 @@ const Planos = () => {
   const [editando, setEditando] = useState(null);
   const [mensagem, setMensagem] = useState({ texto: '', tipo: '' });
   
-  // 🔥 API URL CORRETA
   const API_URL = 'https://sirexa-api.onrender.com/api/gestor';
   
   const [formData, setFormData] = useState({
@@ -36,46 +37,145 @@ const Planos = () => {
       maxClientes: 50
     },
     modulos: {
-      stock: true,
-      fornecedores: true,
-      gestaoCompras: true,
+      // Operacional (3)
       vendas: false,
-      rh: false,
+      stock: false,
+      facturacao: false,
+      // Recursos Humanos (5)
+      funcionarios: false,
+      folhaSalarial: false,
+      gestaoFaltas: false,
+      gestaoAbonos: false,
+      avaliacao: false,
+      // Gestão Patrimonial (4)
+      viaturas: false,
+      abastecimentos: false,
+      manutencoes: false,
+      inventario: false,
+      // Financeiro (10)
+      fornecedores: false,
+      fluxoCaixa: false,
+      contaCorrente: false,
+      controloPagamento: false,
+      custosReceitas: false,
+      orcamentos: false,
+      dre: false,
+      indicadores: false,
+      transferencias: false,
+      reconciliacao: false,
+      // Relatórios (3)
+      relatorios: false,
+      graficos: false,
+      analise: false,
+      // Contabilidade (10)
       contabilidade: false,
-      financas: false,
-      relatorios: true,
-      dashboard: true,
-      config: true
+      planoContas: false,
+      lancamentos: false,
+      diarioGeral: false,
+      razaoGeral: false,
+      balancete: false,
+      saldosContas: false,
+      balancoPatrimonial: false,
+      periodosFiscais: false,
+      encerramento: false
     },
     ativo: true
   });
 
+  // 🔥 TODOS OS 35 MÓDULOS ORGANIZADOS POR CATEGORIA
   const modulosDisponiveis = [
-    { id: 'stock', nome: 'Stock', descricao: 'Gestão de inventário e produtos' },
-    { id: 'fornecedores', nome: 'Fornecedores', descricao: 'Cadastro e gestão de fornecedores' },
-    { id: 'gestaoCompras', nome: 'Gestão de Compras', descricao: 'Compras e entradas de mercadoria' },
-    { id: 'vendas', nome: 'Vendas', descricao: 'Registo de vendas e facturação' },
-    { id: 'rh', nome: 'Recursos Humanos', descricao: 'Funcionários, folha salarial, faltas' },
-    { id: 'contabilidade', nome: 'Contabilidade', descricao: 'Plano de contas, lançamentos, DRE' },
-    { id: 'financas', nome: 'Finanças', descricao: 'Fluxo de caixa, indicadores' },
-    { id: 'relatorios', nome: 'Relatórios', descricao: 'Relatórios e análises' },
-    { id: 'dashboard', nome: 'Dashboard', descricao: 'Painel de controle' },
-    { id: 'config', nome: 'Configurações', descricao: 'Configurações do sistema' }
+    // Operacional (3)
+    { id: 'vendas', nome: 'Vendas', icone: ShoppingCart, categoria: 'Operacional' },
+    { id: 'stock', nome: 'Stock', icone: Package, categoria: 'Operacional' },
+    { id: 'facturacao', nome: 'Facturação', icone: FileText, categoria: 'Operacional' },
+    
+    // Recursos Humanos (5)
+    { id: 'funcionarios', nome: 'Funcionários', icone: Users, categoria: 'Recursos Humanos' },
+    { id: 'folhaSalarial', nome: 'Folha Salarial', icone: Wallet, categoria: 'Recursos Humanos' },
+    { id: 'gestaoFaltas', nome: 'Gestão de Faltas', icone: Calendar, categoria: 'Recursos Humanos' },
+    { id: 'gestaoAbonos', nome: 'Gestão de Abonos', icone: Gift, categoria: 'Recursos Humanos' },
+    { id: 'avaliacao', nome: 'Avaliação', icone: BarChart3, categoria: 'Recursos Humanos' },
+    
+    // Gestão Patrimonial (4)
+    { id: 'viaturas', nome: 'Viaturas', icone: Car, categoria: 'Gestão Patrimonial' },
+    { id: 'abastecimentos', nome: 'Abastecimentos', icone: Fuel, categoria: 'Gestão Patrimonial' },
+    { id: 'manutencoes', nome: 'Manutenções', icone: Wrench, categoria: 'Gestão Patrimonial' },
+    { id: 'inventario', nome: 'Inventário', icone: Boxes, categoria: 'Gestão Patrimonial' },
+    
+    // Financeiro (10)
+    { id: 'fornecedores', nome: 'Fornecedores', icone: Truck, categoria: 'Financeiro' },
+    { id: 'fluxoCaixa', nome: 'Fluxo de Caixa', icone: TrendingUp, categoria: 'Financeiro' },
+    { id: 'contaCorrente', nome: 'Conta Corrente', icone: Wallet, categoria: 'Financeiro' },
+    { id: 'controloPagamento', nome: 'Controlo de Pagamentos', icone: FileText, categoria: 'Financeiro' },
+    { id: 'custosReceitas', nome: 'Custos e Receitas', icone: PieChart, categoria: 'Financeiro' },
+    { id: 'orcamentos', nome: 'Orçamentos', icone: ClipboardList, categoria: 'Financeiro' },
+    { id: 'dre', nome: 'DRE', icone: BarChart3, categoria: 'Financeiro' },
+    { id: 'indicadores', nome: 'Indicadores', icone: Eye, categoria: 'Financeiro' },
+    { id: 'transferencias', nome: 'Transferências', icone: ArrowRightLeft, categoria: 'Financeiro' },
+    { id: 'reconciliacao', nome: 'Reconciliação Bancária', icone: RefreshCw, categoria: 'Financeiro' },
+    
+    // Relatórios (3)
+    { id: 'relatorios', nome: 'Relatórios', icone: FileText, categoria: 'Relatórios' },
+    { id: 'graficos', nome: 'Gráficos', icone: BarChart3, categoria: 'Relatórios' },
+    { id: 'analise', nome: 'Análise Geral', icone: PieChart, categoria: 'Relatórios' },
+    
+    // Contabilidade (10)
+    { id: 'contabilidade', nome: 'Contabilidade', icone: BookOpen, categoria: 'Contabilidade' },
+    { id: 'planoContas', nome: 'Plano de Contas', icone: BookOpen, categoria: 'Contabilidade' },
+    { id: 'lancamentos', nome: 'Lançamentos', icone: FileText, categoria: 'Contabilidade' },
+    { id: 'diarioGeral', nome: 'Diário Geral', icone: ClipboardList, categoria: 'Contabilidade' },
+    { id: 'razaoGeral', nome: 'Razão Geral', icone: LayoutDashboard, categoria: 'Contabilidade' },
+    { id: 'balancete', nome: 'Balancete', icone: TrendingUp, categoria: 'Contabilidade' },
+    { id: 'saldosContas', nome: 'Saldos de Contas', icone: Wallet, categoria: 'Contabilidade' },
+    { id: 'balancoPatrimonial', nome: 'Balanço Patrimonial', icone: PieChart, categoria: 'Contabilidade' },
+    { id: 'periodosFiscais', nome: 'Períodos Fiscais', icone: Calendar, categoria: 'Contabilidade' },
+    { id: 'encerramento', nome: 'Encerramento', icone: RefreshCw, categoria: 'Contabilidade' }
   ];
 
+  // Agrupar módulos por categoria
+  const modulosPorCategoria = modulosDisponiveis.reduce((acc, modulo) => {
+    if (!acc[modulo.categoria]) acc[modulo.categoria] = [];
+    acc[modulo.categoria].push(modulo);
+    return acc;
+  }, {});
+
   const planosPadrao = [
-    { nome: 'FREE', descricao: 'Teste gratuito por 7 dias', preco: 0, duracaoDias: 7, ordem: 1, limites: { maxEmpresas: 1, maxUsuarios: 1, maxProdutos: 50, maxFornecedores: 10, maxClientes: 20 }, modulos: { stock: true, fornecedores: true, gestaoCompras: true, vendas: true, rh: true, contabilidade: true, financas: true, relatorios: true, dashboard: true, config: true }, ativo: true },
-    { nome: 'BÁSICO', descricao: 'Para pequenas empresas', preco: 29900, duracaoDias: 365, ordem: 2, limites: { maxEmpresas: 1, maxUsuarios: 1, maxProdutos: 100, maxFornecedores: 20, maxClientes: 50 }, modulos: { stock: true, fornecedores: true, gestaoCompras: true, vendas: true, rh: false, contabilidade: false, financas: false, relatorios: true, dashboard: true, config: true }, ativo: true },
-    { nome: 'PROFISSIONAL', descricao: 'Para empresas em crescimento', preco: 79900, duracaoDias: 365, ordem: 3, limites: { maxEmpresas: 3, maxUsuarios: 5, maxProdutos: 500, maxFornecedores: 100, maxClientes: 200 }, modulos: { stock: true, fornecedores: true, gestaoCompras: true, vendas: true, rh: true, contabilidade: false, financas: false, relatorios: true, dashboard: true, config: true }, ativo: true },
-    { nome: 'EMPRESARIAL', descricao: 'Solução completa', preco: 149900, duracaoDias: 365, ordem: 4, limites: { maxEmpresas: 10, maxUsuarios: 20, maxProdutos: 5000, maxFornecedores: 500, maxClientes: 1000 }, modulos: { stock: true, fornecedores: true, gestaoCompras: true, vendas: true, rh: true, contabilidade: true, financas: true, relatorios: true, dashboard: true, config: true }, ativo: true },
-    { nome: 'PLATINUM', descricao: 'Ilimitado + Suporte prioritário', preco: 299900, duracaoDias: 365, ordem: 5, limites: { maxEmpresas: -1, maxUsuarios: -1, maxProdutos: -1, maxFornecedores: -1, maxClientes: -1 }, modulos: { stock: true, fornecedores: true, gestaoCompras: true, vendas: true, rh: true, contabilidade: true, financas: true, relatorios: true, dashboard: true, config: true }, ativo: true }
+    { 
+      nome: 'FREE', descricao: 'Teste gratuito por 7 dias', preco: 0, duracaoDias: 7, ordem: 1, 
+      limites: { maxEmpresas: 1, maxUsuarios: 1, maxProdutos: 50, maxFornecedores: 10, maxClientes: 20, maxFuncionarios: 3 }, 
+      modulos: { vendas: true, stock: true, facturacao: true, funcionarios: true, folhaSalarial: true, gestaoFaltas: true, gestaoAbonos: true, avaliacao: true, viaturas: true, abastecimentos: true, manutencoes: true, inventario: true, fornecedores: true, fluxoCaixa: true, contaCorrente: true, controloPagamento: true, custosReceitas: true, orcamentos: true, dre: true, indicadores: true, transferencias: true, reconciliacao: true, relatorios: true, graficos: true, analise: true, contabilidade: true, planoContas: true, lancamentos: true, diarioGeral: true, razaoGeral: true, balancete: true, saldosContas: true, balancoPatrimonial: true, periodosFiscais: true, encerramento: true },
+      ativo: true 
+    },
+    { 
+      nome: 'BÁSICO', descricao: 'Para pequenas empresas', preco: 29900, duracaoDias: 365, ordem: 2, 
+      limites: { maxEmpresas: 1, maxUsuarios: 1, maxProdutos: 100, maxFornecedores: 20, maxClientes: 50, maxFuncionarios: 5 }, 
+      modulos: { vendas: true, stock: true, facturacao: true, funcionarios: true, folhaSalarial: true, gestaoFaltas: true, gestaoAbonos: false, avaliacao: false, viaturas: false, abastecimentos: false, manutencoes: false, inventario: false, fornecedores: true, fluxoCaixa: true, contaCorrente: true, controloPagamento: true, custosReceitas: false, orcamentos: false, dre: true, indicadores: false, transferencias: false, reconciliacao: false, relatorios: true, graficos: true, analise: false, contabilidade: false, planoContas: false, lancamentos: false, diarioGeral: false, razaoGeral: false, balancete: false, saldosContas: false, balancoPatrimonial: false, periodosFiscais: false, encerramento: false },
+      ativo: true 
+    },
+    { 
+      nome: 'PROFISSIONAL', descricao: 'Para empresas em crescimento', preco: 79900, duracaoDias: 365, ordem: 3, 
+      limites: { maxEmpresas: 3, maxUsuarios: 5, maxProdutos: 500, maxFornecedores: 100, maxClientes: 200, maxFuncionarios: 20 }, 
+      modulos: { vendas: true, stock: true, facturacao: true, funcionarios: true, folhaSalarial: true, gestaoFaltas: true, gestaoAbonos: true, avaliacao: true, viaturas: true, abastecimentos: true, manutencoes: true, inventario: true, fornecedores: true, fluxoCaixa: true, contaCorrente: true, controloPagamento: true, custosReceitas: true, orcamentos: true, dre: true, indicadores: true, transferencias: true, reconciliacao: true, relatorios: true, graficos: true, analise: true, contabilidade: false, planoContas: false, lancamentos: false, diarioGeral: false, razaoGeral: false, balancete: false, saldosContas: false, balancoPatrimonial: false, periodosFiscais: false, encerramento: false },
+      ativo: true 
+    },
+    { 
+      nome: 'EMPRESARIAL', descricao: 'Solução completa', preco: 149900, duracaoDias: 365, ordem: 4, 
+      limites: { maxEmpresas: 10, maxUsuarios: 20, maxProdutos: 5000, maxFornecedores: 500, maxClientes: 1000, maxFuncionarios: 100 }, 
+      modulos: { vendas: true, stock: true, facturacao: true, funcionarios: true, folhaSalarial: true, gestaoFaltas: true, gestaoAbonos: true, avaliacao: true, viaturas: true, abastecimentos: true, manutencoes: true, inventario: true, fornecedores: true, fluxoCaixa: true, contaCorrente: true, controloPagamento: true, custosReceitas: true, orcamentos: true, dre: true, indicadores: true, transferencias: true, reconciliacao: true, relatorios: true, graficos: true, analise: true, contabilidade: true, planoContas: true, lancamentos: true, diarioGeral: true, razaoGeral: true, balancete: true, saldosContas: true, balancoPatrimonial: true, periodosFiscais: true, encerramento: true },
+      ativo: true 
+    },
+    { 
+      nome: 'PLATINUM', descricao: 'Ilimitado + Suporte prioritário', preco: 299900, duracaoDias: 365, ordem: 5, 
+      limites: { maxEmpresas: -1, maxUsuarios: -1, maxProdutos: -1, maxFornecedores: -1, maxClientes: -1, maxFuncionarios: -1 }, 
+      modulos: { vendas: true, stock: true, facturacao: true, funcionarios: true, folhaSalarial: true, gestaoFaltas: true, gestaoAbonos: true, avaliacao: true, viaturas: true, abastecimentos: true, manutencoes: true, inventario: true, fornecedores: true, fluxoCaixa: true, contaCorrente: true, controloPagamento: true, custosReceitas: true, orcamentos: true, dre: true, indicadores: true, transferencias: true, reconciliacao: true, relatorios: true, graficos: true, analise: true, contabilidade: true, planoContas: true, lancamentos: true, diarioGeral: true, razaoGeral: true, balancete: true, saldosContas: true, balancoPatrimonial: true, periodosFiscais: true, encerramento: true },
+      ativo: true 
+    }
   ];
 
   useEffect(() => {
     carregarPlanos();
   }, []);
 
-  // 🔥 CARREGAR PLANOS - URL CORRIGIDA
   const carregarPlanos = async () => {
     try {
       const token = localStorage.getItem("token");
@@ -104,7 +204,6 @@ const Planos = () => {
     }
   };
 
-  // 🔥 SALVAR PLANO - URL CORRIGIDA
   const salvarPlano = async () => {
     if (!formData.nome || formData.nome.trim() === '') {
       setMensagem({ texto: '❌ Nome do plano é obrigatório', tipo: 'erro' });
@@ -146,10 +245,10 @@ const Planos = () => {
     }
   };
 
-  const toggleModulo = (modulo) => {
+  const toggleModulo = (moduloId) => {
     setFormData(prev => ({
       ...prev,
-      modulos: { ...prev.modulos, [modulo]: !prev.modulos[modulo] }
+      modulos: { ...prev.modulos, [moduloId]: !prev.modulos[moduloId] }
     }));
   };
 
@@ -261,7 +360,7 @@ const Planos = () => {
       {/* Modal de Edição/Criação de Plano */}
       {modalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto">
-          <div className="bg-gray-800 rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+          <div className="bg-gray-800 rounded-2xl max-w-5xl w-full max-h-[90vh] overflow-y-auto">
             <div className="sticky top-0 bg-gradient-to-r from-purple-600/20 to-pink-600/20 px-6 py-4 border-b border-gray-700">
               <div className="flex justify-between items-center">
                 <div className="flex items-center gap-3">
@@ -327,7 +426,7 @@ const Planos = () => {
               {/* Limites */}
               <div className="bg-gray-700/30 rounded-xl p-4">
                 <h3 className="text-md font-semibold text-blue-400 mb-4 flex items-center gap-2"><Shield size={16} /> Limites do Plano</h3>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-300 mb-2">Max Empresas</label>
                     <input type="number" className="w-full p-2 rounded-lg bg-gray-700/50 border border-gray-600 text-white" value={formData.limites.maxEmpresas} onChange={(e) => setFormData({...formData, limites: {...formData.limites, maxEmpresas: parseInt(e.target.value) || 1}})} />
@@ -356,21 +455,35 @@ const Planos = () => {
                 <p className="text-xs text-gray-400 mt-3">Use -1 para ilimitado</p>
               </div>
 
-              {/* Módulos */}
+              {/* Módulos - Organizados por Categoria */}
               <div className="bg-gray-700/30 rounded-xl p-4">
                 <h3 className="text-md font-semibold text-green-400 mb-4 flex items-center gap-2"><Zap size={16} /> Módulos Habilitados</h3>
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
-                  {modulosDisponiveis.map((modulo) => (
-                    <label key={modulo.id} className="flex items-center gap-2 cursor-pointer">
-                      <input 
-                        type="checkbox" 
-                        checked={formData.modulos[modulo.id] || false} 
-                        onChange={() => toggleModulo(modulo.id)} 
-                        className="w-4 h-4 rounded border-gray-600 accent-purple-500" 
-                      />
-                      <span className="text-gray-300 text-sm">{modulo.nome}</span>
-                    </label>
-                  ))}
+                
+                {Object.entries(modulosPorCategoria).map(([categoria, modulos]) => (
+                  <div key={categoria} className="mb-6 last:mb-0">
+                    <h4 className="text-sm font-semibold text-blue-400 mb-3 border-b border-blue-500/30 pb-2">{categoria}</h4>
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                      {modulos.map((modulo) => (
+                        <label key={modulo.id} className="flex items-center gap-2 cursor-pointer p-2 rounded-lg hover:bg-gray-700/50 transition">
+                          <input 
+                            type="checkbox" 
+                            checked={formData.modulos[modulo.id] || false} 
+                            onChange={() => toggleModulo(modulo.id)} 
+                            className="w-4 h-4 rounded border-gray-600 accent-purple-500" 
+                          />
+                          <span className="text-gray-300 text-sm">{modulo.nome}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+                
+                <div className="mt-4 p-3 bg-gray-800/50 rounded-lg">
+                  <p className="text-xs text-gray-400">
+                    Total de módulos: <span className="text-green-400 font-bold">
+                      {Object.values(formData.modulos).filter(v => v === true).length}
+                    </span> / {modulosDisponiveis.length}
+                  </p>
                 </div>
               </div>
 
