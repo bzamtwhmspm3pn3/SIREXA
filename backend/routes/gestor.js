@@ -1008,7 +1008,7 @@ router.post("/admin/gerar-chave", verifyToken, verificarAdmin, async (req, res) 
     // Garantir que o plano existe
     await garantirPlanosExistentes();
     
-    const chave = crypto.randomBytes(16).toString('hex').toUpperCase().match(/.{1,4}/g).join('-');
+    const chave = crypto.randomBytes(16).toString('hex').toUpperCase();
     
     const dataExpiracao = new Date();
     dataExpiracao.setDate(dataExpiracao.getDate() + (diasValidade || 365));
