@@ -16,6 +16,9 @@ export const AuthProvider = ({ children }) => {
   const [empresaEmail, setEmpresaEmail] = useState(null);
   const [empresaTelefone, setEmpresaTelefone] = useState(null);
   const [empresaEndereco, setEmpresaEndereco] = useState(null);
+  // 🔥 NOVOS STATES PARA MÓDULOS E PLANO
+  const [empresaModulos, setEmpresaModulos] = useState([]);
+  const [empresaPlano, setEmpresaPlano] = useState('FREE');
 
   useEffect(() => {
     const loadUser = () => {
@@ -38,10 +41,19 @@ export const AuthProvider = ({ children }) => {
             setEmpresaEndereco(userData.empresaEndereco);
           }
           
+          // 🔥 CARREGAR MÓDULOS E PLANO DO USUÁRIO
+          const modulos = userData.modulosAtivos || userData.modulos || [];
+          const plano = userData.plano || userData.empresaPlano || 'FREE';
+          
+          setEmpresaModulos(modulos);
+          setEmpresaPlano(plano);
+          
           console.log("✅ Usuário carregado:", userData?.nome);
           console.log("⭐ Role:", userData?.role);
           console.log("🏢 Empresa ID:", userData?.empresaId);
           console.log("🏢 Empresa NIF:", userData?.empresaNif);
+          console.log("📋 Módulos ativos:", modulos);
+          console.log("📋 Plano:", plano);
         }
       } catch (err) {
         console.error("Erro ao carregar usuário:", err);
@@ -61,7 +73,6 @@ export const AuthProvider = ({ children }) => {
     try {
       console.log("📝 Tentando login:", email);
       
-      // 🔥 ADMINISTRADOR - forçar usar rota de gestor
       const isAdmin = email === "admin@sirexa.ao";
       const endpoint = isAdmin || tipo === "gestor" 
         ? `${API_URL}/gestor/login` 
@@ -69,7 +80,7 @@ export const AuthProvider = ({ children }) => {
       
       console.log("📍 Endpoint:", endpoint);
       
-      const response = await axios.post(endpoint, { email, senha });
+      const response = await axios.post(endpoint, { email, senha: senha });
       
       const { token, gestor, usuario } = response.data;
       let userData = gestor || usuario;
@@ -83,6 +94,13 @@ export const AuthProvider = ({ children }) => {
         userData.role = "admin_sistema";
         console.log("👑 Usuário promovido a ADMIN_SISTEMA");
       }
+      
+      // 🔥 PEGAR MÓDULOS E PLANO DO GESTOR (enviados pelo backend)
+      const modulosAtivos = userData.modulosAtivos || [];
+      const plano = userData.plano || userData.empresas?.[0]?.plano || 'FREE';
+      
+      console.log("📋 Módulos recebidos do backend:", modulosAtivos);
+      console.log("📋 Plano recebido:", plano);
       
       // Buscar dados completos da empresa se for técnico
       let empresaCompleta = null;
@@ -107,7 +125,10 @@ export const AuthProvider = ({ children }) => {
         empresaEmail: empresaCompleta?.email || userData.empresaEmail,
         empresaTelefone: empresaCompleta?.telefone || userData.empresaTelefone,
         empresaEndereco: empresaCompleta?.endereco || userData.empresaEndereco,
-        modulos: userData.modulos || {}
+        modulos: userData.modulos || {},
+        // 🔥 ADICIONAR MÓDULOS E PLANO
+        modulosAtivos: modulosAtivos,
+        plano: plano
       };
       
       localStorage.setItem("token", token);
@@ -125,9 +146,14 @@ export const AuthProvider = ({ children }) => {
         setEmpresaEndereco(finalUserData.empresaEndereco);
       }
       
+      // 🔥 DEFINIR MÓDULOS E PLANO
+      setEmpresaModulos(modulosAtivos);
+      setEmpresaPlano(plano);
+      
       console.log("✅ Login realizado com sucesso!");
       console.log("⭐ Role final:", finalUserData.role);
       console.log("🏢 Empresa associada:", finalUserData.empresaId);
+      console.log("📋 Módulos finais:", modulosAtivos);
       
       return { success: true, user: finalUserData };
       
@@ -151,6 +177,8 @@ export const AuthProvider = ({ children }) => {
     setEmpresaEmail(null);
     setEmpresaTelefone(null);
     setEmpresaEndereco(null);
+    setEmpresaModulos([]);
+    setEmpresaPlano('FREE');
   };
 
   const isAuthenticated = () => {
@@ -192,9 +220,10 @@ export const AuthProvider = ({ children }) => {
       empresaEmail,
       empresaTelefone,
       empresaEndereco,
-      setEmpresaId,
-      setEmpresaNome,
-      getEmpresaAtiva
+      getEmpresaAtiva,
+      // 🔥 NOVOS VALORES EXPORTADOS
+      empresaModulos,
+      empresaPlano
     }}>
       {children}
     </AuthContext.Provider>
