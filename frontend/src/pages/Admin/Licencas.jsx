@@ -16,7 +16,7 @@ const Licencas = () => {
       const token = localStorage.getItem("token");
       
       if (!token) {
-        throw new Error("Token não encontrado");
+        throw new Error("Token nao encontrado");
       }
       
       const response = await fetch('https://sirexa-api.onrender.com/api/gestor/admin/licencas', {
@@ -25,7 +25,7 @@ const Licencas = () => {
       const data = await response.json();
       setLicencas(data.licencas || []);
     } catch (error) {
-      console.error('Erro ao carregar licenças:', error);
+      console.error('Erro ao carregar licencas:', error);
     } finally {
       setLoading(false);
     }
@@ -38,7 +38,7 @@ const Licencas = () => {
 
   if (loading) {
     return (
-      <LayoutAdmin title="Licenças">
+      <LayoutAdmin title="Licencas">
         <div className="flex items-center justify-center h-96">
           <Loader2 className="animate-spin text-purple-400" size={40} />
         </div>
@@ -47,13 +47,13 @@ const Licencas = () => {
   }
 
   return (
-    <LayoutAdmin title="Gerenciar Licenças">
+    <LayoutAdmin title="Gerenciar Licencas">
       <div className="bg-gray-800 rounded-2xl border border-gray-700 overflow-hidden">
         <div className="bg-gradient-to-r from-purple-600/20 to-pink-600/20 px-6 py-4 border-b border-gray-700">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <Key className="w-5 h-5 text-purple-400" />
-              <h2 className="text-lg font-bold text-white">Todas as Licenças</h2>
+              <h2 className="text-lg font-bold text-white">Todas as Licencas</h2>
             </div>
             <span className="text-sm text-gray-400">Total: {licencas.length}</span>
           </div>
@@ -65,11 +65,11 @@ const Licencas = () => {
                 <th className="p-4 text-left">Chave</th>
                 <th className="p-4 text-left">Cliente</th>
                 <th className="p-4 text-left">Plano</th>
-                <th className="p-4 text-left">Data Criação</th>
-                <th className="p-4 text-left">Expiração</th>
+                <th className="p-4 text-left">Data Criacao</th>
+                <th className="p-4 text-left">Expiracao</th>
                 <th className="p-4 text-center">Status</th>
-                <th className="p-4 text-center">Ações</th>
-              <tr>
+                <th className="p-4 text-center">Acoes</th>
+              </tr>
             </thead>
             <tbody>
               {licencas.map((licenca) => (
@@ -114,7 +114,7 @@ const Licencas = () => {
               {licencas.length === 0 && (
                 <tr>
                   <td colSpan="7" className="p-8 text-center text-gray-500">
-                    Nenhuma licença encontrada
+                    Nenhuma licenca encontrada
                   </td>
                 </tr>
               )}

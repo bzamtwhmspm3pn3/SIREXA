@@ -13,17 +13,17 @@ const GerarChave = () => {
   const [mensagem, setMensagem] = useState({ texto: '', tipo: '' });
 
   const planos = [
-    { value: 'trial', label: '📦 Trial', preco: 'Grátis', dias: 30, descricao: '30 dias de teste' },
-    { value: 'basico', label: '📦 Básico', preco: '29.900 Kz/ano', dias: 365, descricao: 'Gestão de stock e fornecedores' },
-    { value: 'profissional', label: '🚀 Profissional', preco: '79.900 Kz/ano', dias: 365, descricao: 'Gestão completa + RH' },
-    { value: 'empresarial', label: '🏢 Empresarial', preco: '149.900 Kz/ano', dias: 365, descricao: 'Completo + Contabilidade' },
-    { value: 'enterprise', label: '⭐ Enterprise', preco: 'Sob consulta', dias: 365, descricao: 'Soluções personalizadas' }
+    { value: 'trial', label: 'Trial', preco: 'Gratis', dias: 30, descricao: '30 dias de teste' },
+    { value: 'basico', label: 'Basico', preco: '29.900 Kz/ano', dias: 365, descricao: 'Gestao de stock e fornecedores' },
+    { value: 'profissional', label: 'Profissional', preco: '79.900 Kz/ano', dias: 365, descricao: 'Gestao completa + RH' },
+    { value: 'empresarial', label: 'Empresarial', preco: '149.900 Kz/ano', dias: 365, descricao: 'Completo + Contabilidade' },
+    { value: 'enterprise', label: 'Enterprise', preco: 'Sob consulta', dias: 365, descricao: 'Solucoes personalizadas' }
   ];
 
   const handleGerar = async (e) => {
     e.preventDefault();
     if (!email) {
-      setMensagem({ texto: 'Email do cliente é obrigatório', tipo: 'erro' });
+      setMensagem({ texto: 'Email do cliente e obrigatorio', tipo: 'erro' });
       return;
     }
     
@@ -34,7 +34,7 @@ const GerarChave = () => {
       const token = localStorage.getItem("token");
       
       if (!token) {
-        throw new Error("Token não encontrado");
+        throw new Error("Token nao encontrado");
       }
       
       const response = await fetch('https://sirexa-api.onrender.com/api/gestor/admin/gerar-chave', {
@@ -54,7 +54,7 @@ const GerarChave = () => {
       
       if (response.ok && data.sucesso) {
         setChaveGerada(data.chave);
-        setMensagem({ texto: '✅ Chave gerada com sucesso!', tipo: 'sucesso' });
+        setMensagem({ texto: 'Chave gerada com sucesso!', tipo: 'sucesso' });
       } else {
         setMensagem({ texto: data.mensagem || 'Erro ao gerar chave', tipo: 'erro' });
       }
@@ -73,7 +73,7 @@ const GerarChave = () => {
   };
 
   return (
-    <LayoutAdmin title="Gerar Chave de Ativação">
+    <LayoutAdmin title="Gerar Chave de Ativacao">
       <div className="max-w-2xl mx-auto">
         <div className="bg-gray-800 rounded-2xl border border-gray-700 overflow-hidden">
           <div className="bg-gradient-to-r from-yellow-600/20 to-orange-600/20 px-6 py-4 border-b border-gray-700">
@@ -82,7 +82,7 @@ const GerarChave = () => {
                 <Key className="w-6 h-6 text-yellow-400" />
               </div>
               <div>
-                <h2 className="text-xl font-bold text-white">Nova Chave de Ativação</h2>
+                <h2 className="text-xl font-bold text-white">Nova Chave de Ativacao</h2>
                 <p className="text-gray-400 text-sm">Crie chaves para novos clientes</p>
               </div>
             </div>
@@ -111,7 +111,7 @@ const GerarChave = () => {
                 onChange={(e) => setEmail(e.target.value)}
                 required
               />
-              <p className="text-xs text-gray-500 mt-1">A chave será enviada para este email</p>
+              <p className="text-xs text-gray-500 mt-1">A chave sera enviada para este email</p>
             </div>
 
             <div>
@@ -143,7 +143,7 @@ const GerarChave = () => {
                 value={diasValidade}
                 onChange={(e) => setDiasValidade(parseInt(e.target.value))}
               >
-                <option value="30">30 dias (1 mês)</option>
+                <option value="30">30 dias (1 mes)</option>
                 <option value="90">90 dias (3 meses)</option>
                 <option value="180">180 dias (6 meses)</option>
                 <option value="365">365 dias (1 ano)</option>
@@ -181,8 +181,8 @@ const GerarChave = () => {
                 </button>
               </div>
               <div className="mt-4 p-3 bg-blue-600/10 rounded-lg">
-                <p className="text-blue-400 text-sm font-medium mb-1">📧 Enviar para o cliente:</p>
-                <p className="text-gray-300 text-sm">Sua chave de ativação SIREXA: <strong className="text-yellow-400">{chaveGerada}</strong></p>
+                <p className="text-blue-400 text-sm font-medium mb-1">Enviar para o cliente:</p>
+                <p className="text-gray-300 text-sm">Sua chave de ativacao SIREXA: <strong className="text-yellow-400">{chaveGerada}</strong></p>
                 <p className="text-gray-400 text-xs mt-2">O cliente deve inserir esta chave no momento do cadastro.</p>
               </div>
             </div>
@@ -190,7 +190,7 @@ const GerarChave = () => {
         </div>
 
         <div className="mt-4 p-4 bg-blue-600/10 rounded-xl border border-blue-500/20">
-          <p className="text-blue-400 text-sm font-medium mb-1">ℹ️ Como funciona?</p>
+          <p className="text-blue-400 text-sm font-medium mb-1">Como funciona?</p>
           <p className="text-gray-400 text-xs">
             1. Gere uma chave para o cliente<br />
             2. Envie a chave por email para o cliente<br />
