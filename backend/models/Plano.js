@@ -18,24 +18,55 @@ const planoSchema = new mongoose.Schema({
     espacoArmazenamento: { type: Number, default: 100 }
   },
   
+  // 🔥 MÓDULOS COMPLETOS DO SISTEMA
   modulos: {
-    stock: { type: Boolean, default: true },
-    fornecedores: { type: Boolean, default: true },
-    gestaoCompras: { type: Boolean, default: true },
+    // Operacional
     vendas: { type: Boolean, default: false },
-    rh: { type: Boolean, default: false },
+    stock: { type: Boolean, default: false },
+    facturacao: { type: Boolean, default: false },
+    // Recursos Humanos
+    funcionarios: { type: Boolean, default: false },
+    folhaSalarial: { type: Boolean, default: false },
+    gestaoFaltas: { type: Boolean, default: false },
+    gestaoAbonos: { type: Boolean, default: false },
+    avaliacao: { type: Boolean, default: false },
+    // Gestão Patrimonial
+    viaturas: { type: Boolean, default: false },
+    abastecimentos: { type: Boolean, default: false },
+    manutencoes: { type: Boolean, default: false },
+    inventario: { type: Boolean, default: false },
+    // Financeiro
+    fornecedores: { type: Boolean, default: false },
+    fluxoCaixa: { type: Boolean, default: false },
+    contaCorrente: { type: Boolean, default: false },
+    controloPagamento: { type: Boolean, default: false },
+    custosReceitas: { type: Boolean, default: false },
+    orcamentos: { type: Boolean, default: false },
+    dre: { type: Boolean, default: false },
+    indicadores: { type: Boolean, default: false },
+    transferencias: { type: Boolean, default: false },
+    reconciliacao: { type: Boolean, default: false },
+    // Relatórios
+    relatorios: { type: Boolean, default: false },
+    graficos: { type: Boolean, default: false },
+    analise: { type: Boolean, default: false },
+    // Contabilidade
     contabilidade: { type: Boolean, default: false },
-    financas: { type: Boolean, default: false },
-    relatorios: { type: Boolean, default: true },
-    dashboard: { type: Boolean, default: true },
-    config: { type: Boolean, default: true }
+    planoContas: { type: Boolean, default: false },
+    lancamentos: { type: Boolean, default: false },
+    diarioGeral: { type: Boolean, default: false },
+    razaoGeral: { type: Boolean, default: false },
+    balancete: { type: Boolean, default: false },
+    saldosContas: { type: Boolean, default: false },
+    balancoPatrimonial: { type: Boolean, default: false },
+    periodosFiscais: { type: Boolean, default: false },
+    encerramento: { type: Boolean, default: false }
   },
   
   ativo: { type: Boolean, default: true }
 }, { 
   timestamps: true,
-  collection: 'planos' // FORÇA O NOME DA COLEÇÃO
+  collection: 'planos'
 });
 
-// Garantir que não há modelo registrado antes
 module.exports = mongoose.models.Plano || mongoose.model('Plano', planoSchema);
