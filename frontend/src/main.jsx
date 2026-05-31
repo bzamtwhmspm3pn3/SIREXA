@@ -4,17 +4,17 @@ import ReactDOM from "react-dom/client";
 import App from "./App";
 import { BrowserRouter } from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext";
-import "./index.css"; // ou ./App.css — depende de onde escreveste
+import "./index.css";
 import FacturasProvider from './contexts/FacturasContext';
-
-
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
-    <AuthProvider>
-      <BrowserRouter>
-        <App />
-      </BrowserRouter>
-    </AuthProvider>
+    <BrowserRouter>           {/* 🔥 PRIMEIRO: Router */}
+      <AuthProvider>         {/* 🔥 DEPOIS: Auth (que usa useNavigate) */}
+        <FacturasProvider>   {/* 🔥 DEPOIS: Outros providers */}
+          <App />
+        </FacturasProvider>
+      </AuthProvider>
+    </BrowserRouter>
   </React.StrictMode>
 );
