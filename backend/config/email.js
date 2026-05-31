@@ -1,40 +1,34 @@
 // backend/config/email.js
-const nodemailer = require('nodemailer');
+const brevo = require('@getbrevo/brevo');
 
-// 🔥 REMETENTE VERIFICADO (use a variável de ambiente)
+// 🔥 CORREÇÃO: Inicializar a API corretamente
+const defaultClient = brevo.ApiClient.instance;
+let apiKey = defaultClient.authentications['api-key'];
+apiKey.apiKey = process.env.BREVO_API_KEY;
+
+const apiInstance = new brevo.TransactionalEmailsApi();
+
+// Remetente verificado
 const EMAIL_FROM = process.env.EMAIL_FROM || 'venanciomartinse@gmail.com';
+const EMAIL_FROM_NAME = process.env.EMAIL_FROM_NAME || 'SIREXA';
 
-// Configuração para Brevo (Sendinblue)
-const transporter = nodemailer.createTransport({
-  host: process.env.EMAIL_HOST || 'smtp-relay.brevo.com',
-  port: parseInt(process.env.EMAIL_PORT) || 587,
-  secure: false, // true para 465, false para 587
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS
-  },
-  tls: {
-    rejectUnauthorized: false
-  }
-});
+console.log('✅ Brevo API configurado com sucesso!');
 
-// Verificar conexão
-transporter.verify((error, success) => {
-  if (error) {
-    console.error('❌ Erro na configuração do email Brevo:', error);
-  } else {
-    console.log('✅ Email Brevo configurado com sucesso!');
-  }
-});
-
-// Enviar email de validação de cadastro
+// ============================================
+// ENVIAR EMAIL DE VALIDAÇÃO DE CADASTRO
+// ============================================
 const enviarEmailValidacao = async (email, nome, token) => {
   const url = `${process.env.FRONTEND_URL || 'https://sirexa.vercel.app'}/confirmar-email?token=${token}`;
   
   console.log(`📧 [VALIDACAO] Enviando para: ${email}`);
   console.log(`🔗 Link: ${url}`);
   
-  const html = `
+  let sendSmtpEmail = new brevo.SendSmtpEmail();
+  sendSmtpEmail.subject = '🐘 SIREXA - Confirme seu cadastro';
+  sendSmtpEmail.to = [{ email: email, name: nome }];
+  sendSmtpEmail.sender = { name: EMAIL_FROM_NAME, email: EMAIL_FROM };
+  
+  sendSmtpEmail.htmlContent = `
     <!DOCTYPE html>
     <html>
     <head>
@@ -72,139 +66,69 @@ const enviarEmailValidacao = async (email, nome, token) => {
   `;
   
   try {
-    const info = await transporter.sendMail({
-      from: `"SIREXA" <${EMAIL_FROM}>`,  // 🔥 REMETENTE VERIFICADO
-      to: email,
-      subject: '🐘 SIREXA - Confirme seu cadastro',
-      html
-    });
+    const result = await apiInstance.sendTransacEmail(sendSmtpEmail);
     console.log(`✅ Email de validação enviado para ${email}`);
-    console.log(`📬 MessageId: ${info.messageId}`);
-    return { sucesso: true };
+    console.log(`📬 MessageId: ${result.messageId}`);
+    return { sucesso: true, messageId: result.messageId };
   } catch (error) {
     console.error('❌ Erro ao enviar email de validação:', error.message);
+    if (error.response) {
+      console.error('📋 Detalhes:', error.response.body);
+    }
     return { sucesso: false, erro: error.message };
   }
 };
 
-// Enviar email de recuperação de senha
+// ============================================
+// ENVIAR EMAIL DE RECUPERAÇÃO DE SENHA
+// ============================================
 const enviarEmailRecuperacao = async (email, nome, token, codigo) => {
   const url = `${process.env.FRONTEND_URL || 'https://sirexa.vercel.app'}/redefinir-senha?token=${token}`;
   
-  const html = `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <style>
-        body { font-family: Arial, sans-serif; background-color: #f4f4f4; margin: 0; padding: 20px; }
-        .container { max-width: 600px; margin: 0 auto; background: white; border-radius: 10px; overflow: hidden; }
-        .header { background: linear-gradient(135deg, #d9534f, #c9302c); color: white; padding: 30px; text-align: center; }
-        .content { padding: 30px; }
-        .code-box { background: #f0f0f0; padding: 15px; border-radius: 5px; text-align: center; margin: 20px 0; }
-        .code { font-size: 28px; letter-spacing: 5px; font-weight: bold; color: #d9534f; }
-        .button { display: inline-block; background: #d9534f; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; margin: 20px 0; }
-        .footer { background: #f4f4f4; padding: 20px; text-align: center; font-size: 12px; color: #666; }
-      </style>
-    </head>
-    <body>
-      <div class="container">
-        <div class="header">
-          <h1>🐘 SIREXA</h1>
-          <p>Recuperação de Senha</p>
-        </div>
-        <div class="content">
-          <h2>Olá ${nome}!</h2>
-          <p>Recebemos uma solicitação para redefinir sua senha. Se você não fez essa solicitação, ignore este email.</p>
-          
-          <div class="code-box">
-            <p>Seu código de verificação é:</p>
-            <div class="code">${codigo}</div>
-          </div>
-          
-          <div style="text-align: center;">
-            <a href="${url}" class="button">Redefinir Senha</a>
-          </div>
-          
-          <p>Este link é válido por 1 hora.</p>
-          <p><strong>Não compartilhe este código com ninguém.</strong></p>
-        </div>
-        <div class="footer">
-          <p>SIREXA - Gestão Empresarial</p>
-          <p>© ${new Date().getFullYear()} Todos os direitos reservados.</p>
-        </div>
-      </div>
-    </body>
-    </html>
+  let sendSmtpEmail = new brevo.SendSmtpEmail();
+  sendSmtpEmail.subject = '🔐 SIREXA - Recuperação de Senha';
+  sendSmtpEmail.to = [{ email: email, name: nome }];
+  sendSmtpEmail.sender = { name: EMAIL_FROM_NAME, email: EMAIL_FROM };
+  
+  sendSmtpEmail.htmlContent = `
+    <div style="font-family: Arial, sans-serif; padding: 20px;">
+      <h2>Olá ${nome}!</h2>
+      <p>Seu código de verificação é: <strong>${codigo}</strong></p>
+      <a href="${url}">Redefinir Senha</a>
+      <p>Este link é válido por 1 hora.</p>
+    </div>
   `;
   
   try {
-    const info = await transporter.sendMail({
-      from: `"SIREXA" <${EMAIL_FROM}>`,  // 🔥 REMETENTE VERIFICADO
-      to: email,
-      subject: '🔐 SIREXA - Recuperação de Senha',
-      html
-    });
+    const result = await apiInstance.sendTransacEmail(sendSmtpEmail);
     console.log(`✅ Email de recuperação enviado para ${email}`);
-    console.log(`📬 MessageId: ${info.messageId}`);
-    return { sucesso: true };
+    return { sucesso: true, messageId: result.messageId };
   } catch (error) {
     console.error('❌ Erro ao enviar email de recuperação:', error.message);
     return { sucesso: false, erro: error.message };
   }
 };
 
-// Enviar email de boas-vindas
+// ============================================
+// ENVIAR EMAIL DE BOAS-VINDAS
+// ============================================
 const enviarEmailBoasVindas = async (email, nome, empresaNome) => {
-  const html = `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <style>
-        body { font-family: Arial, sans-serif; background-color: #f4f4f4; margin: 0; padding: 20px; }
-        .container { max-width: 600px; margin: 0 auto; background: white; border-radius: 10px; overflow: hidden; }
-        .header { background: linear-gradient(135deg, #1e3c72, #2a5298); color: white; padding: 30px; text-align: center; }
-        .content { padding: 30px; }
-        .footer { background: #f4f4f4; padding: 20px; text-align: center; font-size: 12px; color: #666; }
-      </style>
-    </head>
-    <body>
-      <div class="container">
-        <div class="header">
-          <h1>🐘 SIREXA</h1>
-          <p>Sistema Integrado de Recursos Empresariais</p>
-        </div>
-        <div class="content">
-          <h2>Bem-vindo ao SIREXA, ${nome}!</h2>
-          <p>Sua empresa <strong>${empresaNome}</strong> foi cadastrada com sucesso.</p>
-          <p>Agora você pode começar a gerenciar:</p>
-          <ul>
-            <li>📦 Stock e Inventário</li>
-            <li>🏭 Fornecedores e Compras</li>
-            <li>💰 Finanças e Pagamentos</li>
-            <li>👥 Recursos Humanos</li>
-            <li>📊 Contabilidade (PGCA Angola)</li>
-          </ul>
-          <p>Qualquer dúvida, entre em contato com nosso suporte.</p>
-        </div>
-        <div class="footer">
-          <p>SIREXA - Gestão Empresarial</p>
-          <p>© ${new Date().getFullYear()} Todos os direitos reservados.</p>
-        </div>
-      </div>
-    </body>
-    </html>
+  let sendSmtpEmail = new brevo.SendSmtpEmail();
+  sendSmtpEmail.subject = '🎉 Bem-vindo ao SIREXA!';
+  sendSmtpEmail.to = [{ email: email, name: nome }];
+  sendSmtpEmail.sender = { name: EMAIL_FROM_NAME, email: EMAIL_FROM };
+  
+  sendSmtpEmail.htmlContent = `
+    <div style="font-family: Arial, sans-serif; padding: 20px;">
+      <h2>Bem-vindo ao SIREXA, ${nome}!</h2>
+      <p>Sua empresa <strong>${empresaNome}</strong> foi cadastrada com sucesso.</p>
+    </div>
   `;
   
   try {
-    const info = await transporter.sendMail({
-      from: `"SIREXA" <${EMAIL_FROM}>`,  // 🔥 REMETENTE VERIFICADO
-      to: email,
-      subject: '🎉 Bem-vindo ao SIREXA!',
-      html
-    });
+    const result = await apiInstance.sendTransacEmail(sendSmtpEmail);
     console.log(`✅ Email de boas-vindas enviado para ${email}`);
-    console.log(`📬 MessageId: ${info.messageId}`);
-    return { sucesso: true };
+    return { sucesso: true, messageId: result.messageId };
   } catch (error) {
     console.error('❌ Erro ao enviar email de boas-vindas:', error.message);
     return { sucesso: false, erro: error.message };
