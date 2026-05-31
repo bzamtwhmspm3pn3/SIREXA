@@ -121,7 +121,6 @@ function Layout({ title, children, showBackButton = false, backToRoute = null })
     setSecoesExpandidas(novasSecoes);
   }, [location.pathname, encontrarSecaoAtiva]);
 
-  // 🔥 BOTÃO VOLTAR CORRIGIDO - usa window.history
   const handleVoltar = () => {
     if (backToRoute) {
       window.location.href = backToRoute;
@@ -219,7 +218,7 @@ function Layout({ title, children, showBackButton = false, backToRoute = null })
     );
   }
 
-  // Layout para GESTOR - com todos os módulos na sidebar
+  // Layout para GESTOR - SEM a linha da empresa
   return (
     <div className="flex min-h-screen text-white" style={{ background: "linear-gradient(135deg, #003366 0%, #0055A5 50%, #00C0F9 100%)", backgroundAttachment: "fixed" }}>
       {sidebarAberta && <div className="fixed inset-0 bg-black/50 z-40 md:hidden" onClick={() => setSidebarAberta(false)} />}
@@ -238,7 +237,7 @@ function Layout({ title, children, showBackButton = false, backToRoute = null })
               <p className="text-sm font-medium text-white truncate">👤 {user?.nome || "Usuário"}</p>
               <p className="text-xs text-blue-300 mt-1">👑 Gestor</p>
               <p className="text-xs text-purple-300 mt-1">📋 Plano: {empresaPlano || 'FREE'}</p>
-              <p className="text-xs text-gray-400 mt-1">🏢 {empresaNome || 'Nenhuma empresa'}</p>
+              {/* 🔥 LINHA DA EMPRESA REMOVIDA */}
             </div>
           </div>
 
@@ -256,7 +255,6 @@ function Layout({ title, children, showBackButton = false, backToRoute = null })
             </div>
 
             {Object.entries(ESTRUTURA_MODULOS).map(([secao, dados]) => {
-              // Verificar se a seção tem pelo menos um módulo ativo
               const temModuloAtivo = Object.keys(dados.modulos).some(id => moduloAtivo(id));
               if (!temModuloAtivo) return null;
 

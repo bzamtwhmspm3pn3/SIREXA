@@ -22,16 +22,28 @@ const ConfirmarEmail = () => {
 
   const confirmarEmail = async () => {
     try {
+      console.log('🔍 Confirmando email com token:', token);
+      
       const response = await fetch(`https://sirexa-api.onrender.com/api/gestor/confirmar-email?token=${token}`);
       const data = await response.json();
       
-      if (response.ok && data.sucesso !== false) {
+      console.log('📡 Resposta da API:', { status: response.status, data });
+      
+      // 🔥 CORREÇÃO: Verificar se a resposta é 200 ou se o email foi confirmado
+      if (response.status === 200 || data.sucesso === true) {
         setMensagem({ texto: '✅ Email confirmado com sucesso! Redirecionando para o login...', tipo: 'sucesso' });
         setTimeout(() => navigate('/login'), 3000);
-      } else {
+      } 
+      // 🔥 Se o gestor já estava ativo, também é sucesso
+      else if (data.mensagem && data.mensagem.includes('já foi confirmado')) {
+        setMensagem({ texto: '✅ Email já estava confirmado! Redirecionando para o login...', tipo: 'sucesso' });
+        setTimeout(() => navigate('/login'), 3000);
+      }
+      else {
         setMensagem({ texto: data.mensagem || 'Erro ao confirmar email', tipo: 'erro' });
       }
     } catch (error) {
+      console.error('❌ Erro na requisição:', error);
       setMensagem({ texto: 'Erro ao conectar ao servidor', tipo: 'erro' });
     } finally {
       setLoading(false);

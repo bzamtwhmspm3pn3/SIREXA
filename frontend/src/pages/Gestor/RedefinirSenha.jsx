@@ -1,4 +1,4 @@
-// src/pages/Gestor/RedefinirSenha.jsx
+// frontend/src/pages/Gestor/RedefinirSenha.jsx
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Lock, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
@@ -6,9 +6,11 @@ import { Lock, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
 const RedefinirSenha = () => {
   const [searchParams] = useSearchParams();
   const token = searchParams.get('token');
+  const emailParam = searchParams.get('email'); // 🔥 PEGAR EMAIL DA URL
   const [codigo, setCodigo] = useState('');
   const [novaSenha, setNovaSenha] = useState('');
   const [confirmarSenha, setConfirmarSenha] = useState('');
+  const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [mensagem, setMensagem] = useState({ texto: '', tipo: '' });
   const navigate = useNavigate();
@@ -17,10 +19,24 @@ const RedefinirSenha = () => {
     if (!token) {
       setMensagem({ texto: 'Token inválido ou expirado', tipo: 'erro' });
     }
-  }, [token]);
+    
+    // 🔥 Tentar recuperar o email do localStorage ou da URL
+    const storedEmail = localStorage.getItem('resetEmail');
+    if (emailParam) {
+      setEmail(emailParam);
+      localStorage.setItem('resetEmail', emailParam);
+    } else if (storedEmail) {
+      setEmail(storedEmail);
+    }
+  }, [token, emailParam]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    if (!email) {
+      setMensagem({ texto: 'Email não encontrado. Solicite nova recuperação.', tipo: 'erro' });
+      return;
+    }
     
     if (novaSenha !== confirmarSenha) {
       setMensagem({ texto: 'As senhas não coincidem', tipo: 'erro' });
@@ -32,28 +48,38 @@ const RedefinirSenha = () => {
       return;
     }
     
+    if (!codigo || codigo.length !== 6) {
+      setMensagem({ texto: 'Código de verificação inválido', tipo: 'erro' });
+      return;
+    }
+    
     setLoading(true);
     
     try {
+      console.log('📡 Enviando redefinição:', { email, codigo });
+      
       const response = await fetch('https://sirexa-api.onrender.com/api/gestor/redefinir-senha', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          email: '', // ou email do usuário
+          email: email,
           codigo: codigo,
           novaSenha: novaSenha
         })
       });
       
       const data = await response.json();
+      console.log('📝 Resposta:', data);
       
       if (data.sucesso) {
         setMensagem({ texto: '✅ Senha redefinida com sucesso! Redirecionando...', tipo: 'sucesso' });
+        localStorage.removeItem('resetEmail');
         setTimeout(() => navigate('/login'), 3000);
       } else {
         setMensagem({ texto: data.mensagem || 'Erro ao redefinir senha', tipo: 'erro' });
       }
     } catch (error) {
+      console.error('❌ Erro:', error);
       setMensagem({ texto: 'Erro ao conectar ao servidor', tipo: 'erro' });
     } finally {
       setLoading(false);
@@ -69,6 +95,7 @@ const RedefinirSenha = () => {
           </div>
           <h2 className="text-2xl font-bold text-white">Redefinir Senha</h2>
           <p className="text-gray-400 text-sm mt-2">Digite o código e sua nova senha</p>
+          {email && <p className="text-gray-500 text-xs mt-2">📧 {email}</p>}
         </div>
 
         {mensagem.texto && (
@@ -89,10 +116,12 @@ const RedefinirSenha = () => {
               type="text"
               value={codigo}
               onChange={(e) => setCodigo(e.target.value)}
-              className="w-full p-3 rounded-xl bg-gray-700/50 border border-gray-600 text-white focus:border-blue-500 focus:outline-none"
-              placeholder="Digite o código recebido"
+              className="w-full p-3 rounded-xl bg-gray-700/50 border border-gray-600 text-white focus:border-blue-500 focus:outline-none font-mono text-center text-xl"
+              placeholder="000000"
+              maxLength={6}
               required
             />
+            <p className="text-xs text-gray-400 mt-1">Digite o código de 6 dígitos enviado para seu email</p>
           </div>
 
           <div>

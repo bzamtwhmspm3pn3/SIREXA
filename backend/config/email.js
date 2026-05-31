@@ -153,7 +153,7 @@ const enviarEmailValidacao = async (email, nome, token) => {
 // ENVIAR EMAIL DE RECUPERAÇÃO DE SENHA
 // ============================================
 const enviarEmailRecuperacao = async (email, nome, token, codigo) => {
-  const url = `${process.env.FRONTEND_URL || 'https://sirexa.vercel.app'}/redefinir-senha?token=${token}`;
+  const url = `${process.env.FRONTEND_URL || 'https://sirexa.vercel.app'}/redefinir-senha?token=${token}&email=${encodeURIComponent(email)}`;
   
   console.log(`📧 [RECUPERACAO] Enviando para: ${email}`);
   
@@ -202,24 +202,40 @@ const enviarEmailBoasVindas = async (email, nome, empresaNome) => {
   console.log(`📧 [BOAS-VINDAS] Enviando para: ${email}`);
   
   const content = `
-    <h2 style="color: #003366; font-size: 22px; margin-bottom: 20px;">Bem-vindo ao SIREXA, ${nome || 'Usuário'}!</h2>
-    <p style="color: #555; line-height: 1.6; margin-bottom: 20px;">
-      Sua empresa <strong style="color: #003366;">${empresaNome || 'Sua empresa'}</strong> foi cadastrada com sucesso.
+  <h2 style="color: #003366; font-size: 22px; margin-bottom: 20px;">Bem-vindo ao SIREXA, ${nome || 'Usuário'}!</h2>
+  
+  <p style="color: #555; line-height: 1.6; margin-bottom: 20px;">
+    A sua empresa <strong style="color: #003366;">${empresaNome || 'Sua empresa'}</strong> foi cadastrada com sucesso na plataforma 
+    <strong>SIREXA - Plataforma Integrada de Gestão Empresarial</strong>.
+  </p>
+  
+  <p style="color: #555; line-height: 1.6; margin-bottom: 25px;">
+    Agora você tem acesso a um ecossistema completo de ferramentas para gerir o seu negócio de forma eficiente, 
+    integrada e inteligente.
+  </p>
+  
+  <div style="background: linear-gradient(135deg, #f8f9fc 0%, #f0f2f5 100%); border-radius: 16px; padding: 25px; margin: 25px 0;">
+    <h3 style="color: #003366; font-size: 18px; margin-bottom: 15px; text-align: center;">✨ O que pode fazer no SIREXA</h3>
+    <p style="color: #555; font-size: 14px; line-height: 1.6; text-align: center;">
+      Gerir a sua empresa de forma tranquila, intuitiva e em qualquer lugar, 
+      com todas as ferramentas necessárias para o sucesso do seu negócio.
     </p>
-    <p style="color: #555; line-height: 1.6; margin-bottom: 25px;">
-      Agora você pode começar a gerenciar:
+  </div>
+  
+  <div style="background: #e8f4f8; border-radius: 12px; padding: 20px; margin: 25px 0; text-align: center;">
+    <p style="color: #003366; font-size: 14px; margin-bottom: 10px;">
+      💡 <strong>Precisa de ajuda?</strong>
     </p>
-    <ul style="color: #555; line-height: 1.8; margin-left: 20px; margin-bottom: 25px;">
-      <li>📦 Stock e Inventário</li>
-      <li>🏭 Fornecedores e Compras</li>
-      <li>💰 Finanças e Pagamentos</li>
-      <li>👥 Recursos Humanos</li>
-      <li>📊 Contabilidade (PGCA Angola)</li>
-    </ul>
-    <p style="color: #555; line-height: 1.6;">
-      Qualquer dúvida, entre em contato com nosso suporte.
+    <p style="color: #555; font-size: 13px;">
+      Aceda à nossa documentação ou contacte o suporte através do email 
+      <a href="mailto:andiotechinovacoes@gmail.com" style="color: #003366;">andiotechinovacoes@gmail.com</a>
     </p>
-  `;
+  </div>
+  
+  <p style="color: #888; font-size: 12px; text-align: center; padding-top: 15px; border-top: 1px solid #e0e4e8;">
+    Estamos felizes por ter a sua empresa a bordo. 🚀
+  </p>
+`;
   
   try {
     const result = await apiInstance.sendTransacEmail({
