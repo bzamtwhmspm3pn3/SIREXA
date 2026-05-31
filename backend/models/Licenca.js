@@ -12,10 +12,10 @@ const licencaSchema = new mongoose.Schema({
   empresaNome: { type: String },
   email: { type: String, required: true },
   
-  // Planos
+  // Planos - ATUALIZADO para aceitar os nomes dos planos
   plano: { 
     type: String, 
-    enum: ['basico', 'profissional', 'empresarial', 'enterprise', 'trial'],
+    enum: ['FREE', 'BÁSICO', 'PROFISSIONAL', 'EMPRESARIAL', 'PLATINUM', 'basico', 'profissional', 'empresarial', 'enterprise', 'trial'],
     default: 'trial'
   },
   
@@ -42,7 +42,7 @@ const licencaSchema = new mongoose.Schema({
     maxProdutos: { type: Number, default: 100 },
     maxFornecedores: { type: Number, default: 20 },
     maxClientes: { type: Number, default: 50 },
-    espacoArmazenamento: { type: Number, default: 100 } // MB
+    espacoArmazenamento: { type: Number, default: 100 }
   },
   
   // Datas
