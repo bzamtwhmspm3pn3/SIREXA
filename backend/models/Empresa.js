@@ -141,10 +141,10 @@ const EmpresaSchema = new mongoose.Schema({
   // Licença
   licencaId: { type: mongoose.Schema.Types.ObjectId, ref: 'Licenca', default: null },
   plano: { 
-    type: String, 
-    enum: ['trial', 'basico', 'profissional', 'empresarial', 'enterprise'], 
-    default: 'trial' 
-  },
+  type: String, 
+  enum: ['trial', 'basico', 'profissional', 'empresarial', 'enterprise', 'FREE', 'BÁSICO', 'PROFISSIONAL', 'EMPRESARIAL', 'PLATINUM'], 
+  default: 'trial' 
+},
   dataAtivacao: { type: Date, default: Date.now },
   dataExpiracaoLicenca: { type: Date, default: null },
   
