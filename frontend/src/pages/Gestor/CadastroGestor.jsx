@@ -17,7 +17,9 @@ const CadastroGestor = () => {
     senha: "",
     confirmarSenha: "",
     telefone: "",
-    chaveAtivacao: ""  // 🔥 ADICIONADO: campo da chave
+    chaveAtivacao: "",
+    empresaNome: "",      // 🔥 NOVO CAMPO
+    empresaNif: ""        // 🔥 NOVO CAMPO
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -65,6 +67,16 @@ const CadastroGestor = () => {
       return;
     }
     
+    if (!formData.empresaNome) {
+      mostrarMensagem("Nome da empresa é obrigatório", "erro");
+      return;
+    }
+    
+    if (!formData.empresaNif) {
+      mostrarMensagem("NIF da empresa é obrigatório", "erro");
+      return;
+    }
+    
     setLoading(true);
     try {
       const response = await fetch("https://sirexa-api.onrender.com/api/gestor", {
@@ -75,7 +87,9 @@ const CadastroGestor = () => {
           email: formData.email,
           senha: formData.senha,
           telefone: formData.telefone,
-          chaveAtivacao: formData.chaveAtivacao  // 🔥 ADICIONADO: enviar chave
+          chaveAtivacao: formData.chaveAtivacao,
+          empresaNome: formData.empresaNome,    // 🔥 ADICIONADO
+          empresaNif: formData.empresaNif       // 🔥 ADICIONADO
         })
       });
       const data = await response.json();
@@ -126,8 +140,7 @@ const CadastroGestor = () => {
 
             {/* Corpo do Modal */}
             <div className="flex-1 overflow-y-auto p-6 space-y-6">
-              
-              {/* Introdução */}
+              {/* Conteúdo dos termos (manter igual ao seu) */}
               <div className="bg-[#003366]/30 rounded-xl p-4 border border-blue-500/20">
                 <p className="text-gray-300 text-sm leading-relaxed">
                   <span className="text-white font-semibold">Última atualização:</span> {new Date().toLocaleDateString('pt-AO', { year: 'numeric', month: 'long', day: 'numeric' })}
@@ -362,7 +375,7 @@ const CadastroGestor = () => {
               />
             </div>
 
-            {/* 🔥 CAMPO DA CHAVE DE ATIVAÇÃO (ADICIONADO) */}
+            {/* 🔥 CAMPO DA CHAVE DE ATIVAÇÃO */}
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-2">
                 <Key className="w-4 h-4 inline mr-2 text-yellow-400" />
@@ -381,6 +394,47 @@ const CadastroGestor = () => {
               <p className="text-xs text-gray-400 mt-1">
                 Insira a chave fornecida no momento da compra da licença
               </p>
+            </div>
+
+            {/* 🔥 🔥 🔥 CAMPOS DA EMPRESA - ADICIONADOS 🔥 🔥 🔥 */}
+            <div className="border-t border-gray-700 pt-2">
+              <p className="text-sm font-medium text-blue-400 mb-3 flex items-center gap-2">
+                <Building className="w-4 h-4" />
+                Dados da Empresa
+              </p>
+              
+              {/* Nome da Empresa */}
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  <Building className="w-4 h-4 inline mr-2 text-blue-400" />
+                  Nome da Empresa <span className="text-red-400">*</span>
+                </label>
+                <input
+                  type="text"
+                  className="w-full p-3 rounded-xl bg-gray-700/50 border border-gray-600 text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all duration-200 placeholder-gray-500"
+                  placeholder="Nome da sua empresa"
+                  value={formData.empresaNome}
+                  onChange={(e) => setFormData({...formData, empresaNome: e.target.value})}
+                  required
+                />
+              </div>
+
+              {/* NIF da Empresa */}
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  <FileText className="w-4 h-4 inline mr-2 text-green-400" />
+                  NIF da Empresa <span className="text-red-400">*</span>
+                </label>
+                <input
+                  type="text"
+                  className="w-full p-3 rounded-xl bg-gray-700/50 border border-gray-600 text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all duration-200 placeholder-gray-500 font-mono"
+                  placeholder="500123456789"
+                  value={formData.empresaNif}
+                  onChange={(e) => setFormData({...formData, empresaNif: e.target.value.replace(/\D/g, '')})}
+                  required
+                />
+                <p className="text-xs text-gray-400 mt-1">Apenas números, sem espaços ou caracteres especiais</p>
+              </div>
             </div>
 
             {/* Telefone */}
