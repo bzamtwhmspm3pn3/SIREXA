@@ -11,9 +11,17 @@ import {
 } from "lucide-react";
 
 const EditarTecnico = () => {
-  const { user, empresaModulos } = useAuth();
-  // 🔥 MÓDULOS QUE O GESTOR TEM (para filtrar)
-  const modulosAtivosGestor = empresaModulos || [];
+  const { user } = useAuth();
+  
+  // 🔥 BUSCAR MÓDULOS DIRETAMENTE DO LOCALSTORAGE
+  const userStorage = JSON.parse(localStorage.getItem('user') || '{}');
+  const modulosAtivosGestor = userStorage.modulosAtivos || [];
+  const planoGestor = userStorage.plano || 'FREE';
+  
+  console.log('🔍 Módulos do gestor (EditarTecnico):', modulosAtivosGestor);
+  console.log('🔍 Plano do gestor:', planoGestor);
+  
+  // 🔥 Função para verificar se o gestor tem o módulo
   const gestorTemModulo = (modulo) => modulosAtivosGestor.includes(modulo);
   
   const [formData, setFormData] = useState({
@@ -188,32 +196,32 @@ const EditarTecnico = () => {
               </div>
             </div>
 
-            {/* Módulos - Apenas os que o gestor tem */}
-            {gestorTemModulo('vendas') || gestorTemModulo('stock') || gestorTemModulo('facturacao') ? (
+            {/* Módulos - Apenas os que o gestor tem (modulosAtivosGestor) */}
+            {/* Operacional - só mostrar se gestor tiver pelo menos um */}
+            {(gestorTemModulo('vendas') || gestorTemModulo('stock') || gestorTemModulo('facturacao')) && (
               <div className="bg-gray-700/30 rounded-xl overflow-hidden">
                 <button type="button" onClick={() => toggleSection('operacional')} className="w-full flex items-center justify-between p-4 bg-gradient-to-r from-green-600/20 to-emerald-600/20 hover:bg-green-600/30 transition">
                   <div className="flex items-center gap-3"><TrendingUp className="text-green-400" size={20} /><span className="font-semibold text-white">Módulo Operacional</span></div><span className="text-gray-400">{expandedSections.operacional ? '▼' : '▶'}</span>
                 </button>
                 {expandedSections.operacional && (
                   <div className="p-4 space-y-3 border-t border-gray-600">
-                    <div className="flex justify-end mb-2"><button type="button" onClick={() => handleSelectAll('operacional', ['vendas', 'stock', 'facturacao'])} className="text-xs text-blue-400 hover:text-blue-300">Marcar Todos</button></div>
-                    {gestorTemModulo('vendas') && <label className="flex items-center justify-between p-3 bg-gray-700/50 rounded-lg cursor-pointer hover:bg-gray-700 transition"><div className="flex items-center gap-3"><ShoppingCart size={18} className="text-green-400" /><span className="text-gray-300">Vendas</span></div><input type="checkbox" checked={formData.modulos.vendas} onChange={(e) => setFormData({...formData, modulos: {...formData.modulos, vendas: e.target.checked}})} className="w-4 h-4 text-purple-600 rounded" /></label>}
+                    {gestorTemModulo('vendas') && <label className="flex items-center justify-between p-3 bg-gray-700/50 rounded-lg cursor-pointer hover:bg-gray-700 transition"><div className="flex items-center gap-3"><ShoppingCart size={18} className="text-green-400" /><span className="text-gray-300">Vendas</span></div><input type="checkbox" checked={formData.modulos.vendas} onChange={(e) => setFormData({...formData, modulos: {...formData.modulos, vendas: e.target.checked})} className="w-4 h-4 text-purple-600 rounded" /></label>}
                     {gestorTemModulo('stock') && <label className="flex items-center justify-between p-3 bg-gray-700/50 rounded-lg cursor-pointer hover:bg-gray-700 transition"><div className="flex items-center gap-3"><Package size={18} className="text-yellow-400" /><span className="text-gray-300">Stock</span></div><input type="checkbox" checked={formData.modulos.stock} onChange={(e) => setFormData({...formData, modulos: {...formData.modulos, stock: e.target.checked})} className="w-4 h-4 text-purple-600 rounded" /></label>}
                     {gestorTemModulo('facturacao') && <label className="flex items-center justify-between p-3 bg-gray-700/50 rounded-lg cursor-pointer hover:bg-gray-700 transition"><div className="flex items-center gap-3"><Receipt size={18} className="text-blue-400" /><span className="text-gray-300">Facturação</span></div><input type="checkbox" checked={formData.modulos.facturacao} onChange={(e) => setFormData({...formData, modulos: {...formData.modulos, facturacao: e.target.checked})} className="w-4 h-4 text-purple-600 rounded" /></label>}
                   </div>
                 )}
               </div>
-            ) : null}
+            )}
 
-            {/* RH */}
-            {(gestorTemModulo('funcionarios') || gestorTemModulo('folhaSalarial') || gestorTemModulo('gestaoFaltas') || gestorTemModulo('gestaoAbonos') || gestorTemModulo('avaliacao')) ? (
+            {/* Recursos Humanos - APENAS os que o gestor tem (funcionarios, folhaSalarial, gestaoFaltas, gestaoAbonos, avaliacao) */}
+            {(gestorTemModulo('funcionarios') || gestorTemModulo('folhaSalarial') || gestorTemModulo('gestaoFaltas') || 
+              gestorTemModulo('gestaoAbonos') || gestorTemModulo('avaliacao')) && (
               <div className="bg-gray-700/30 rounded-xl overflow-hidden">
                 <button type="button" onClick={() => toggleSection('recursosHumanos')} className="w-full flex items-center justify-between p-4 bg-gradient-to-r from-purple-600/20 to-pink-600/20 hover:bg-purple-600/30 transition">
                   <div className="flex items-center gap-3"><Users className="text-purple-400" size={20} /><span className="font-semibold text-white">Recursos Humanos</span></div><span className="text-gray-400">{expandedSections.recursosHumanos ? '▼' : '▶'}</span>
                 </button>
                 {expandedSections.recursosHumanos && (
                   <div className="p-4 space-y-3 border-t border-gray-600">
-                    <div className="flex justify-end mb-2"><button type="button" onClick={() => handleSelectAll('recursosHumanos', ['funcionarios', 'folhaSalarial', 'gestaoFaltas', 'gestaoAbonos', 'avaliacao'])} className="text-xs text-blue-400 hover:text-blue-300">Marcar Todos</button></div>
                     {gestorTemModulo('funcionarios') && <label className="flex items-center justify-between p-3 bg-gray-700/50 rounded-lg cursor-pointer hover:bg-gray-700 transition"><div className="flex items-center gap-3"><ClipboardList size={18} className="text-blue-400" /><span className="text-gray-300">Funcionários</span></div><input type="checkbox" checked={formData.modulos.funcionarios} onChange={(e) => setFormData({...formData, modulos: {...formData.modulos, funcionarios: e.target.checked})} className="w-4 h-4 text-purple-600 rounded" /></label>}
                     {gestorTemModulo('folhaSalarial') && <label className="flex items-center justify-between p-3 bg-gray-700/50 rounded-lg cursor-pointer hover:bg-gray-700 transition"><div className="flex items-center gap-3"><Wallet size={18} className="text-green-400" /><span className="text-gray-300">Folha Salarial</span></div><input type="checkbox" checked={formData.modulos.folhaSalarial} onChange={(e) => setFormData({...formData, modulos: {...formData.modulos, folhaSalarial: e.target.checked})} className="w-4 h-4 text-purple-600 rounded" /></label>}
                     {gestorTemModulo('gestaoFaltas') && <label className="flex items-center justify-between p-3 bg-gray-700/50 rounded-lg cursor-pointer hover:bg-gray-700 transition"><div className="flex items-center gap-3"><Calendar size={18} className="text-red-400" /><span className="text-gray-300">Gestão de Faltas</span></div><input type="checkbox" checked={formData.modulos.gestaoFaltas} onChange={(e) => setFormData({...formData, modulos: {...formData.modulos, gestaoFaltas: e.target.checked})} className="w-4 h-4 text-purple-600 rounded" /></label>}
@@ -222,17 +230,16 @@ const EditarTecnico = () => {
                   </div>
                 )}
               </div>
-            ) : null}
+            )}
 
-            {/* Patrimonial */}
-            {(gestorTemModulo('viaturas') || gestorTemModulo('abastecimentos') || gestorTemModulo('manutencoes') || gestorTemModulo('inventario')) ? (
+            {/* Gestão Patrimonial - só mostrar se gestor tiver */}
+            {(gestorTemModulo('viaturas') || gestorTemModulo('abastecimentos') || gestorTemModulo('manutencoes') || gestorTemModulo('inventario')) && (
               <div className="bg-gray-700/30 rounded-xl overflow-hidden">
                 <button type="button" onClick={() => toggleSection('gestaoPatrimonial')} className="w-full flex items-center justify-between p-4 bg-gradient-to-r from-cyan-600/20 to-blue-600/20 hover:bg-cyan-600/30 transition">
                   <div className="flex items-center gap-3"><Car className="text-cyan-400" size={20} /><span className="font-semibold text-white">Gestão Patrimonial</span></div><span className="text-gray-400">{expandedSections.gestaoPatrimonial ? '▼' : '▶'}</span>
                 </button>
                 {expandedSections.gestaoPatrimonial && (
                   <div className="p-4 space-y-3 border-t border-gray-600">
-                    <div className="flex justify-end mb-2"><button type="button" onClick={() => handleSelectAll('gestaoPatrimonial', ['viaturas', 'abastecimentos', 'manutencoes', 'inventario'])} className="text-xs text-blue-400 hover:text-blue-300">Marcar Todos</button></div>
                     {gestorTemModulo('viaturas') && <label className="flex items-center justify-between p-3 bg-gray-700/50 rounded-lg cursor-pointer hover:bg-gray-700 transition"><div className="flex items-center gap-3"><Car size={18} className="text-blue-400" /><span className="text-gray-300">Viaturas</span></div><input type="checkbox" checked={formData.modulos.viaturas} onChange={(e) => setFormData({...formData, modulos: {...formData.modulos, viaturas: e.target.checked})} className="w-4 h-4 text-purple-600 rounded" /></label>}
                     {gestorTemModulo('abastecimentos') && <label className="flex items-center justify-between p-3 bg-gray-700/50 rounded-lg cursor-pointer hover:bg-gray-700 transition"><div className="flex items-center gap-3"><Fuel size={18} className="text-green-400" /><span className="text-gray-300">Abastecimentos</span></div><input type="checkbox" checked={formData.modulos.abastecimentos} onChange={(e) => setFormData({...formData, modulos: {...formData.modulos, abastecimentos: e.target.checked})} className="w-4 h-4 text-purple-600 rounded" /></label>}
                     {gestorTemModulo('manutencoes') && <label className="flex items-center justify-between p-3 bg-gray-700/50 rounded-lg cursor-pointer hover:bg-gray-700 transition"><div className="flex items-center gap-3"><Wrench size={18} className="text-red-400" /><span className="text-gray-300">Manutenções</span></div><input type="checkbox" checked={formData.modulos.manutencoes} onChange={(e) => setFormData({...formData, modulos: {...formData.modulos, manutencoes: e.target.checked})} className="w-4 h-4 text-purple-600 rounded" /></label>}
@@ -240,17 +247,19 @@ const EditarTecnico = () => {
                   </div>
                 )}
               </div>
-            ) : null}
+            )}
 
-            {/* Contabilidade */}
-            {(gestorTemModulo('contabilidade') || gestorTemModulo('planoContas') || gestorTemModulo('lancamentos') || gestorTemModulo('diarioGeral') || gestorTemModulo('razaoGeral') || gestorTemModulo('balancete') || gestorTemModulo('saldosContas') || gestorTemModulo('balancoPatrimonial') || gestorTemModulo('periodosFiscais') || gestorTemModulo('encerramento')) ? (
+            {/* Contabilidade - só mostrar se gestor tiver */}
+            {(gestorTemModulo('contabilidade') || gestorTemModulo('planoContas') || gestorTemModulo('lancamentos') || 
+              gestorTemModulo('diarioGeral') || gestorTemModulo('razaoGeral') || gestorTemModulo('balancete') ||
+              gestorTemModulo('saldosContas') || gestorTemModulo('balancoPatrimonial') || gestorTemModulo('periodosFiscais') ||
+              gestorTemModulo('encerramento')) && (
               <div className="bg-gray-700/30 rounded-xl overflow-hidden mb-3">
                 <button type="button" onClick={() => toggleSection('contabilidade')} className="w-full flex items-center justify-between p-3 bg-gradient-to-r from-indigo-600/20 to-purple-600/20 hover:bg-indigo-600/30 transition">
                   <div className="flex items-center gap-2"><BookOpen className="text-indigo-400" size={16} /><span className="font-semibold text-white text-sm">Contabilidade</span></div><span className="text-gray-400 text-sm">{expandedSections.contabilidade ? '▼' : '▶'}</span>
                 </button>
                 {expandedSections.contabilidade && (
                   <div className="p-3 space-y-2 border-t border-gray-600 max-h-64 overflow-y-auto">
-                    <div className="flex justify-end mb-2"><button type="button" onClick={() => handleSelectAll('contabilidade', ['contabilidade', 'planoContas', 'lancamentos', 'diarioGeral', 'razaoGeral', 'balancete', 'saldosContas', 'balancoPatrimonial', 'periodosFiscais', 'encerramento'])} className="text-xs text-blue-400 hover:text-blue-300">Marcar Todos</button></div>
                     {gestorTemModulo('contabilidade') && <label className="flex items-center justify-between p-2 bg-indigo-900/30 rounded-lg cursor-pointer hover:bg-indigo-800/30 transition border border-indigo-500/30"><div className="flex items-center gap-2"><BookOpen size={14} className="text-indigo-400" /><span className="text-gray-300 text-sm font-medium">Acesso Geral à Contabilidade</span></div><input type="checkbox" checked={formData.modulos.contabilidade} onChange={(e) => { const checked = e.target.checked; setFormData(prev => ({ ...prev, modulos: { ...prev.modulos, contabilidade: checked, planoContas: checked, lancamentos: checked, diarioGeral: checked, razaoGeral: checked, balancete: checked, saldosContas: checked, balancoPatrimonial: checked, periodosFiscais: checked, encerramento: checked } })); }} className="w-4 h-4 text-purple-600 rounded" /></label>}
                     <div className="pl-4 space-y-2 border-l-2 border-indigo-500/30">
                       {gestorTemModulo('planoContas') && <label className="flex items-center justify-between p-2 bg-gray-700/50 rounded-lg cursor-pointer hover:bg-gray-700 transition"><div className="flex items-center gap-2"><BookOpen size={14} className="text-blue-400" /><span className="text-gray-300 text-sm">Plano de Contas</span></div><input type="checkbox" checked={formData.modulos.planoContas} onChange={(e) => setFormData({...formData, modulos: {...formData.modulos, planoContas: e.target.checked})} className="w-4 h-4 text-purple-600 rounded" /></label>}
@@ -266,17 +275,19 @@ const EditarTecnico = () => {
                   </div>
                 )}
               </div>
-            ) : null}
+            )}
 
-            {/* Financeiro */}
-            {(gestorTemModulo('fornecedores') || gestorTemModulo('fluxoCaixa') || gestorTemModulo('contaCorrente') || gestorTemModulo('controloPagamento') || gestorTemModulo('custosReceitas') || gestorTemModulo('orcamentos') || gestorTemModulo('dre') || gestorTemModulo('indicadores') || gestorTemModulo('transferencias') || gestorTemModulo('reconciliacao')) ? (
+            {/* Financeiro - só mostrar se gestor tiver */}
+            {(gestorTemModulo('fornecedores') || gestorTemModulo('fluxoCaixa') || gestorTemModulo('contaCorrente') || 
+              gestorTemModulo('controloPagamento') || gestorTemModulo('custosReceitas') || gestorTemModulo('orcamentos') ||
+              gestorTemModulo('dre') || gestorTemModulo('indicadores') || gestorTemModulo('transferencias') ||
+              gestorTemModulo('reconciliacao')) && (
               <div className="bg-gray-700/30 rounded-xl overflow-hidden">
                 <button type="button" onClick={() => toggleSection('financeiro')} className="w-full flex items-center justify-between p-4 bg-gradient-to-r from-emerald-600/20 to-teal-600/20 hover:bg-emerald-600/30 transition">
                   <div className="flex items-center gap-3"><DollarSign className="text-emerald-400" size={20} /><span className="font-semibold text-white">Financeiro</span></div><span className="text-gray-400">{expandedSections.financeiro ? '▼' : '▶'}</span>
                 </button>
                 {expandedSections.financeiro && (
                   <div className="p-4 space-y-3 border-t border-gray-600 max-h-96 overflow-y-auto">
-                    <div className="flex justify-end mb-2"><button type="button" onClick={() => handleSelectAll('financeiro', ['fornecedores', 'fluxoCaixa', 'contaCorrente', 'controloPagamento', 'custosReceitas', 'orcamentos', 'dre', 'indicadores', 'transferencias', 'reconciliacao'])} className="text-xs text-blue-400 hover:text-blue-300">Marcar Todos</button></div>
                     {gestorTemModulo('fornecedores') && <label className="flex items-center justify-between p-3 bg-gray-700/50 rounded-lg cursor-pointer hover:bg-gray-700 transition"><div className="flex items-center gap-3"><Truck size={18} className="text-purple-400" /><span className="text-gray-300">Fornecedores</span></div><input type="checkbox" checked={formData.modulos.fornecedores} onChange={(e) => setFormData({...formData, modulos: {...formData.modulos, fornecedores: e.target.checked})} className="w-4 h-4 text-purple-600 rounded" /></label>}
                     {gestorTemModulo('fluxoCaixa') && <label className="flex items-center justify-between p-3 bg-gray-700/50 rounded-lg cursor-pointer hover:bg-gray-700 transition"><div className="flex items-center gap-3"><TrendingUp size={18} className="text-green-400" /><span className="text-gray-300">Fluxo de Caixa</span></div><input type="checkbox" checked={formData.modulos.fluxoCaixa} onChange={(e) => setFormData({...formData, modulos: {...formData.modulos, fluxoCaixa: e.target.checked})} className="w-4 h-4 text-purple-600 rounded" /></label>}
                     {gestorTemModulo('contaCorrente') && <label className="flex items-center justify-between p-3 bg-gray-700/50 rounded-lg cursor-pointer hover:bg-gray-700 transition"><div className="flex items-center gap-3"><Wallet size={18} className="text-blue-400" /><span className="text-gray-300">Conta Corrente</span></div><input type="checkbox" checked={formData.modulos.contaCorrente} onChange={(e) => setFormData({...formData, modulos: {...formData.modulos, contaCorrente: e.target.checked})} className="w-4 h-4 text-purple-600 rounded" /></label>}
@@ -290,24 +301,23 @@ const EditarTecnico = () => {
                   </div>
                 )}
               </div>
-            ) : null}
+            )}
 
-            {/* Relatórios */}
-            {(gestorTemModulo('relatorios') || gestorTemModulo('graficos') || gestorTemModulo('analise')) ? (
+            {/* Relatórios - só mostrar se gestor tiver */}
+            {(gestorTemModulo('relatorios') || gestorTemModulo('graficos') || gestorTemModulo('analise')) && (
               <div className="bg-gray-700/30 rounded-xl overflow-hidden">
                 <button type="button" onClick={() => toggleSection('relatorios')} className="w-full flex items-center justify-between p-4 bg-gradient-to-r from-rose-600/20 to-pink-600/20 hover:bg-rose-600/30 transition">
                   <div className="flex items-center gap-3"><FileText className="text-rose-400" size={20} /><span className="font-semibold text-white">Relatórios e Análises</span></div><span className="text-gray-400">{expandedSections.relatorios ? '▼' : '▶'}</span>
                 </button>
                 {expandedSections.relatorios && (
                   <div className="p-4 space-y-3 border-t border-gray-600">
-                    <div className="flex justify-end mb-2"><button type="button" onClick={() => handleSelectAll('relatorios', ['relatorios', 'graficos', 'analise'])} className="text-xs text-blue-400 hover:text-blue-300">Marcar Todos</button></div>
                     {gestorTemModulo('relatorios') && <label className="flex items-center justify-between p-3 bg-gray-700/50 rounded-lg cursor-pointer hover:bg-gray-700 transition"><div className="flex items-center gap-3"><FileText size={18} className="text-blue-400" /><span className="text-gray-300">Relatórios</span></div><input type="checkbox" checked={formData.modulos.relatorios} onChange={(e) => setFormData({...formData, modulos: {...formData.modulos, relatorios: e.target.checked})} className="w-4 h-4 text-purple-600 rounded" /></label>}
                     {gestorTemModulo('graficos') && <label className="flex items-center justify-between p-3 bg-gray-700/50 rounded-lg cursor-pointer hover:bg-gray-700 transition"><div className="flex items-center gap-3"><BarChart3 size={18} className="text-green-400" /><span className="text-gray-300">Gráficos</span></div><input type="checkbox" checked={formData.modulos.graficos} onChange={(e) => setFormData({...formData, modulos: {...formData.modulos, graficos: e.target.checked})} className="w-4 h-4 text-purple-600 rounded" /></label>}
                     {gestorTemModulo('analise') && <label className="flex items-center justify-between p-3 bg-gray-700/50 rounded-lg cursor-pointer hover:bg-gray-700 transition"><div className="flex items-center gap-3"><PieChart size={18} className="text-purple-400" /><span className="text-gray-300">Análise Geral</span></div><input type="checkbox" checked={formData.modulos.analise} onChange={(e) => setFormData({...formData, modulos: {...formData.modulos, analise: e.target.checked})} className="w-4 h-4 text-purple-600 rounded" /></label>}
                   </div>
                 )}
               </div>
-            ) : null}
+            )}
 
             {/* Botões */}
             <div className="flex gap-3 pt-4">

@@ -14,16 +14,15 @@ import {
 } from "lucide-react";
 
 const CadastroFuncionario = () => {
-  const { user, isTecnico, empresaId: userEmpresaId, empresaNome: userEmpresaNome, empresaModulos } = useAuth();
-  const [empresas, setEmpresas] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [loadingEmpresas, setLoadingEmpresas] = useState(true);
-  const [mensagem, setMensagem] = useState({ texto: "", tipo: "" });
-  const [redirecting, setRedirecting] = useState(false);
-  const navigate = useNavigate();
+  const { user, isTecnico, empresaId: userEmpresaId, empresaNome: userEmpresaNome } = useAuth();
   
-  // 🔥 MÓDULOS QUE O GESTOR TEM (para filtrar)
-  const modulosAtivosGestor = empresaModulos || [];
+  // 🔥 BUSCAR MÓDULOS DIRETAMENTE DO LOCALSTORAGE
+  const userStorage = JSON.parse(localStorage.getItem('user') || '{}');
+  const modulosAtivosGestor = userStorage.modulosAtivos || [];
+  const planoGestor = userStorage.plano || 'FREE';
+  
+  console.log('🔍 Módulos disponíveis para o gestor (Cadastro):', modulosAtivosGestor);
+  console.log('🔍 Plano do gestor:', planoGestor);
   
   // 🔥 Função para verificar se o gestor tem o módulo
   const gestorTemModulo = (modulo) => {
