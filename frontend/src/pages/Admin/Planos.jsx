@@ -8,7 +8,7 @@ import {
   Building2, Zap, AlertCircle, Award, Calendar, Shield,
   Edit, Plus, X, Trash2, Car, Fuel, Wrench, Boxes,
   TrendingUp, PieChart, Eye, ArrowRightLeft, DollarSign,
-  FileText, ClipboardList, Wallet, Gift, RefreshCw
+  FileText, ClipboardList, Wallet, Gift, RefreshCw,LayoutDashboard 
 } from 'lucide-react';
 
 const Planos = () => {
