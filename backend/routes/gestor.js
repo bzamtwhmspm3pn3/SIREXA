@@ -17,11 +17,6 @@ const JWT_SECRET = process.env.JWT_SECRET || "segredo-super-seguro-para-desenvol
 // 🆕 Armazenamento temporário de códigos de recuperação
 const codigosRecuperacao = new Map();
 
-// 🆕 Cache de planos para melhor performance
-let planosCache = null;
-let planosCacheExpira = 0;
-const CACHE_TTL = 3600000; // 1 hora em milissegundos
-
 // Limpar códigos expirados a cada 5 minutos
 setInterval(() => {
   const agora = Date.now();
@@ -38,125 +33,28 @@ setInterval(() => {
 // ============================================
 async function garantirPlanosExistentes() {
   try {
+    // Verificar se o modelo Plano existe
+    if (!Plano || typeof Plano.countDocuments !== 'function') {
+      console.error('❌ Modelo Plano não está disponível!');
+      return false;
+    }
+    
     const count = await Plano.countDocuments();
+    console.log(`📊 Verificando planos no banco: ${count} encontrados`);
     
     if (count === 0) {
-      console.log('⚠️ NENHUM PLANO ENCONTRADO! Criando planos padrão automaticamente...');
+      console.log('⚠️ NENHUM PLANO ENCONTRADO! Criando planos padrão...');
       
       const planosPadrao = [
-        {
-          nome: 'FREE',
-          descricao: 'Teste gratuito por 7 dias',
-          preco: 0,
-          duracaoDias: 7,
-          ordem: 1,
-          limites: {
-            maxEmpresas: 1,
-            maxUsuarios: 1,
-            maxProdutos: 50,
-            maxFornecedores: 10,
-            maxClientes: 20,
-            maxFuncionarios: 3
-          },
-          modulos: {
-            stock: true, fornecedores: true, gestaoCompras: true,
-            vendas: true, rh: true, contabilidade: true,
-            financas: true, relatorios: true, dashboard: true, config: true
-          },
-          ativo: true
-        },
-        {
-          nome: 'BÁSICO',
-          descricao: 'Para pequenas empresas',
-          preco: 29900,
-          duracaoDias: 365,
-          ordem: 2,
-          limites: {
-            maxEmpresas: 1,
-            maxUsuarios: 1,
-            maxProdutos: 100,
-            maxFornecedores: 20,
-            maxClientes: 50,
-            maxFuncionarios: 5
-          },
-          modulos: {
-            stock: true, fornecedores: true, gestaoCompras: true,
-            vendas: true, rh: false, contabilidade: false,
-            financas: false, relatorios: true, dashboard: true, config: true
-          },
-          ativo: true
-        },
-        {
-          nome: 'PROFISSIONAL',
-          descricao: 'Para empresas em crescimento',
-          preco: 79900,
-          duracaoDias: 365,
-          ordem: 3,
-          limites: {
-            maxEmpresas: 3,
-            maxUsuarios: 5,
-            maxProdutos: 500,
-            maxFornecedores: 100,
-            maxClientes: 200,
-            maxFuncionarios: 20
-          },
-          modulos: {
-            stock: true, fornecedores: true, gestaoCompras: true,
-            vendas: true, rh: true, contabilidade: false,
-            financas: false, relatorios: true, dashboard: true, config: true
-          },
-          ativo: true
-        },
-        {
-          nome: 'EMPRESARIAL',
-          descricao: 'Solução completa',
-          preco: 149900,
-          duracaoDias: 365,
-          ordem: 4,
-          limites: {
-            maxEmpresas: 10,
-            maxUsuarios: 20,
-            maxProdutos: 5000,
-            maxFornecedores: 500,
-            maxClientes: 1000,
-            maxFuncionarios: 100
-          },
-          modulos: {
-            stock: true, fornecedores: true, gestaoCompras: true,
-            vendas: true, rh: true, contabilidade: true,
-            financas: true, relatorios: true, dashboard: true, config: true
-          },
-          ativo: true
-        },
-        {
-          nome: 'PLATINUM',
-          descricao: 'Ilimitado + Suporte prioritário',
-          preco: 299900,
-          duracaoDias: 365,
-          ordem: 5,
-          limites: {
-            maxEmpresas: -1,
-            maxUsuarios: -1,
-            maxProdutos: -1,
-            maxFornecedores: -1,
-            maxClientes: -1,
-            maxFuncionarios: -1
-          },
-          modulos: {
-            stock: true, fornecedores: true, gestaoCompras: true,
-            vendas: true, rh: true, contabilidade: true,
-            financas: true, relatorios: true, dashboard: true, config: true
-          },
-          ativo: true
-        }
+        { nome: 'FREE', descricao: 'Teste gratuito por 7 dias', preco: 0, duracaoDias: 7, ordem: 1, ativo: true },
+        { nome: 'BÁSICO', descricao: 'Para pequenas empresas', preco: 29900, duracaoDias: 365, ordem: 2, ativo: true },
+        { nome: 'PROFISSIONAL', descricao: 'Para empresas em crescimento', preco: 79900, duracaoDias: 365, ordem: 3, ativo: true },
+        { nome: 'EMPRESARIAL', descricao: 'Solução completa', preco: 149900, duracaoDias: 365, ordem: 4, ativo: true },
+        { nome: 'PLATINUM', descricao: 'Ilimitado + Suporte prioritário', preco: 299900, duracaoDias: 365, ordem: 5, ativo: true }
       ];
       
       await Plano.insertMany(planosPadrao);
-      console.log('✅ Planos padrão criados automaticamente com sucesso!');
-      
-      // Invalidar cache
-      planosCache = null;
-      
+      console.log('✅ Planos padrão criados com sucesso!');
       return true;
     }
     
@@ -168,40 +66,37 @@ async function garantirPlanosExistentes() {
 }
 
 // ============================================
-// 🔥 FUNÇÃO: BUSCAR PLANOS COM CACHE (FORÇANDO LIMPEZA)
+// 🔥 FUNÇÃO: BUSCAR PLANOS DIRETAMENTE DO BANCO
 // ============================================
-async function buscarPlanosComCache(ignorarCache = false) {
-  const agora = Date.now();
-  
-  // Se ignorar cache ou cache expirado/inválido, buscar do banco
-  if (ignorarCache || !planosCache || planosCacheExpira <= agora) {
-    console.log('📡 Buscando planos diretamente do banco de dados...');
-    const planos = await Plano.find().sort({ ordem: 1 });
+async function buscarPlanosDoBanco() {
+  try {
+    console.log('📡 Buscando planos no MongoDB...');
+    const planos = await Plano.find({}).sort({ ordem: 1 }).lean();
+    console.log(`📊 Encontrados ${planos.length} planos`);
     
-    // Atualizar cache apenas se não for ignorado
-    if (!ignorarCache) {
-      planosCache = planos;
-      planosCacheExpira = agora + CACHE_TTL;
+    if (planos.length > 0) {
+      console.log('📋 Nomes:', planos.map(p => p.nome).join(', '));
     }
     
     return planos;
+  } catch (error) {
+    console.error('❌ Erro ao buscar planos:', error);
+    return [];
   }
-  
-  console.log('💾 Usando cache de planos');
-  return planosCache;
 }
 
 // ============================================
 // ROTAS PÚBLICAS (sem token)
 // ============================================
 
-// 👉 REGISTO de gestor (com validação de chave e email)
+// 👉 REGISTO de gestor
 router.post("/", async (req, res) => {
   try {
     const { nome, email, senha, telefone, chaveAtivacao, empresaNome, empresaNif } = req.body;
     
     console.log('📝 Tentativa de registo:', email);
 
+    // Validações básicas
     if (!nome || !email || !senha) {
       return res.status(400).json({ 
         sucesso: false, 
@@ -223,6 +118,7 @@ router.post("/", async (req, res) => {
       });
     }
 
+    // Validar chave
     const chaveNormalizada = chaveAtivacao.replace(/-/g, '').toUpperCase();
     const licenca = await Licenca.findOne({ chave: chaveNormalizada });
 
@@ -263,6 +159,7 @@ router.post("/", async (req, res) => {
       });
     }
 
+    // Verificar duplicados
     const empresaExistente = await Empresa.findOne({ nif: empresaNif });
     if (empresaExistente) {
       return res.status(400).json({ 
@@ -279,7 +176,7 @@ router.post("/", async (req, res) => {
       });
     }
 
-    // 🔥 Garantir que planos existem antes de continuar
+    // Garantir que planos existem
     await garantirPlanosExistentes();
 
     // Criar empresa
@@ -296,15 +193,16 @@ router.post("/", async (req, res) => {
 
     await empresa.save();
 
-    // 🔥 Buscar plano e aplicar módulos
+    // Buscar plano e aplicar módulos
     const plano = await Plano.findOne({ nome: licenca.plano });
     if (plano) {
-      empresa.modulosAtivos = Object.keys(plano.modulos).filter(key => plano.modulos[key] === true);
-      empresa.limites = plano.limites;
-      empresa.dataExpiracaoPlano = new Date(Date.now() + plano.duracaoDias * 24 * 60 * 60 * 1000);
+      empresa.modulosAtivos = Object.keys(plano.modulos || {}).filter(key => plano.modulos[key] === true);
+      empresa.limites = plano.limites || {};
+      empresa.dataExpiracaoPlano = new Date(Date.now() + (plano.duracaoDias || 365) * 24 * 60 * 60 * 1000);
       await empresa.save();
     }
 
+    // Atualizar licença
     licenca.empresaId = empresa._id;
     licenca.empresaNome = empresa.nome;
     licenca.ipAtivacao = req.ip;
@@ -510,7 +408,6 @@ router.post("/login", async (req, res) => {
     const empresasIds = gestor.empresas.map(emp => emp._id.toString());
     const primeiraEmpresaId = empresasIds.length > 0 ? empresasIds[0] : null;
     
-    // 🔥 Buscar módulos da empresa para incluir no token
     let modulosAtivos = ['stock', 'fornecedores'];
     if (primeiraEmpresaId) {
       const empresa = await Empresa.findById(primeiraEmpresaId);
@@ -756,32 +653,28 @@ const verificarAdmin = (req, res, next) => {
 };
 
 // ============================================
-// 🔥 ROTAS DE PLANOS (ADMIN) COM FALLBACK E CACHE
+// 🔥 ROTAS DE PLANOS (ADMIN) - VERSÃO BLINDADA
 // ============================================
 
-// GET - Listar todos os planos (com cache)
+// GET - Listar todos os planos
 router.get("/admin/planos", verifyToken, verificarAdmin, async (req, res) => {
   try {
-    console.log('🎯 ROTA /admin/planos chamada');
+    console.log('🎯 GET /admin/planos');
     
-    // Garantir que planos existem (fallback automático)
-    await garantirPlanosExistentes();
-    
-    // Buscar com cache - usar true para ignorar cache e forçar busca fresca
-    const forceRefresh = req.query.refresh === 'true';
-    const planos = await buscarPlanosComCache(forceRefresh);
-    
-    console.log(`📊 Retornando ${planos.length} planos`);
-    
-    // Verificar se os planos têm a estrutura correta (não são empresas)
-    if (planos.length > 0 && planos[0].nif) {
-      console.error('❌ ERRO CRÍTICO: planos está retornando EMPRESAS!');
+    // Verificar se o modelo Plano existe
+    if (!Plano) {
+      console.error('❌ Modelo Plano não carregado!');
       return res.status(500).json({ 
         sucesso: false, 
-        mensagem: 'Erro interno: configuração incorreta',
-        planos: []
+        mensagem: 'Erro interno: modelo não disponível' 
       });
     }
+    
+    // Garantir que planos existem
+    await garantirPlanosExistentes();
+    
+    // Buscar planos
+    const planos = await buscarPlanosDoBanco();
     
     res.json({
       sucesso: true,
@@ -789,8 +682,11 @@ router.get("/admin/planos", verifyToken, verificarAdmin, async (req, res) => {
       planos: planos
     });
   } catch (error) {
-    console.error('Erro ao listar planos:', error);
-    res.status(500).json({ sucesso: false, mensagem: error.message });
+    console.error('❌ Erro ao listar planos:', error);
+    res.status(500).json({ 
+      sucesso: false, 
+      mensagem: error.message 
+    });
   }
 });
 
@@ -799,22 +695,27 @@ router.get("/admin/planos", verifyToken, verificarAdmin, async (req, res) => {
 // ============================================
 router.post("/admin/planos/emergencia/criar", verifyToken, verificarAdmin, async (req, res) => {
   try {
-    console.log('🚨 ROTA DE EMERGÊNCIA - Forçando criação de planos');
+    console.log('🚨 EMERGÊNCIA - Forçando criação/recriação de planos');
     
-    // Limpar cache
-    planosCache = null;
+    // Verificar modelo
+    if (!Plano) {
+      return res.status(500).json({ 
+        sucesso: false, 
+        mensagem: 'Modelo Plano não disponível' 
+      });
+    }
     
-    // Deletar planos existentes que possam estar corrompidos
-    await Plano.deleteMany({});
-    console.log('🗑️ Planos antigos removidos');
+    // Deletar todos os planos existentes
+    const deleteResult = await Plano.deleteMany({});
+    console.log(`🗑️ Removidos ${deleteResult.deletedCount} planos antigos`);
     
     // Criar planos padrão
     const planosPadrao = [
-      { nome: 'FREE', descricao: 'Teste gratuito por 7 dias', preco: 0, duracaoDias: 7, ordem: 1, limites: { maxEmpresas: 1, maxUsuarios: 1, maxProdutos: 50 }, modulos: { stock: true, fornecedores: true, vendas: true }, ativo: true },
-      { nome: 'BÁSICO', descricao: 'Para pequenas empresas', preco: 29900, duracaoDias: 365, ordem: 2, limites: { maxEmpresas: 1, maxUsuarios: 1, maxProdutos: 100 }, modulos: { stock: true, fornecedores: true, vendas: true }, ativo: true },
-      { nome: 'PROFISSIONAL', descricao: 'Para empresas em crescimento', preco: 79900, duracaoDias: 365, ordem: 3, limites: { maxEmpresas: 3, maxUsuarios: 5, maxProdutos: 500 }, modulos: { stock: true, fornecedores: true, vendas: true, rh: true }, ativo: true },
-      { nome: 'EMPRESARIAL', descricao: 'Solução completa', preco: 149900, duracaoDias: 365, ordem: 4, limites: { maxEmpresas: 10, maxUsuarios: 20, maxProdutos: 5000 }, modulos: { stock: true, fornecedores: true, vendas: true, rh: true, contabilidade: true }, ativo: true },
-      { nome: 'PLATINUM', descricao: 'Ilimitado + Suporte prioritário', preco: 299900, duracaoDias: 365, ordem: 5, limites: { maxEmpresas: -1, maxUsuarios: -1, maxProdutos: -1 }, modulos: { stock: true, fornecedores: true, vendas: true, rh: true, contabilidade: true }, ativo: true }
+      { nome: 'FREE', descricao: 'Teste gratuito por 7 dias', preco: 0, duracaoDias: 7, ordem: 1, ativo: true },
+      { nome: 'BÁSICO', descricao: 'Para pequenas empresas', preco: 29900, duracaoDias: 365, ordem: 2, ativo: true },
+      { nome: 'PROFISSIONAL', descricao: 'Para empresas em crescimento', preco: 79900, duracaoDias: 365, ordem: 3, ativo: true },
+      { nome: 'EMPRESARIAL', descricao: 'Solução completa', preco: 149900, duracaoDias: 365, ordem: 4, ativo: true },
+      { nome: 'PLATINUM', descricao: 'Ilimitado + Suporte prioritário', preco: 299900, duracaoDias: 365, ordem: 5, ativo: true }
     ];
     
     await Plano.insertMany(planosPadrao);
@@ -829,17 +730,23 @@ router.post("/admin/planos/emergencia/criar", verifyToken, verificarAdmin, async
     });
   } catch (error) {
     console.error('❌ Erro na rota de emergência:', error);
-    res.status(500).json({ sucesso: false, mensagem: error.message });
+    res.status(500).json({ 
+      sucesso: false, 
+      mensagem: error.message 
+    });
   }
 });
 
-// POST - Criar ou atualizar plano (invalida cache)
+// POST - Criar ou atualizar plano
 router.post("/admin/planos", verifyToken, verificarAdmin, async (req, res) => {
   try {
     const { nome, descricao, preco, duracaoDias, ordem, limites, modulos, ativo } = req.body;
     
     if (!nome) {
-      return res.status(400).json({ sucesso: false, mensagem: 'Nome do plano é obrigatório' });
+      return res.status(400).json({ 
+        sucesso: false, 
+        mensagem: 'Nome do plano é obrigatório' 
+      });
     }
     
     let plano = await Plano.findOne({ nome });
@@ -870,17 +777,17 @@ router.post("/admin/planos", verifyToken, verificarAdmin, async (req, res) => {
     
     await plano.save();
     
-    // Invalidar cache
-    planosCache = null;
-    
     res.json({
       sucesso: true,
       mensagem: `Plano ${nome} salvo com sucesso`,
       plano
     });
   } catch (error) {
-    console.error('Erro ao salvar plano:', error);
-    res.status(500).json({ sucesso: false, mensagem: error.message });
+    console.error('❌ Erro ao salvar plano:', error);
+    res.status(500).json({ 
+      sucesso: false, 
+      mensagem: error.message 
+    });
   }
 });
 
@@ -897,11 +804,11 @@ router.put("/admin/planos/:nome", verifyToken, verificarAdmin, async (req, res) 
     );
     
     if (!plano) {
-      return res.status(404).json({ sucesso: false, mensagem: 'Plano não encontrado' });
+      return res.status(404).json({ 
+        sucesso: false, 
+        mensagem: 'Plano não encontrado' 
+      });
     }
-    
-    // Invalidar cache
-    planosCache = null;
     
     res.json({
       sucesso: true,
@@ -909,17 +816,20 @@ router.put("/admin/planos/:nome", verifyToken, verificarAdmin, async (req, res) 
       plano
     });
   } catch (error) {
-    console.error('Erro ao atualizar plano:', error);
-    res.status(500).json({ sucesso: false, mensagem: error.message });
+    console.error('❌ Erro ao atualizar plano:', error);
+    res.status(500).json({ 
+      sucesso: false, 
+      mensagem: error.message 
+    });
   }
 });
 
-// DELETE - Remover plano (com validação)
+// DELETE - Remover plano
 router.delete("/admin/planos/:nome", verifyToken, verificarAdmin, async (req, res) => {
   try {
     const { nome } = req.params;
     
-    // Não permitir deletar planos em uso
+    // Verificar se plano está em uso
     const empresasComPlano = await Empresa.countDocuments({ plano: nome });
     if (empresasComPlano > 0) {
       return res.status(400).json({ 
@@ -931,91 +841,27 @@ router.delete("/admin/planos/:nome", verifyToken, verificarAdmin, async (req, re
     const plano = await Plano.findOneAndDelete({ nome });
     
     if (!plano) {
-      return res.status(404).json({ sucesso: false, mensagem: 'Plano não encontrado' });
+      return res.status(404).json({ 
+        sucesso: false, 
+        mensagem: 'Plano não encontrado' 
+      });
     }
-    
-    // Invalidar cache
-    planosCache = null;
     
     res.json({
       sucesso: true,
       mensagem: `Plano ${nome} removido com sucesso`
     });
   } catch (error) {
-    console.error('Erro ao remover plano:', error);
-    res.status(500).json({ sucesso: false, mensagem: error.message });
-  }
-});
-
-// ============================================
-// 🔥 ROTAS DE EMPRESA (MÓDULOS)
-// ============================================
-
-// GET - Obter módulos de uma empresa
-router.get("/empresa/:id/modulos", verifyToken, async (req, res) => {
-  try {
-    const { id } = req.params;
-    
-    const empresa = await Empresa.findById(id);
-    if (!empresa) {
-      return res.status(404).json({ sucesso: false, mensagem: 'Empresa não encontrada' });
-    }
-    
-    // Verificar permissão
-    const isGestor = req.user.role === 'gestor' && empresa.gestorId?.toString() === req.user.id;
-    const isAdmin = req.user.role === 'admin_sistema';
-    const isTecnico = req.user.role === 'tecnico' && req.user.empresaId === id;
-    
-    if (!isGestor && !isAdmin && !isTecnico) {
-      return res.status(403).json({ sucesso: false, mensagem: 'Acesso negado' });
-    }
-    
-    res.json({
-      sucesso: true,
-      modulosAtivos: empresa.modulosAtivos || ['stock', 'fornecedores'],
-      plano: empresa.plano || 'FREE'
+    console.error('❌ Erro ao remover plano:', error);
+    res.status(500).json({ 
+      sucesso: false, 
+      mensagem: error.message 
     });
-  } catch (error) {
-    console.error('Erro ao buscar módulos:', error);
-    res.status(500).json({ sucesso: false, mensagem: error.message });
-  }
-});
-
-// PUT - Atualizar módulos de uma empresa
-router.put("/empresa/:id/modulos", verifyToken, async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { modulosAtivos } = req.body;
-    
-    const empresa = await Empresa.findById(id);
-    if (!empresa) {
-      return res.status(404).json({ sucesso: false, mensagem: 'Empresa não encontrada' });
-    }
-    
-    // Verificar permissão (apenas gestor da empresa ou admin)
-    const isGestor = req.user.role === 'gestor' && empresa.gestorId?.toString() === req.user.id;
-    const isAdmin = req.user.role === 'admin_sistema';
-    
-    if (!isGestor && !isAdmin) {
-      return res.status(403).json({ sucesso: false, mensagem: 'Acesso negado' });
-    }
-    
-    empresa.modulosAtivos = modulosAtivos;
-    await empresa.save();
-    
-    res.json({
-      sucesso: true,
-      mensagem: 'Módulos atualizados com sucesso',
-      modulosAtivos: empresa.modulosAtivos
-    });
-  } catch (error) {
-    console.error('Erro ao atualizar módulos:', error);
-    res.status(500).json({ sucesso: false, mensagem: error.message });
   }
 });
 
 // ============================================
-// ROTAS ADMIN CRUD (já existentes)
+// ROTAS ADMIN CRUD
 // ============================================
 
 // GET - Listar todos os gestores (admin)
@@ -1075,7 +921,10 @@ router.post("/admin/gerar-chave", verifyToken, verificarAdmin, async (req, res) 
     const { email, plano, diasValidade } = req.body;
     
     if (!email) {
-      return res.status(400).json({ sucesso: false, mensagem: 'Email é obrigatório' });
+      return res.status(400).json({ 
+        sucesso: false, 
+        mensagem: 'Email é obrigatório' 
+      });
     }
     
     // Garantir que o plano existe
@@ -1086,7 +935,6 @@ router.post("/admin/gerar-chave", verifyToken, verificarAdmin, async (req, res) 
     const dataExpiracao = new Date();
     dataExpiracao.setDate(dataExpiracao.getDate() + (diasValidade || 365));
     
-    // Buscar plano para obter configurações
     const planoData = await Plano.findOne({ nome: plano });
     
     if (!planoData) {
@@ -1100,8 +948,8 @@ router.post("/admin/gerar-chave", verifyToken, verificarAdmin, async (req, res) 
       chave,
       email,
       plano: plano || 'basico',
-      modulos: planoData.modulos,
-      limites: planoData.limites,
+      modulos: planoData.modulos || {},
+      limites: planoData.limites || {},
       dataExpiracao,
       status: 'ativa',
       ativadoPor: req.user.nome || req.user.email
@@ -1136,7 +984,10 @@ router.put("/admin/gestores/:id", verifyToken, verificarAdmin, async (req, res) 
     ).select('-senha');
     
     if (!gestor) {
-      return res.status(404).json({ sucesso: false, mensagem: 'Gestor não encontrado' });
+      return res.status(404).json({ 
+        sucesso: false, 
+        mensagem: 'Gestor não encontrado' 
+      });
     }
     
     res.json({
@@ -1157,7 +1008,10 @@ router.delete("/admin/licencas/:chave", verifyToken, verificarAdmin, async (req,
     
     const licenca = await Licenca.findOne({ chave });
     if (!licenca) {
-      return res.status(404).json({ sucesso: false, mensagem: 'Licença não encontrada' });
+      return res.status(404).json({ 
+        sucesso: false, 
+        mensagem: 'Licença não encontrada' 
+      });
     }
     
     licenca.status = 'cancelada';
@@ -1169,6 +1023,83 @@ router.delete("/admin/licencas/:chave", verifyToken, verificarAdmin, async (req,
     });
   } catch (error) {
     console.error('Erro ao cancelar licença:', error);
+    res.status(500).json({ sucesso: false, mensagem: error.message });
+  }
+});
+
+// ============================================
+// ROTAS DE EMPRESA (MÓDULOS)
+// ============================================
+
+// GET - Obter módulos de uma empresa
+router.get("/empresa/:id/modulos", verifyToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const empresa = await Empresa.findById(id);
+    if (!empresa) {
+      return res.status(404).json({ 
+        sucesso: false, 
+        mensagem: 'Empresa não encontrada' 
+      });
+    }
+    
+    const isGestor = req.user.role === 'gestor' && empresa.gestorId?.toString() === req.user.id;
+    const isAdmin = req.user.role === 'admin_sistema';
+    const isTecnico = req.user.role === 'tecnico' && req.user.empresaId === id;
+    
+    if (!isGestor && !isAdmin && !isTecnico) {
+      return res.status(403).json({ 
+        sucesso: false, 
+        mensagem: 'Acesso negado' 
+      });
+    }
+    
+    res.json({
+      sucesso: true,
+      modulosAtivos: empresa.modulosAtivos || ['stock', 'fornecedores'],
+      plano: empresa.plano || 'FREE'
+    });
+  } catch (error) {
+    console.error('Erro ao buscar módulos:', error);
+    res.status(500).json({ sucesso: false, mensagem: error.message });
+  }
+});
+
+// PUT - Atualizar módulos de uma empresa
+router.put("/empresa/:id/modulos", verifyToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { modulosAtivos } = req.body;
+    
+    const empresa = await Empresa.findById(id);
+    if (!empresa) {
+      return res.status(404).json({ 
+        sucesso: false, 
+        mensagem: 'Empresa não encontrada' 
+      });
+    }
+    
+    const isGestor = req.user.role === 'gestor' && empresa.gestorId?.toString() === req.user.id;
+    const isAdmin = req.user.role === 'admin_sistema';
+    
+    if (!isGestor && !isAdmin) {
+      return res.status(403).json({ 
+        sucesso: false, 
+        mensagem: 'Acesso negado' 
+      });
+    }
+    
+    empresa.modulosAtivos = modulosAtivos;
+    await empresa.save();
+    
+    res.json({
+      sucesso: true,
+      mensagem: 'Módulos atualizados com sucesso',
+      modulosAtivos: empresa.modulosAtivos
+    });
+  } catch (error) {
+    console.error('Erro ao atualizar módulos:', error);
     res.status(500).json({ sucesso: false, mensagem: error.message });
   }
 });
