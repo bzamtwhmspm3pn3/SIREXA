@@ -1,4 +1,4 @@
-// src/pages/Menu.jsx (CORRIGIDO - COM REDIRECIONAMENTO PARA ADMIN)
+// src/pages/Menu.jsx (SEM o card Configurar Módulos)
 import { Link, Navigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import Layout from "../components/Layout";
@@ -7,11 +7,11 @@ import {
   Truck, ArrowRightLeft, PieChart, Wallet, UserCog, ClipboardList,
   Calendar, Gift, Package, Fuel, Wrench, Boxes, ShoppingCart,
   Receipt, Sparkles, Rocket, Zap, Crown, Shield, Briefcase, Target, Globe,
-  BookOpen, RefreshCw, Calculator, BookCopy, Activity 
+  BookOpen, RefreshCw, Calculator, BookCopy, Activity
 } from "lucide-react";
 
 export default function Menu() {
-  const { user, isGestor, isTecnico, empresaId, empresaNome } = useAuth();
+  const { user, isGestor, isTecnico, empresaId, empresaNome, empresaModulos, empresaPlano } = useAuth();
 
   // 🔥 SE FOR ADMIN, REDIRECIONAR PARA /admin
   if (user?.role === "admin_sistema") {
@@ -49,6 +49,7 @@ export default function Menu() {
                   {getHoraSaudacao()}, {user?.nome || "Gestor"}!
                 </h2>
                 <p className="text-blue-300 mt-1">{subtitulo}</p>
+                <p className="text-purple-300 text-xs mt-1">📋 Plano: {empresaPlano || 'FREE'}</p>
               </div>
             </div>
             
@@ -72,7 +73,7 @@ export default function Menu() {
                   <Target size={16} />
                   <span className="text-xs">Módulos</span>
                 </div>
-                <p className="text-white font-semibold"> Todos Ativos</p>
+                <p className="text-white font-semibold">{empresaModulos?.length || 0} ativos</p>
               </div>
               <div className="bg-white/5 backdrop-blur-sm rounded-xl p-3 border border-white/10">
                 <div className="flex items-center gap-2 text-purple-400 mb-1">
@@ -110,7 +111,7 @@ export default function Menu() {
             </div>
           </div>
 
-          {/* CONTABILIDADE - SEM DASHBOARD (apenas registos oficiais) */}
+          {/* CONTABILIDADE */}
           <div>
             <div className="flex items-center gap-3 mb-4">
               <div className="h-8 w-1 bg-gradient-to-b from-indigo-500 to-purple-500 rounded-full"></div>
@@ -183,7 +184,7 @@ export default function Menu() {
             </div>
           </div>
 
-          {/* FINANCEIRO - Com DRE e Reconciliação Bancária */}
+          {/* FINANCEIRO */}
           <div>
             <div className="flex items-center gap-3 mb-4">
               <div className="h-8 w-1 bg-gradient-to-b from-emerald-500 to-teal-500 rounded-full"></div>
@@ -225,12 +226,11 @@ export default function Menu() {
     );
   }
 
-  // ==================== TÉCNICO - MÓDULOS PERMITIDOS INDIVIDUALMENTE ====================
+  // ==================== TÉCNICO ====================
   if (isTecnico()) {
     const modulos = user?.modulos || {};
     const temModulos = Object.values(modulos).some(v => v === true);
 
-    // Verificar se tem algum módulo de uma categoria
     const temOperacional = modulos.vendas || modulos.stock || modulos.facturacao;
     const temRH = modulos.funcionarios || modulos.folhaSalarial || modulos.gestaoFaltas || modulos.gestaoAbonos || modulos.avaliacao;
     const temPatrimonial = modulos.viaturas || modulos.abastecimentos || modulos.manutencoes || modulos.inventario;
@@ -302,7 +302,6 @@ export default function Menu() {
         </div>
 
         <div className="space-y-8">
-          {/* CONTABILIDADE - Para Técnico (sem Dashboard) */}
           {temContabilidade && (
             <div>
               <div className="flex items-center gap-3 mb-4">
@@ -344,7 +343,6 @@ export default function Menu() {
             </div>
           )}
 
-          {/* Operacional */}
           {temOperacional && (
             <div>
               <div className="flex items-center gap-3 mb-4">
@@ -362,7 +360,6 @@ export default function Menu() {
             </div>
           )}
 
-          {/* Recursos Humanos */}
           {temRH && (
             <div>
               <div className="flex items-center gap-3 mb-4">
@@ -382,7 +379,6 @@ export default function Menu() {
             </div>
           )}
 
-          {/* Gestão Patrimonial */}
           {temPatrimonial && (
             <div>
               <div className="flex items-center gap-3 mb-4">
@@ -401,7 +397,6 @@ export default function Menu() {
             </div>
           )}
 
-          {/* FINANCEIRO - Com DRE e Reconciliação Bancária */}
           {temFinanceiro && (
             <div>
               <div className="flex items-center gap-3 mb-4">
@@ -426,7 +421,6 @@ export default function Menu() {
             </div>
           )}
 
-          {/* Relatórios e Análises */}
           {temRelatorios && (
             <div>
               <div className="flex items-center gap-3 mb-4">

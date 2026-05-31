@@ -5,7 +5,8 @@
   "main": "app.js",
   "scripts": {
     "start": "node app.js",
-    "dev": "nodemon app.js"
+    "dev": "nodemon app.js",
+    "init-planos": "node scripts/inicializarPlanos.js"
   },
   "dependencies": {
     "axios": "^1.16.1",

@@ -1,9 +1,9 @@
-// frontend/src/pages/Admin/DashboardAdmin.jsx
+// src/pages/Admin/DashboardAdmin.jsx
 import React, { useState, useEffect } from 'react';
 import LayoutAdmin from './LayoutAdmin';
 import { 
   Users, Building2, Key, CheckCircle, 
-  Loader2, ShieldCheck, AlertTriangle  // ← AlertTriangle adicionado!
+  Loader2, ShieldCheck, AlertTriangle, TrendingUp, Calendar
 } from 'lucide-react';
 
 const DashboardAdmin = () => {
@@ -29,17 +29,13 @@ const DashboardAdmin = () => {
       const token = localStorage.getItem("token");
       
       if (!token) {
-        throw new Error("Token não encontrado. Faça login novamente.");
+        throw new Error("Token não encontrado");
       }
       
       // Buscar gestores
       const gestoresRes = await fetch('https://sirexa-api.onrender.com/api/gestor/admin/gestores', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
-      
-      if (!gestoresRes.ok) {
-        throw new Error(`Erro ${gestoresRes.status} ao buscar gestores`);
-      }
       const gestoresData = await gestoresRes.json();
       const gestores = gestoresData.gestores || [];
       

@@ -7,79 +7,12 @@ import {
   Calendar, Gift, BarChart3, Car, Fuel, Wrench, Boxes, Truck, TrendingUp,
   PieChart, Eye, ArrowRightLeft, Users, DollarSign, FileText, Home, Building2,
   Shield, Settings, LogOut, BookOpen, LayoutDashboard, RefreshCw, Calculator,
-  Activity, Key, Crown
+  Activity, Key, Crown, Award
 } from "lucide-react";
 import logo from "../assets/sirexa-logo.ico";
 
-const ESTRUTURA_MODULOS = {
-  "Operacional": {
-    icon: ShoppingCart,
-    modulos: {
-      vendas: { label: "Vendas", icon: ShoppingCart, rota: "/vendas" },
-      stock: { label: "Stock", icon: Package, rota: "/stock" },
-      facturacao: { label: "Facturação", icon: Receipt, rota: "/facturacao" }
-    }
-  },
-  "Recursos Humanos": {
-    icon: Users,
-    modulos: {
-      funcionarios: { label: "Funcionários", icon: ClipboardList, rota: "/funcionarios" },
-      folhaSalarial: { label: "Folha Salarial", icon: Wallet, rota: "/folha-salarial" },
-      gestaoFaltas: { label: "Gestão de Faltas", icon: Calendar, rota: "/gestao-faltas" },
-      gestaoAbonos: { label: "Gestão de Abonos", icon: Gift, rota: "/gestao-abonos" },
-      avaliacao: { label: "Avaliação", icon: BarChart3, rota: "/avaliacao-desempenho" }
-    }
-  },
-  "Gestão Patrimonial": {
-    icon: Car,
-    modulos: {
-      viaturas: { label: "Viaturas", icon: Car, rota: "/cadastro-viaturas" },
-      abastecimentos: { label: "Abastecimentos", icon: Fuel, rota: "/abastecimentos" },
-      manutencoes: { label: "Manutenções", icon: Wrench, rota: "/manutencoes" },
-      inventario: { label: "Inventário", icon: Boxes, rota: "/inventario" }
-    }
-  },
-  "Contabilidade": {
-    icon: BookOpen,
-    modulos: {
-      planoContas: { label: "Plano de Contas", icon: BookOpen, rota: "/contabilidade/plano-contas" },
-      lancamentos: { label: "Lançamentos", icon: FileText, rota: "/contabilidade/lancamentos" },
-      diarioGeral: { label: "Diário Geral", icon: ClipboardList, rota: "/contabilidade/diario-geral" },
-      razaoGeral: { label: "Razão Geral", icon: LayoutDashboard, rota: "/contabilidade/razao-geral" },
-      balancete: { label: "Balancete", icon: TrendingUp, rota: "/contabilidade/balancete" },
-      saldosContas: { label: "Saldos de Contas", icon: Wallet, rota: "/contabilidade/saldos" },
-      balancoPatrimonial: { label: "Balanço Patrimonial", icon: PieChart, rota: "/contabilidade/balanco-patrimonial" },
-      periodosFiscais: { label: "Períodos Fiscais", icon: Calendar, rota: "/contabilidade/periodos-fiscais" },
-      encerramento: { label: "Encerramento", icon: RefreshCw, rota: "/contabilidade/encerramento" }
-    }
-  },
-  "Financeiro": {
-    icon: DollarSign,
-    modulos: {
-      fornecedores: { label: "Fornecedores", icon: Truck, rota: "/fornecedores" },
-      fluxoCaixa: { label: "Fluxo de Caixa", icon: TrendingUp, rota: "/fluxo-caixa" },
-      contaCorrente: { label: "Conta Corrente", icon: Wallet, rota: "/conta-corrente" },
-      controloPagamento: { label: "Controlo Pagamento", icon: FileText, rota: "/controlo-pagamento" },
-      custosReceitas: { label: "Custos e Receitas", icon: PieChart, rota: "/custos-receitas" },
-      orcamentos: { label: "Orçamentos", icon: ClipboardList, rota: "/orcamento" },
-      dre: { label: "DRE", icon: BarChart3, rota: "/dre" },
-      indicadores: { label: "Indicadores", icon: Eye, rota: "/indicadores" },
-      transferencias: { label: "Transferências", icon: ArrowRightLeft, rota: "/transferencia-diaria" },
-      reconciliacao: { label: "Reconciliação Bancária", icon: RefreshCw, rota: "/folha-banco" }
-    }
-  },
-  "Relatórios": {
-    icon: BarChart3,
-    modulos: {
-      relatorios: { label: "Relatórios", icon: FileText, rota: "/relatorios" },
-      graficos: { label: "Gráficos", icon: BarChart3, rota: "/graficos" },
-      analise: { label: "Análise Geral", icon: PieChart, rota: "/analise" }
-    }
-  }
-};
-
 function Layout({ title, children, showBackButton = false, backToRoute = null }) {
-  const { user, logout } = useAuth();
+  const { user, logout, empresaModulos, empresaPlano, empresaNome, empresaId } = useAuth();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [secoesExpandidas, setSecoesExpandidas] = useState({});
   const [sidebarAberta, setSidebarAberta] = useState(false);
@@ -87,16 +20,109 @@ function Layout({ title, children, showBackButton = false, backToRoute = null })
   const navigate = useNavigate();
   const location = useLocation();
   const estaNaRotaDeLogin = location.pathname.includes("/login");
-  
-  // 🔥 Verificar se é admin
   const isAdmin = user?.role === "admin_sistema";
+  const modulosAtivos = empresaModulos || [];
 
-  // 🔥 Se for admin, redirecionar para /admin se tentar acessar /menu
-  useEffect(() => {
-    if (isAdmin && location.pathname === "/menu") {
-      navigate("/admin");
+  // Verificar se o módulo está ativo
+  const moduloAtivo = (modulo) => {
+    if (isAdmin) return true;
+    return modulosAtivos.includes(modulo);
+  };
+
+  // Estrutura de módulos com verificação de ativação
+  const getEstruturaModulos = () => {
+    const todosModulos = {
+      "Operacional": {
+        icon: ShoppingCart,
+        modulos: {
+          vendas: { label: "Vendas", icon: ShoppingCart, rota: "/vendas" },
+          stock: { label: "Stock", icon: Package, rota: "/stock" },
+          facturacao: { label: "Facturação", icon: Receipt, rota: "/facturacao" }
+        }
+      },
+      "Recursos Humanos": {
+        icon: Users,
+        modulos: {
+          funcionarios: { label: "Funcionários", icon: ClipboardList, rota: "/funcionarios" },
+          folhaSalarial: { label: "Folha Salarial", icon: Wallet, rota: "/folha-salarial" },
+          gestaoFaltas: { label: "Gestão de Faltas", icon: Calendar, rota: "/gestao-faltas" },
+          gestaoAbonos: { label: "Gestão de Abonos", icon: Gift, rota: "/gestao-abonos" },
+          avaliacao: { label: "Avaliação", icon: BarChart3, rota: "/avaliacao-desempenho" }
+        }
+      },
+      "Gestão Patrimonial": {
+        icon: Car,
+        modulos: {
+          viaturas: { label: "Viaturas", icon: Car, rota: "/cadastro-viaturas" },
+          abastecimentos: { label: "Abastecimentos", icon: Fuel, rota: "/abastecimentos" },
+          manutencoes: { label: "Manutenções", icon: Wrench, rota: "/manutencoes" },
+          inventario: { label: "Inventário", icon: Boxes, rota: "/inventario" }
+        }
+      },
+      "Contabilidade": {
+        icon: BookOpen,
+        modulos: {
+          planoContas: { label: "Plano de Contas", icon: BookOpen, rota: "/contabilidade/plano-contas" },
+          lancamentos: { label: "Lançamentos", icon: FileText, rota: "/contabilidade/lancamentos" },
+          diarioGeral: { label: "Diário Geral", icon: ClipboardList, rota: "/contabilidade/diario-geral" },
+          razaoGeral: { label: "Razão Geral", icon: LayoutDashboard, rota: "/contabilidade/razao-geral" },
+          balancete: { label: "Balancete", icon: TrendingUp, rota: "/contabilidade/balancete" },
+          saldosContas: { label: "Saldos de Contas", icon: Wallet, rota: "/contabilidade/saldos" },
+          balancoPatrimonial: { label: "Balanço Patrimonial", icon: PieChart, rota: "/contabilidade/balanco-patrimonial" },
+          periodosFiscais: { label: "Períodos Fiscais", icon: Calendar, rota: "/contabilidade/periodos-fiscais" },
+          encerramento: { label: "Encerramento", icon: RefreshCw, rota: "/contabilidade/encerramento" }
+        }
+      },
+      "Financeiro": {
+        icon: DollarSign,
+        modulos: {
+          fornecedores: { label: "Fornecedores", icon: Truck, rota: "/fornecedores" },
+          fluxoCaixa: { label: "Fluxo de Caixa", icon: TrendingUp, rota: "/fluxo-caixa" },
+          contaCorrente: { label: "Conta Corrente", icon: Wallet, rota: "/conta-corrente" },
+          controloPagamento: { label: "Controlo Pagamento", icon: FileText, rota: "/controlo-pagamento" },
+          custosReceitas: { label: "Custos e Receitas", icon: PieChart, rota: "/custos-receitas" },
+          orcamentos: { label: "Orçamentos", icon: ClipboardList, rota: "/orcamento" },
+          dre: { label: "DRE", icon: BarChart3, rota: "/dre" },
+          indicadores: { label: "Indicadores", icon: Eye, rota: "/indicadores" },
+          transferencias: { label: "Transferências", icon: ArrowRightLeft, rota: "/transferencia-diaria" },
+          reconciliacao: { label: "Reconciliação Bancária", icon: RefreshCw, rota: "/folha-banco" }
+        }
+      },
+      "Relatórios": {
+        icon: BarChart3,
+        modulos: {
+          relatorios: { label: "Relatórios", icon: FileText, rota: "/relatorios" },
+          graficos: { label: "Gráficos", icon: BarChart3, rota: "/graficos" },
+          analise: { label: "Análise Geral", icon: PieChart, rota: "/analise" }
+        }
+      }
+    };
+
+    // Filtrar apenas módulos ativos
+    const estruturaFiltrada = {};
+    for (const [secao, dados] of Object.entries(todosModulos)) {
+      const modulosFiltrados = {};
+      for (const [id, modulo] of Object.entries(dados.modulos)) {
+        if (moduloAtivo(id)) {
+          modulosFiltrados[id] = modulo;
+        }
+      }
+      if (Object.keys(modulosFiltrados).length > 0) {
+        estruturaFiltrada[secao] = {
+          icon: dados.icon,
+          modulos: modulosFiltrados
+        };
+      }
     }
-  }, [isAdmin, location.pathname, navigate]);
+    return estruturaFiltrada;
+  };
+
+  const ESTRUTURA_MODULOS = getEstruturaModulos();
+
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    setIsAuthenticated(!!token);
+  }, [user]);
 
   const encontrarSecaoAtiva = useCallback(() => {
     for (const [secao, dados] of Object.entries(ESTRUTURA_MODULOS)) {
@@ -106,42 +132,19 @@ function Layout({ title, children, showBackButton = false, backToRoute = null })
       if (encontrado) return secao;
     }
     return null;
-  }, [location.pathname]);
+  }, [location.pathname, ESTRUTURA_MODULOS]);
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    setIsAuthenticated(!!token);
-    
     const secaoAtiva = encontrarSecaoAtiva();
     const novasSecoes = {};
     Object.keys(ESTRUTURA_MODULOS).forEach(secao => {
       novasSecoes[secao] = (secao === secaoAtiva);
     });
     setSecoesExpandidas(novasSecoes);
-  }, [user, location.pathname, encontrarSecaoAtiva]);
-
-  const podeAcessarModulo = (moduloId) => {
-    if (!user) return false;
-    if (user.role === "gestor") return true;
-    if (user.role === "admin_sistema") return true; // 🔥 Admin também acessa
-    if (user.role === "tecnico") return user.modulos && user.modulos[moduloId] === true;
-    return false;
-  };
-
-  const secaoTemModulos = (secao) => {
-    if (user?.role === "gestor") return true;
-    if (user?.role === "admin_sistema") return true; // 🔥 Admin também acessa
-    return Object.keys(ESTRUTURA_MODULOS[secao].modulos).some(mod => podeAcessarModulo(mod));
-  };
+  }, [location.pathname, encontrarSecaoAtiva]);
 
   const handleVoltar = () => {
     if (backToRoute) navigate(backToRoute);
-    else if (location.pathname === "/empresa") navigate("/menu");
-    else if (location.pathname === "/empresa/cadastrar") navigate("/empresa");
-    else if (location.pathname.startsWith("/empresa/visualizar")) navigate("/empresa");
-    else if (location.pathname.startsWith("/empresa/editar")) navigate("/empresa");
-    else if (location.pathname.startsWith("/contabilidade")) navigate("/menu");
-    else if (location.pathname === "/monitoramento") navigate("/menu");
     else navigate(-1);
   };
 
@@ -165,11 +168,10 @@ function Layout({ title, children, showBackButton = false, backToRoute = null })
 
   const secaoAtiva = encontrarSecaoAtiva();
 
-  // 🔥 Se for admin, mostrar menu administrativo simplificado
+  // Layout para ADMIN
   if (isAdmin) {
     return (
       <div className="flex min-h-screen text-white" style={{ background: "linear-gradient(135deg, #003366 0%, #0055A5 50%, #00C0F9 100%)", backgroundAttachment: "fixed" }}>
-        {/* Sidebar Admin */}
         <aside className="fixed md:sticky top-0 left-0 z-50 w-72 h-screen flex flex-col transition-transform duration-300 shadow-2xl" style={{ background: "linear-gradient(180deg, #002244 0%, #003366 100%)" }}>
           <div className="p-6 border-b border-white/10">
             <div className="flex items-center gap-3 mb-4">
@@ -186,24 +188,22 @@ function Layout({ title, children, showBackButton = false, backToRoute = null })
           </div>
 
           <nav className="flex-1 overflow-y-auto p-4 space-y-1">
-            <Link to="/admin" onClick={() => setSidebarAberta(false)}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 ${location.pathname === "/admin" ? "bg-white/20 text-white font-medium" : "text-gray-300 hover:text-white hover:bg-white/10"}`}>
+            <Link to="/admin" onClick={() => setSidebarAberta(false)} className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 ${location.pathname === "/admin" ? "bg-white/20 text-white font-medium" : "text-gray-300 hover:text-white hover:bg-white/10"}`}>
               <LayoutDashboard size={18} /><span>Dashboard</span>
             </Link>
-            <Link to="/admin/gerar-chave" onClick={() => setSidebarAberta(false)}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 ${location.pathname === "/admin/gerar-chave" ? "bg-white/20 text-white font-medium" : "text-gray-300 hover:text-white hover:bg-white/10"}`}>
+            <Link to="/admin/planos" onClick={() => setSidebarAberta(false)} className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 ${location.pathname === "/admin/planos" ? "bg-white/20 text-white font-medium" : "text-gray-300 hover:text-white hover:bg-white/10"}`}>
+              <Award size={18} /><span>Planos</span>
+            </Link>
+            <Link to="/admin/gerar-chave" onClick={() => setSidebarAberta(false)} className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 ${location.pathname === "/admin/gerar-chave" ? "bg-white/20 text-white font-medium" : "text-gray-300 hover:text-white hover:bg-white/10"}`}>
               <Key size={18} /><span>Gerar Chave</span>
             </Link>
-            <Link to="/admin/licencas" onClick={() => setSidebarAberta(false)}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 ${location.pathname === "/admin/licencas" ? "bg-white/20 text-white font-medium" : "text-gray-300 hover:text-white hover:bg-white/10"}`}>
+            <Link to="/admin/licencas" onClick={() => setSidebarAberta(false)} className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 ${location.pathname === "/admin/licencas" ? "bg-white/20 text-white font-medium" : "text-gray-300 hover:text-white hover:bg-white/10"}`}>
               <FileText size={18} /><span>Licenças</span>
             </Link>
-            <Link to="/admin/gestores" onClick={() => setSidebarAberta(false)}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 ${location.pathname === "/admin/gestores" ? "bg-white/20 text-white font-medium" : "text-gray-300 hover:text-white hover:bg-white/10"}`}>
+            <Link to="/admin/gestores" onClick={() => setSidebarAberta(false)} className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 ${location.pathname === "/admin/gestores" ? "bg-white/20 text-white font-medium" : "text-gray-300 hover:text-white hover:bg-white/10"}`}>
               <Users size={18} /><span>Gestores</span>
             </Link>
-            <Link to="/admin/empresas" onClick={() => setSidebarAberta(false)}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 ${location.pathname === "/admin/empresas" ? "bg-white/20 text-white font-medium" : "text-gray-300 hover:text-white hover:bg-white/10"}`}>
+            <Link to="/admin/empresas" onClick={() => setSidebarAberta(false)} className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 ${location.pathname === "/admin/empresas" ? "bg-white/20 text-white font-medium" : "text-gray-300 hover:text-white hover:bg-white/10"}`}>
               <Building2 size={18} /><span>Empresas</span>
             </Link>
           </nav>
@@ -235,13 +235,11 @@ function Layout({ title, children, showBackButton = false, backToRoute = null })
     );
   }
 
-  // Layout para Gestor (original)
+  // Layout para GESTOR - SEM O LINK "Configurar Módulos"
   return (
     <div className="flex min-h-screen text-white" style={{ background: "linear-gradient(135deg, #003366 0%, #0055A5 50%, #00C0F9 100%)", backgroundAttachment: "fixed" }}>
-      {/* Overlay mobile */}
       {sidebarAberta && <div className="fixed inset-0 bg-black/50 z-40 md:hidden" onClick={() => setSidebarAberta(false)} />}
 
-      {/* Sidebar Gestor */}
       {isAuthenticated && !estaNaRotaDeLogin && (
         <aside className={`fixed md:sticky top-0 left-0 z-50 w-72 h-screen flex flex-col transition-transform duration-300 shadow-2xl ${sidebarAberta ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`} style={{ background: "linear-gradient(180deg, #002244 0%, #003366 100%)" }}>
           <div className="p-6 border-b border-white/10">
@@ -254,7 +252,9 @@ function Layout({ title, children, showBackButton = false, backToRoute = null })
             </div>
             <div className="mt-3 pt-3 border-t border-white/10">
               <p className="text-sm font-medium text-white truncate">👤 {user?.nome || "Usuário"}</p>
-              <p className="text-xs text-blue-300 mt-1 capitalize">{user?.role === "gestor" ? "👑 Gestor" : "🔧 Técnico"}{user?.empresaNome && ` • ${user.empresaNome}`}</p>
+              <p className="text-xs text-blue-300 mt-1">👑 Gestor</p>
+              <p className="text-xs text-purple-300 mt-1">📋 Plano: {empresaPlano || 'FREE'}</p>
+              <p className="text-xs text-gray-400 mt-1">🏢 {empresaNome || 'Nenhuma empresa'}</p>
             </div>
           </div>
 
@@ -263,23 +263,17 @@ function Layout({ title, children, showBackButton = false, backToRoute = null })
               <Home size={18} /><span>Menu Inicial</span>
             </Link>
 
-            {user?.role === "gestor" && (
-              <>
-                <Link to="/empresa" onClick={() => setSidebarAberta(false)} className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 ${location.pathname.startsWith("/empresa") ? "bg-white/20 text-white font-medium" : "text-gray-300 hover:text-white hover:bg-white/10"}`}>
-                  <Building2 size={18} /><span>Empresas</span>
-                </Link>
-                <Link to="/tecnico" onClick={() => setSidebarAberta(false)} className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 ${location.pathname.startsWith("/tecnico") ? "bg-white/20 text-white font-medium" : "text-gray-300 hover:text-white hover:bg-white/10"}`}>
-                  <Shield size={18} /><span>Técnicos</span>
-                </Link>
-                <Link to="/monitoramento" onClick={() => setSidebarAberta(false)} className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 ${location.pathname === "/monitoramento" ? "bg-white/20 text-white font-medium" : "text-gray-300 hover:text-white hover:bg-white/10"}`}>
-                  <Activity size={18} /><span>Monitoramento</span>
-                </Link>
-                <div className="my-3 border-t border-white/10 pt-3"><p className="text-xs text-gray-500 uppercase tracking-wider px-3 mb-2">Módulos</p></div>
-              </>
-            )}
+            <Link to="/empresa" onClick={() => setSidebarAberta(false)} className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 ${location.pathname.startsWith("/empresa") ? "bg-white/20 text-white font-medium" : "text-gray-300 hover:text-white hover:bg-white/10"}`}>
+              <Building2 size={18} /><span>Minha Empresa</span>
+            </Link>
+
+            {/* 🔥 LINK "CONFIGURAR MÓDULOS" REMOVIDO - Quem configura é o ADMIN */}
+
+            <div className="my-3 border-t border-white/10 pt-3">
+              <p className="text-xs text-gray-500 uppercase tracking-wider px-3 mb-2">Módulos Ativos</p>
+            </div>
 
             {Object.entries(ESTRUTURA_MODULOS).map(([secao, dados]) => {
-              if (!secaoTemModulos(secao)) return null;
               const IconeSecao = dados.icon;
               const expandido = secoesExpandidas[secao] ?? false;
               const ativa = secao === secaoAtiva;
@@ -293,12 +287,11 @@ function Layout({ title, children, showBackButton = false, backToRoute = null })
                   {expandido && (
                     <div className="ml-4 mt-1 space-y-0.5 border-l-2 border-indigo-500/30 pl-3 animate-fadeIn">
                       {Object.entries(dados.modulos).map(([id, modulo]) => {
-                        if (!podeAcessarModulo(id)) return null;
-                        const IconeModulo = modulo.icon;
                         const ativo = location.pathname === modulo.rota || location.pathname.startsWith(modulo.rota + "/");
                         return (
                           <Link key={id} to={modulo.rota} onClick={() => setSidebarAberta(false)} className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all duration-200 ${ativo ? "bg-indigo-500/20 text-white font-medium border-l-2 border-indigo-400 -ml-[15px] pl-[19px]" : "text-gray-400 hover:text-white hover:bg-white/5"}`}>
-                            <IconeModulo size={16} className={ativo ? "text-indigo-400" : "text-gray-500"} /><span>{modulo.label}</span>
+                            <modulo.icon size={16} className={ativo ? "text-indigo-400" : "text-gray-500"} />
+                            <span>{modulo.label}</span>
                           </Link>
                         );
                       })}
@@ -307,11 +300,6 @@ function Layout({ title, children, showBackButton = false, backToRoute = null })
                 </div>
               );
             })}
-
-            <div className="my-2 border-t border-white/10"></div>
-            <Link to="/sobre" onClick={() => setSidebarAberta(false)} className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 ${location.pathname === "/sobre" ? "bg-white/20 text-white font-medium" : "text-gray-400 hover:text-white hover:bg-white/10"}`}>
-              <Settings size={18} /><span>Sobre</span>
-            </Link>
           </nav>
 
           <div className="p-4 border-t border-white/10">

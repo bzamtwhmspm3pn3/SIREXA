@@ -1,11 +1,11 @@
-// frontend/src/pages/Admin/GerarChave.jsx
+// src/pages/Admin/GerarChave.jsx
 import React, { useState } from 'react';
 import LayoutAdmin from './LayoutAdmin';
 import { Key, Copy, CheckCircle, AlertCircle, Loader2, Mail, Calendar, Shield } from 'lucide-react';
 
 const GerarChave = () => {
   const [email, setEmail] = useState('');
-  const [plano, setPlano] = useState('basico');
+  const [plano, setPlano] = useState('BASICO');
   const [diasValidade, setDiasValidade] = useState(365);
   const [loading, setLoading] = useState(false);
   const [chaveGerada, setChaveGerada] = useState(null);
@@ -13,17 +13,17 @@ const GerarChave = () => {
   const [mensagem, setMensagem] = useState({ texto: '', tipo: '' });
 
   const planos = [
-    { value: 'trial', label: 'Trial', preco: 'Gratis', dias: 30, descricao: '30 dias de teste' },
-    { value: 'basico', label: 'Basico', preco: '29.900 Kz/ano', dias: 365, descricao: 'Gestao de stock e fornecedores' },
-    { value: 'profissional', label: 'Profissional', preco: '79.900 Kz/ano', dias: 365, descricao: 'Gestao completa + RH' },
-    { value: 'empresarial', label: 'Empresarial', preco: '149.900 Kz/ano', dias: 365, descricao: 'Completo + Contabilidade' },
-    { value: 'enterprise', label: 'Enterprise', preco: 'Sob consulta', dias: 365, descricao: 'Solucoes personalizadas' }
+    { value: 'FREE', label: 'FREE', preco: 'Grátis', dias: 7 },
+    { value: 'BASICO', label: 'BÁSICO', preco: '29.900 Kz', dias: 365 },
+    { value: 'PROFISSIONAL', label: 'PROFISSIONAL', preco: '79.900 Kz', dias: 365 },
+    { value: 'EMPRESARIAL', label: 'EMPRESARIAL', preco: '149.900 Kz', dias: 365 },
+    { value: 'PLATINUM', label: 'PLATINUM', preco: '299.900 Kz', dias: 365 }
   ];
 
   const handleGerar = async (e) => {
     e.preventDefault();
     if (!email) {
-      setMensagem({ texto: 'Email do cliente e obrigatorio', tipo: 'erro' });
+      setMensagem({ texto: 'Email do cliente é obrigatório', tipo: 'erro' });
       return;
     }
     
@@ -32,34 +32,24 @@ const GerarChave = () => {
 
     try {
       const token = localStorage.getItem("token");
-      
-      if (!token) {
-        throw new Error("Token nao encontrado");
-      }
-      
       const response = await fetch('https://sirexa-api.onrender.com/api/gestor/admin/gerar-chave', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({
-          email,
-          plano,
-          diasValidade
-        })
+        body: JSON.stringify({ email, plano, diasValidade })
       });
 
       const data = await response.json();
       
       if (response.ok && data.sucesso) {
         setChaveGerada(data.chave);
-        setMensagem({ texto: 'Chave gerada com sucesso!', tipo: 'sucesso' });
+        setMensagem({ texto: '✅ Chave gerada com sucesso!', tipo: 'sucesso' });
       } else {
         setMensagem({ texto: data.mensagem || 'Erro ao gerar chave', tipo: 'erro' });
       }
     } catch (error) {
-      console.error('Erro:', error);
       setMensagem({ texto: 'Erro ao conectar ao servidor', tipo: 'erro' });
     } finally {
       setLoading(false);
@@ -73,16 +63,14 @@ const GerarChave = () => {
   };
 
   return (
-    <LayoutAdmin title="Gerar Chave de Ativacao">
+    <LayoutAdmin title="Gerar Chave de Ativação">
       <div className="max-w-2xl mx-auto">
         <div className="bg-gray-800 rounded-2xl border border-gray-700 overflow-hidden">
           <div className="bg-gradient-to-r from-yellow-600/20 to-orange-600/20 px-6 py-4 border-b border-gray-700">
             <div className="flex items-center gap-3">
-              <div className="bg-yellow-600/30 p-2 rounded-xl">
-                <Key className="w-6 h-6 text-yellow-400" />
-              </div>
+              <Key className="w-6 h-6 text-yellow-400" />
               <div>
-                <h2 className="text-xl font-bold text-white">Nova Chave de Ativacao</h2>
+                <h2 className="text-xl font-bold text-white">Nova Chave de Ativação</h2>
                 <p className="text-gray-400 text-sm">Crie chaves para novos clientes</p>
               </div>
             </div>
@@ -91,7 +79,7 @@ const GerarChave = () => {
           <form onSubmit={handleGerar} className="p-6 space-y-5">
             {mensagem.texto && (
               <div className={`p-3 rounded-xl flex items-center gap-2 ${
-                mensagem.tipo === 'sucesso' ? 'bg-green-600/20 text-green-400 border border-green-500/30' : 'bg-red-600/20 text-red-400 border border-red-500/30'
+                mensagem.tipo === 'sucesso' ? 'bg-green-600/20 text-green-400' : 'bg-red-600/20 text-red-400'
               }`}>
                 {mensagem.tipo === 'sucesso' ? <CheckCircle size={18} /> : <AlertCircle size={18} />}
                 {mensagem.texto}
@@ -105,13 +93,12 @@ const GerarChave = () => {
               </label>
               <input
                 type="email"
-                className="w-full p-3 rounded-xl bg-gray-700/50 border border-gray-600 text-white focus:border-yellow-500 focus:ring-1 focus:ring-yellow-500 transition"
+                className="w-full p-3 rounded-xl bg-gray-700/50 border border-gray-600 text-white"
                 placeholder="cliente@empresa.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
               />
-              <p className="text-xs text-gray-500 mt-1">A chave sera enviada para este email</p>
             </div>
 
             <div>
@@ -120,7 +107,7 @@ const GerarChave = () => {
                 Plano *
               </label>
               <select
-                className="w-full p-3 rounded-xl bg-gray-700/50 border border-gray-600 text-white focus:border-yellow-500 focus:ring-1 focus:ring-yellow-500 transition"
+                className="w-full p-3 rounded-xl bg-gray-700/50 border border-gray-600 text-white"
                 value={plano}
                 onChange={(e) => setPlano(e.target.value)}
               >
@@ -128,9 +115,6 @@ const GerarChave = () => {
                   <option key={p.value} value={p.value}>{p.label} - {p.preco}</option>
                 ))}
               </select>
-              <p className="text-xs text-gray-500 mt-1">
-                {planos.find(p => p.value === plano)?.descricao}
-              </p>
             </div>
 
             <div>
@@ -139,13 +123,13 @@ const GerarChave = () => {
                 Validade
               </label>
               <select
-                className="w-full p-3 rounded-xl bg-gray-700/50 border border-gray-600 text-white focus:border-yellow-500 focus:ring-1 focus:ring-yellow-500 transition"
+                className="w-full p-3 rounded-xl bg-gray-700/50 border border-gray-600 text-white"
                 value={diasValidade}
                 onChange={(e) => setDiasValidade(parseInt(e.target.value))}
               >
-                <option value="30">30 dias (1 mes)</option>
-                <option value="90">90 dias (3 meses)</option>
-                <option value="180">180 dias (6 meses)</option>
+                <option value="30">30 dias</option>
+                <option value="90">90 dias</option>
+                <option value="180">180 dias</option>
                 <option value="365">365 dias (1 ano)</option>
                 <option value="730">730 dias (2 anos)</option>
               </select>
@@ -154,7 +138,7 @@ const GerarChave = () => {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-gradient-to-r from-yellow-600 to-orange-600 hover:from-yellow-700 hover:to-orange-700 py-3 rounded-xl font-semibold transition-all disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg"
+              className="w-full bg-gradient-to-r from-yellow-600 to-orange-600 hover:from-yellow-700 hover:to-orange-700 py-3 rounded-xl font-semibold transition-all disabled:opacity-50 flex items-center justify-center gap-2"
             >
               {loading ? <Loader2 className="animate-spin" size={20} /> : <Key size={20} />}
               {loading ? 'Gerando...' : 'Gerar Chave'}
@@ -168,35 +152,20 @@ const GerarChave = () => {
                 <input
                   type="text"
                   readOnly
-                  className="flex-1 p-3 rounded-xl bg-gray-700/50 border border-gray-600 text-white font-mono text-center text-lg tracking-wider"
+                  className="flex-1 p-3 rounded-xl bg-gray-700/50 border border-gray-600 text-white font-mono text-center text-lg"
                   value={chaveGerada}
                 />
-                <button
-                  type="button"
-                  onClick={copiarChave}
-                  className="px-4 bg-green-600 hover:bg-green-700 rounded-xl transition flex items-center gap-2"
-                >
+                <button onClick={copiarChave} className="px-4 bg-green-600 hover:bg-green-700 rounded-xl transition flex items-center gap-2">
                   {copiado ? <CheckCircle size={18} /> : <Copy size={18} />}
                   {copiado ? 'Copiado!' : 'Copiar'}
                 </button>
               </div>
               <div className="mt-4 p-3 bg-blue-600/10 rounded-lg">
-                <p className="text-blue-400 text-sm font-medium mb-1">Enviar para o cliente:</p>
-                <p className="text-gray-300 text-sm">Sua chave de ativacao SIREXA: <strong className="text-yellow-400">{chaveGerada}</strong></p>
-                <p className="text-gray-400 text-xs mt-2">O cliente deve inserir esta chave no momento do cadastro.</p>
+                <p className="text-blue-400 text-sm">📧 Enviar para o cliente:</p>
+                <p className="text-gray-300 text-sm">Chave: <strong className="text-yellow-400">{chaveGerada}</strong></p>
               </div>
             </div>
           )}
-        </div>
-
-        <div className="mt-4 p-4 bg-blue-600/10 rounded-xl border border-blue-500/20">
-          <p className="text-blue-400 text-sm font-medium mb-1">Como funciona?</p>
-          <p className="text-gray-400 text-xs">
-            1. Gere uma chave para o cliente<br />
-            2. Envie a chave por email para o cliente<br />
-            3. O cliente insere a chave no cadastro<br />
-            4. O sistema valida e cria a conta automaticamente
-          </p>
         </div>
       </div>
     </LayoutAdmin>

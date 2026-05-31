@@ -16,6 +16,8 @@ import GerarChave from "./pages/Admin/GerarChave";
 import Licencas from "./pages/Admin/Licencas";
 import Gestores from "./pages/Admin/Gestores";
 import Empresas from "./pages/Admin/Empresas";
+import Planos from "./pages/Admin/Planos";           
+
 
 // Empresa
 import Empresa from "./pages/Empresa/ListaEmpresas";
@@ -125,10 +127,17 @@ export default function App() {
         </ProtectedRoute>
       } />
 
-      {/* 👑 ROTAS DO ADMINISTRADOR (protegidas) */}
+      {/* ============================================ */}
+      {/* 👑 ROTAS DO ADMINISTRADOR */}
+      {/* ============================================ */}
       <Route path="/admin" element={
         <ProtectedRoute allowedRoles={['admin_sistema']}>
           <DashboardAdmin />
+        </ProtectedRoute>
+      } />
+      <Route path="/admin/planos" element={
+        <ProtectedRoute allowedRoles={['admin_sistema']}>
+          <Planos />
         </ProtectedRoute>
       } />
       <Route path="/admin/gerar-chave" element={
@@ -151,6 +160,7 @@ export default function App() {
           <Empresas />
         </ProtectedRoute>
       } />
+     
 
       {/* Empresa */}
       <Route path="/empresa" element={<ProtectedRoute><Empresa /></ProtectedRoute>} />
