@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import LayoutAdmin from './LayoutAdmin';
 import { 
   Users, Building2, Key, CheckCircle, 
-  Loader2, ShieldCheck, AlertTriangle
+  Loader2, ShieldCheck, AlertTriangle  // ← AlertTriangle adicionado!
 } from 'lucide-react';
 
 const DashboardAdmin = () => {
