@@ -13,15 +13,9 @@ import {
 const EditarTecnico = () => {
   const { user } = useAuth();
   
-  // 🔥 BUSCAR MÓDULOS DIRETAMENTE DO LOCALSTORAGE
   const userStorage = JSON.parse(localStorage.getItem('user') || '{}');
   const modulosAtivosGestor = userStorage.modulosAtivos || [];
-  const planoGestor = userStorage.plano || 'FREE';
   
-  console.log('🔍 Módulos do gestor (EditarTecnico):', modulosAtivosGestor);
-  console.log('🔍 Plano do gestor:', planoGestor);
-  
-  // 🔥 Função para verificar se o gestor tem o módulo
   const gestorTemModulo = (modulo) => modulosAtivosGestor.includes(modulo);
   
   const [formData, setFormData] = useState({
@@ -196,12 +190,12 @@ const EditarTecnico = () => {
               </div>
             </div>
 
-            {/* Módulos - Apenas os que o gestor tem */}
-            {/* Operacional */}
+            {/* Módulo Operacional */}
             {(gestorTemModulo('vendas') || gestorTemModulo('stock') || gestorTemModulo('facturacao')) && (
               <div className="bg-gray-700/30 rounded-xl overflow-hidden">
                 <button type="button" onClick={() => toggleSection('operacional')} className="w-full flex items-center justify-between p-4 bg-gradient-to-r from-green-600/20 to-emerald-600/20 hover:bg-green-600/30 transition">
-                  <div className="flex items-center gap-3"><TrendingUp className="text-green-400" size={20} /><span className="font-semibold text-white">Módulo Operacional</span></div><span className="text-gray-400">{expandedSections.operacional ? '▼' : '▶'}</span>
+                  <div className="flex items-center gap-3"><TrendingUp className="text-green-400" size={20} /><span className="font-semibold text-white">Módulo Operacional</span></div>
+                  <span className="text-gray-400">{expandedSections.operacional ? '▼' : '▶'}</span>
                 </button>
                 {expandedSections.operacional && (
                   <div className="p-4 space-y-3 border-t border-gray-600">
@@ -228,12 +222,12 @@ const EditarTecnico = () => {
               </div>
             )}
 
-            {/* Recursos Humanos */}
-            {(gestorTemModulo('funcionarios') || gestorTemModulo('folhaSalarial') || gestorTemModulo('gestaoFaltas') || 
-              gestorTemModulo('gestaoAbonos') || gestorTemModulo('avaliacao')) && (
+            {/* Módulo Recursos Humanos */}
+            {(gestorTemModulo('funcionarios') || gestorTemModulo('folhaSalarial') || gestorTemModulo('gestaoFaltas') || gestorTemModulo('gestaoAbonos') || gestorTemModulo('avaliacao')) && (
               <div className="bg-gray-700/30 rounded-xl overflow-hidden">
                 <button type="button" onClick={() => toggleSection('recursosHumanos')} className="w-full flex items-center justify-between p-4 bg-gradient-to-r from-purple-600/20 to-pink-600/20 hover:bg-purple-600/30 transition">
-                  <div className="flex items-center gap-3"><Users className="text-purple-400" size={20} /><span className="font-semibold text-white">Recursos Humanos</span></div><span className="text-gray-400">{expandedSections.recursosHumanos ? '▼' : '▶'}</span>
+                  <div className="flex items-center gap-3"><Users className="text-purple-400" size={20} /><span className="font-semibold text-white">Recursos Humanos</span></div>
+                  <span className="text-gray-400">{expandedSections.recursosHumanos ? '▼' : '▶'}</span>
                 </button>
                 {expandedSections.recursosHumanos && (
                   <div className="p-4 space-y-3 border-t border-gray-600">
@@ -272,11 +266,12 @@ const EditarTecnico = () => {
               </div>
             )}
 
-            {/* Gestão Patrimonial */}
+            {/* Módulo Gestão Patrimonial */}
             {(gestorTemModulo('viaturas') || gestorTemModulo('abastecimentos') || gestorTemModulo('manutencoes') || gestorTemModulo('inventario')) && (
               <div className="bg-gray-700/30 rounded-xl overflow-hidden">
                 <button type="button" onClick={() => toggleSection('gestaoPatrimonial')} className="w-full flex items-center justify-between p-4 bg-gradient-to-r from-cyan-600/20 to-blue-600/20 hover:bg-cyan-600/30 transition">
-                  <div className="flex items-center gap-3"><Car className="text-cyan-400" size={20} /><span className="font-semibold text-white">Gestão Patrimonial</span></div><span className="text-gray-400">{expandedSections.gestaoPatrimonial ? '▼' : '▶'}</span>
+                  <div className="flex items-center gap-3"><Car className="text-cyan-400" size={20} /><span className="font-semibold text-white">Gestão Patrimonial</span></div>
+                  <span className="text-gray-400">{expandedSections.gestaoPatrimonial ? '▼' : '▶'}</span>
                 </button>
                 {expandedSections.gestaoPatrimonial && (
                   <div className="p-4 space-y-3 border-t border-gray-600">
@@ -309,14 +304,15 @@ const EditarTecnico = () => {
               </div>
             )}
 
-            {/* Contabilidade */}
+            {/* Módulo Contabilidade */}
             {(gestorTemModulo('contabilidade') || gestorTemModulo('planoContas') || gestorTemModulo('lancamentos') || 
               gestorTemModulo('diarioGeral') || gestorTemModulo('razaoGeral') || gestorTemModulo('balancete') ||
               gestorTemModulo('saldosContas') || gestorTemModulo('balancoPatrimonial') || gestorTemModulo('periodosFiscais') ||
               gestorTemModulo('encerramento')) && (
               <div className="bg-gray-700/30 rounded-xl overflow-hidden mb-3">
                 <button type="button" onClick={() => toggleSection('contabilidade')} className="w-full flex items-center justify-between p-3 bg-gradient-to-r from-indigo-600/20 to-purple-600/20 hover:bg-indigo-600/30 transition">
-                  <div className="flex items-center gap-2"><BookOpen className="text-indigo-400" size={16} /><span className="font-semibold text-white text-sm">Contabilidade</span></div><span className="text-gray-400 text-sm">{expandedSections.contabilidade ? '▼' : '▶'}</span>
+                  <div className="flex items-center gap-2"><BookOpen className="text-indigo-400" size={16} /><span className="font-semibold text-white text-sm">Contabilidade</span></div>
+                  <span className="text-gray-400 text-sm">{expandedSections.contabilidade ? '▼' : '▶'}</span>
                 </button>
                 {expandedSections.contabilidade && (
                   <div className="p-3 space-y-2 border-t border-gray-600 max-h-64 overflow-y-auto">
@@ -387,14 +383,15 @@ const EditarTecnico = () => {
               </div>
             )}
 
-            {/* Financeiro */}
+            {/* Módulo Financeiro */}
             {(gestorTemModulo('fornecedores') || gestorTemModulo('fluxoCaixa') || gestorTemModulo('contaCorrente') || 
               gestorTemModulo('controloPagamento') || gestorTemModulo('custosReceitas') || gestorTemModulo('orcamentos') ||
               gestorTemModulo('dre') || gestorTemModulo('indicadores') || gestorTemModulo('transferencias') ||
               gestorTemModulo('reconciliacao')) && (
               <div className="bg-gray-700/30 rounded-xl overflow-hidden">
                 <button type="button" onClick={() => toggleSection('financeiro')} className="w-full flex items-center justify-between p-4 bg-gradient-to-r from-emerald-600/20 to-teal-600/20 hover:bg-emerald-600/30 transition">
-                  <div className="flex items-center gap-3"><DollarSign className="text-emerald-400" size={20} /><span className="font-semibold text-white">Financeiro</span></div><span className="text-gray-400">{expandedSections.financeiro ? '▼' : '▶'}</span>
+                  <div className="flex items-center gap-3"><DollarSign className="text-emerald-400" size={20} /><span className="font-semibold text-white">Financeiro</span></div>
+                  <span className="text-gray-400">{expandedSections.financeiro ? '▼' : '▶'}</span>
                 </button>
                 {expandedSections.financeiro && (
                   <div className="p-4 space-y-3 border-t border-gray-600 max-h-96 overflow-y-auto">
@@ -463,11 +460,12 @@ const EditarTecnico = () => {
               </div>
             )}
 
-            {/* Relatórios */}
+            {/* Módulo Relatórios */}
             {(gestorTemModulo('relatorios') || gestorTemModulo('graficos') || gestorTemModulo('analise')) && (
               <div className="bg-gray-700/30 rounded-xl overflow-hidden">
                 <button type="button" onClick={() => toggleSection('relatorios')} className="w-full flex items-center justify-between p-4 bg-gradient-to-r from-rose-600/20 to-pink-600/20 hover:bg-rose-600/30 transition">
-                  <div className="flex items-center gap-3"><FileText className="text-rose-400" size={20} /><span className="font-semibold text-white">Relatórios e Análises</span></div><span className="text-gray-400">{expandedSections.relatorios ? '▼' : '▶'}</span>
+                  <div className="flex items-center gap-3"><FileText className="text-rose-400" size={20} /><span className="font-semibold text-white">Relatórios e Análises</span></div>
+                  <span className="text-gray-400">{expandedSections.relatorios ? '▼' : '▶'}</span>
                 </button>
                 {expandedSections.relatorios && (
                   <div className="p-4 space-y-3 border-t border-gray-600">
