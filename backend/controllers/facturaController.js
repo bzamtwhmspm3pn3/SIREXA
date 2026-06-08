@@ -81,8 +81,27 @@ const getProximoNumeroNotaCredito = async (empresaNif) => {
   }
 };
 
+// Helper para calcular totais corretamente (com suporte a IVA 0%)
+const calcularTotais = (itens, desconto = 0, incluiIVA = true) => {
+  const subtotal = itens.reduce((acc, item) => acc + (item.total || 0), 0);
+  const subtotalComDesconto = subtotal - desconto;
+  
+  let totalIva = 0;
+  if (incluiIVA) {
+    totalIva = itens.reduce((acc, item) => {
+      const taxaIVA = item.taxaIVA || 0;
+      const baseCalculo = item.total || 0;
+      return acc + (baseCalculo * (taxaIVA / 100));
+    }, 0);
+  }
+  
+  const totalFinal = subtotalComDesconto + totalIva;
+  
+  return { subtotal, subtotalComDesconto, totalIva, totalFinal };
+};
+
 // Helper para processar itens (produtos e serviços)
-const processarItens = async (itens, empresaId, usuario) => {
+const processarItens = async (itens, empresaId, usuario, isFactura = false) => {
   const itensProcessados = [];
   
   for (let i = 0; i < itens.length; i++) {
@@ -96,26 +115,36 @@ const processarItens = async (itens, empresaId, usuario) => {
         empresaId,
         ativo: true 
       });
-    } else {
-      produtoStock = await Stock.findOne({ 
-        produto: { $regex: new RegExp(`^${item.produtoOuServico}$`, "i") },
-        empresaId,
-        ativo: true 
-      });
     }
     
     const tipoItem = item.tipo || (produtoStock?.tipo || 'produto');
-    const taxaIVA = item.taxaIVA || (produtoStock?.taxaIVA || 14);
+    
+    // 🔥 CORREÇÃO CRÍTICA: Aceitar 0 como valor válido para taxaIVA
+    let taxaIVA = 14; // valor padrão
+    if (item.taxaIVA !== undefined && item.taxaIVA !== null) {
+      taxaIVA = item.taxaIVA;
+    } else if (produtoStock && produtoStock.taxaIVA !== undefined) {
+      taxaIVA = produtoStock.taxaIVA;
+    }
+    
     const precoUnitario = item.precoUnitario || produtoStock?.precoVenda || 0;
-    const total = (item.quantidade || 1) * precoUnitario;
-    const ivaItem = total * (taxaIVA / 100);
+    const quantidade = Math.abs(item.quantidade || 1);
+    const total = quantidade * precoUnitario;
+    const descontoItem = item.desconto || 0;
+    const totalComDesconto = total - descontoItem;
+    
+    // Calcular IVA apenas se a taxa for > 0 e for factura (ou se incluiIVA for true)
+    let ivaItem = 0;
+    if (taxaIVA > 0) {
+      ivaItem = totalComDesconto * (taxaIVA / 100);
+    }
     
     // Para produtos, dar baixa no estoque (apenas se for factura definitiva)
-    if (tipoItem === 'produto' && produtoStock && !item.agendamento) {
-      if (produtoStock.quantidade < (item.quantidade || 1)) {
+    if (isFactura && tipoItem === 'produto' && produtoStock && !item.agendamento) {
+      if (produtoStock.quantidade < quantidade) {
         throw new Error(`Estoque insuficiente para "${item.produtoOuServico}". Disponível: ${produtoStock.quantidade}`);
       }
-      produtoStock.quantidade -= (item.quantidade || 1);
+      produtoStock.quantidade -= quantidade;
       await produtoStock.save();
     }
     
@@ -140,10 +169,10 @@ const processarItens = async (itens, empresaId, usuario) => {
       produtoOuServico: item.produtoOuServico,
       codigoProduto: produtoStock?.codigoBarras || item.codigoBarras || item.produtoOuServico,
       codigoBarras: produtoStock?.codigoBarras || item.codigoBarras,
-      quantidade: item.quantidade || 1,
+      quantidade: quantidade,
       precoUnitario: precoUnitario,
-      desconto: item.desconto || 0,
-      total: total - (item.desconto || 0),
+      desconto: descontoItem,
+      total: totalComDesconto,
       taxaIVA: taxaIVA,
       iva: ivaItem,
       tipo: tipoItem,
@@ -183,11 +212,23 @@ exports.gerarOrcamento = async (req, res) => {
       : Math.floor(Date.now() / 1000) % 10000;
 
     // Processar itens (sem dar baixa em estoque)
+    const incluiIVA = dados.incluiIVA !== false;
+    
     const itensOrcamento = dados.itens.map((item, idx) => {
       const precoUnitario = item.precoUnitario || 0;
-      const total = (item.quantidade || 1) * precoUnitario;
-      const taxaIVA = item.taxaIVA || 14;
-      const ivaItem = total * (taxaIVA / 100);
+      const quantidade = item.quantidade || 1;
+      const total = quantidade * precoUnitario;
+      
+      // 🔥 Aceitar 0 como valor válido
+      let taxaIVA = 14;
+      if (item.taxaIVA !== undefined && item.taxaIVA !== null) {
+        taxaIVA = item.taxaIVA;
+      }
+      
+      let ivaItem = 0;
+      if (incluiIVA && taxaIVA > 0) {
+        ivaItem = total * (taxaIVA / 100);
+      }
       
       return {
         linha: idx + 1,
@@ -195,7 +236,7 @@ exports.gerarOrcamento = async (req, res) => {
         produtoOuServico: item.produtoOuServico,
         codigoProduto: item.codigoBarras || item.produtoOuServico,
         codigoBarras: item.codigoBarras,
-        quantidade: item.quantidade || 1,
+        quantidade: quantidade,
         precoUnitario: precoUnitario,
         desconto: item.desconto || 0,
         total: total - (item.desconto || 0),
@@ -206,9 +247,7 @@ exports.gerarOrcamento = async (req, res) => {
       };
     });
 
-    const subtotal = itensOrcamento.reduce((acc, item) => acc + item.total, 0);
-    const totalIva = itensOrcamento.reduce((acc, item) => acc + item.iva, 0);
-    const total = subtotal + totalIva - (dados.desconto || 0);
+    const { subtotal, totalIva, totalFinal } = calcularTotais(itensOrcamento, dados.desconto || 0, incluiIVA);
 
     const orcamento = new Factura({
       numeroDocumento: numeroValido,
@@ -227,7 +266,7 @@ exports.gerarOrcamento = async (req, res) => {
       subtotal: subtotal,
       totalIva: totalIva,
       desconto: dados.desconto || 0,
-      total: total,
+      total: totalFinal,
       formaPagamento: dados.formaPagamento || "A definir",
       status: "rascunho",
       usuario: usuario,
@@ -254,7 +293,7 @@ exports.gerarOrcamento = async (req, res) => {
   }
 };
 
-// ==================== FACTURA PROFORMA (MELHORADA) ====================
+// ==================== FACTURA PROFORMA (CORRIGIDA - ACEITA IVA 0%) ====================
 exports.gerarProforma = async (req, res) => {
   try {
     const { dados, empresaNif } = req.body;
@@ -280,12 +319,28 @@ exports.gerarProforma = async (req, res) => {
       ? proximoNumero 
       : Math.floor(Date.now() / 1000) % 10000;
 
-    // Processar itens com suporte a serviços e agendamentos
+    // 🔥 CORREÇÃO: Verificar se deve incluir IVA
+    const incluiIVA = dados.incluiIVA !== undefined ? dados.incluiIVA : true;
+    
+    // Processar itens com suporte a IVA 0%
     const itensProforma = dados.itens.map((item, idx) => {
       const precoUnitario = item.precoUnitario || 0;
-      const total = (item.quantidade || 1) * precoUnitario;
-      const taxaIVA = item.taxaIVA || 14;
-      const ivaItem = total * (taxaIVA / 100);
+      const quantidade = item.quantidade || 1;
+      const total = quantidade * precoUnitario;
+      const descontoItem = item.desconto || 0;
+      const totalComDesconto = total - descontoItem;
+      
+      // 🔥 Aceitar 0 como valor válido para taxaIVA
+      let taxaIVA = 14;
+      if (item.taxaIVA !== undefined && item.taxaIVA !== null) {
+        taxaIVA = item.taxaIVA;
+      }
+      
+      // 🔥 Só calcular IVA se incluiIVA for true E taxaIVA > 0
+      let ivaItem = 0;
+      if (incluiIVA && taxaIVA > 0) {
+        ivaItem = totalComDesconto * (taxaIVA / 100);
+      }
       
       return {
         linha: idx + 1,
@@ -293,10 +348,10 @@ exports.gerarProforma = async (req, res) => {
         produtoOuServico: item.produtoOuServico,
         codigoProduto: item.codigoBarras || item.produtoOuServico,
         codigoBarras: item.codigoBarras,
-        quantidade: item.quantidade || 1,
+        quantidade: quantidade,
         precoUnitario: precoUnitario,
-        desconto: item.desconto || 0,
-        total: total - (item.desconto || 0),
+        desconto: descontoItem,
+        total: totalComDesconto,
         taxaIVA: taxaIVA,
         iva: ivaItem,
         tipo: item.tipo || 'produto',
@@ -304,9 +359,7 @@ exports.gerarProforma = async (req, res) => {
       };
     });
 
-    const subtotal = itensProforma.reduce((acc, item) => acc + item.total, 0);
-    const totalIva = itensProforma.reduce((acc, item) => acc + item.iva, 0);
-    const total = subtotal + totalIva - (dados.desconto || 0);
+    const { subtotal, totalIva, totalFinal } = calcularTotais(itensProforma, dados.desconto || 0, incluiIVA);
 
     // Verificar se tem serviços para determinar tipo de actividade
     const temServicos = itensProforma.some(item => item.tipo === 'servico');
@@ -330,7 +383,7 @@ exports.gerarProforma = async (req, res) => {
       subtotal: subtotal,
       totalIva: totalIva,
       desconto: dados.desconto || 0,
-      total: total,
+      total: totalFinal,
       formaPagamento: dados.formaPagamento || "A definir",
       status: "rascunho",
       usuario: usuario,
@@ -363,7 +416,7 @@ exports.gerarProforma = async (req, res) => {
   }
 };
 
-// ==================== FACTURA (COMPLETA COM SERVIÇOS) ====================
+// ==================== FACTURA (COMPLETA COM SERVIÇOS E IVA 0%) ====================
 exports.emitirFactura = async (req, res) => {
   try {
     const { dados, empresaNif } = req.body;
@@ -389,12 +442,13 @@ exports.emitirFactura = async (req, res) => {
       ? proximoNumero 
       : Math.floor(Date.now() / 1000) % 10000;
 
-    // Processar itens com validação de estoque e agendamentos
-    const itensProcessados = await processarItens(dados.itens, empresa._id, usuario);
+    // 🔥 Verificar se deve incluir IVA
+    const incluiIVA = dados.incluiIVA !== undefined ? dados.incluiIVA : true;
 
-    const subtotal = itensProcessados.reduce((acc, item) => acc + item.total, 0);
-    const totalIva = itensProcessados.reduce((acc, item) => acc + item.iva, 0);
-    const totalFinal = subtotal + totalIva - (dados.desconto || 0);
+    // Processar itens com validação de estoque (para factura definitiva)
+    const itensProcessados = await processarItens(dados.itens, empresa._id, usuario, true);
+
+    const { subtotal, totalIva, totalFinal } = calcularTotais(itensProcessados, dados.desconto || 0, incluiIVA);
 
     const hashString = `${empresaNif}|${numeroValido}|${new Date().toISOString()}|${totalFinal}`;
     const hashDocumento = crypto.createHash('sha256').update(hashString).digest('hex');
@@ -422,7 +476,7 @@ exports.emitirFactura = async (req, res) => {
       subtotal: subtotal,
       totalIva: totalIva,
       desconto: dados.desconto || 0,
-      incluiIVA: dados.incluiIVA !== false,
+      incluiIVA: incluiIVA,
       incluiRetencao: dados.incluiRetencao || false,
       totalRetencao: dados.retencao || 0,
       taxaRetencao: dados.taxaRetencao || 0,
@@ -487,11 +541,22 @@ exports.emitirFacturaRecibo = async (req, res) => {
       ? proximoNumero 
       : Math.floor(Date.now() / 1000) % 10000;
 
+    const incluiIVA = dados.incluiIVA !== false;
+    
     const itensProcessados = dados.itens.map((item, idx) => {
       const precoUnitario = item.precoUnitario || 0;
-      const total = (item.quantidade || 1) * precoUnitario;
-      const taxaIVA = item.taxaIVA || 14;
-      const ivaItem = total * (taxaIVA / 100);
+      const quantidade = item.quantidade || 1;
+      const total = quantidade * precoUnitario;
+      
+      let taxaIVA = 14;
+      if (item.taxaIVA !== undefined && item.taxaIVA !== null) {
+        taxaIVA = item.taxaIVA;
+      }
+      
+      let ivaItem = 0;
+      if (incluiIVA && taxaIVA > 0) {
+        ivaItem = total * (taxaIVA / 100);
+      }
       
       return {
         linha: idx + 1,
@@ -499,7 +564,7 @@ exports.emitirFacturaRecibo = async (req, res) => {
         produtoOuServico: item.produtoOuServico,
         codigoProduto: item.codigoBarras || item.produtoOuServico,
         codigoBarras: item.codigoBarras,
-        quantidade: item.quantidade || 1,
+        quantidade: quantidade,
         precoUnitario: precoUnitario,
         desconto: item.desconto || 0,
         total: total - (item.desconto || 0),
@@ -509,9 +574,7 @@ exports.emitirFacturaRecibo = async (req, res) => {
       };
     });
 
-    const subtotal = itensProcessados.reduce((acc, item) => acc + item.total, 0);
-    const totalIva = itensProcessados.reduce((acc, item) => acc + item.iva, 0);
-    const total = subtotal + totalIva - (dados.desconto || 0);
+    const { subtotal, totalIva, totalFinal } = calcularTotais(itensProcessados, dados.desconto || 0, incluiIVA);
 
     const facturaRecibo = new Factura({
       numeroFactura: numeroValido,
@@ -529,15 +592,15 @@ exports.emitirFacturaRecibo = async (req, res) => {
       subtotal: subtotal,
       totalIva: totalIva,
       desconto: dados.desconto || 0,
-      total: total,
+      total: totalFinal,
       formaPagamento: dados.formaPagamento || "Dinheiro",
       detalhesPagamento: {
         dataPagamento: new Date(),
-        valorPago: total,
+        valorPago: totalFinal,
         ...dados.detalhesPagamento
       },
       status: "pago",
-      valorPago: total,
+      valorPago: totalFinal,
       usuario: usuario,
       dataEmissao: new Date(),
       observacoes: dados.observacoes || "",
