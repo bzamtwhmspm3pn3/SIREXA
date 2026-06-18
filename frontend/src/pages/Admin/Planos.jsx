@@ -8,7 +8,8 @@ import {
   Building2, Zap, AlertCircle, Award, Calendar, Shield,
   Edit, Plus, X, Trash2, Car, Fuel, Wrench, Boxes,
   TrendingUp, PieChart, Eye, ArrowRightLeft, DollarSign,
-  FileText, ClipboardList, Wallet, Gift, RefreshCw,LayoutDashboard 
+  FileText, ClipboardList, Wallet, Gift, RefreshCw, LayoutDashboard,
+  Briefcase, GraduationCap, CalendarDays, Heart, Scale, GitPullRequest, Activity
 } from 'lucide-react';
 import API_URL from '../../config/api';
 
