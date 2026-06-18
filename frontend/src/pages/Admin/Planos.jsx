@@ -9,7 +9,8 @@ import {
   Edit, Plus, X, Trash2, Car, Fuel, Wrench, Boxes,
   TrendingUp, PieChart, Eye, ArrowRightLeft, DollarSign,
   FileText, ClipboardList, Wallet, Gift, RefreshCw, LayoutDashboard,
-  Briefcase, GraduationCap, CalendarCheck, CalendarDays, Heart, Scale, GitPullRequest, Activity
+  Briefcase, GraduationCap, CalendarCheck, CalendarDays, Heart, Scale, GitPullRequest, Activity,
+  Gavel, Target, GitBranch
 } from 'lucide-react';
 import API_URL from '../../config/api';
 
