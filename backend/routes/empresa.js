@@ -280,7 +280,7 @@ router.post('/', logMiddleware('empresa'), upload.single('logotipo'), async (req
     
     // GERAR NOVO TOKEN
     const gestorAtualizado = await Gestor.findById(req.user.id).populate('empresas');
-    const empresasIds = gestorAtualizado.empresas.map(emp => emp._id.toString());
+    const empresasIds = gestorAtualizado.empresas.filter(emp => emp != null).map(emp => emp._id.toString());
     const primeiraEmpresaId = empresasIds.length > 0 ? empresasIds[0] : null;
     
     const JWT_SECRET = process.env.JWT_SECRET || 'segredo-super-seguro';

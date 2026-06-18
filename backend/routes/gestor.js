@@ -405,7 +405,8 @@ router.post("/login", async (req, res) => {
     
     console.log(`✅ Login realizado: ${gestor.nome} (${role})`);
     
-    const empresasIds = gestor.empresas.map(emp => emp._id.toString());
+    const empresasValidas = gestor.empresas.filter(emp => emp != null);
+    const empresasIds = empresasValidas.map(emp => emp._id.toString());
     const primeiraEmpresaId = empresasIds.length > 0 ? empresasIds[0] : null;
     
     let modulosAtivos = ['stock', 'fornecedores'];

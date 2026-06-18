@@ -12,7 +12,7 @@ async function generateToken(user) {
   if (user.role === 'gestor' || !user.role) {
     const gestor = await Gestor.findById(user._id).populate('empresas');
     if (gestor && gestor.empresas) {
-      empresasIds = gestor.empresas.map(emp => emp._id.toString());
+      empresasIds = gestor.empresas.filter(emp => emp != null).map(emp => emp._id.toString());
     }
   }
   
