@@ -46,7 +46,8 @@ function Layout({ title, children, showBackButton = false, backToRoute = null })
         folhaSalarial: { label: "Folha Salarial", icon: Wallet, rota: "/folha-salarial" },
         gestaoFaltas: { label: "Gestão de Faltas", icon: Calendar, rota: "/gestao-faltas" },
         gestaoAbonos: { label: "Gestão de Abonos", icon: Gift, rota: "/gestao-abonos" },
-        avaliacao: { label: "Avaliação", icon: BarChart3, rota: "/avaliacao-desempenho" }
+        avaliacao: { label: "Avaliação", icon: BarChart3, rota: "/avaliacao-desempenho" },
+        rh: { label: "RH Avançado", icon: BarChart3, rota: "/rh" }
       }
     },
     "Gestão Patrimonial": {

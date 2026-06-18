@@ -89,12 +89,20 @@ const Planos = () => {
     { id: 'stock', nome: 'Stock', icone: Package, categoria: 'Operacional' },
     { id: 'facturacao', nome: 'Facturação', icone: FileText, categoria: 'Operacional' },
     
-    // Recursos Humanos (5)
+    // Recursos Humanos (13)
     { id: 'funcionarios', nome: 'Funcionários', icone: Users, categoria: 'Recursos Humanos' },
     { id: 'folhaSalarial', nome: 'Folha Salarial', icone: Wallet, categoria: 'Recursos Humanos' },
     { id: 'gestaoFaltas', nome: 'Gestão de Faltas', icone: Calendar, categoria: 'Recursos Humanos' },
     { id: 'gestaoAbonos', nome: 'Gestão de Abonos', icone: Gift, categoria: 'Recursos Humanos' },
     { id: 'avaliacao', nome: 'Avaliação', icone: BarChart3, categoria: 'Recursos Humanos' },
+    { id: 'recrutamento', nome: 'Recrutamento e Selecção', icone: Briefcase, categoria: 'Recursos Humanos' },
+    { id: 'formacao', nome: 'Formação', icone: GraduationCap, categoria: 'Recursos Humanos' },
+    { id: 'feriasLicencas', nome: 'Férias e Licenças', icone: CalendarCheck, categoria: 'Recursos Humanos' },
+    { id: 'carreira', nome: 'Carreira e Promoções', icone: TrendingUp, categoria: 'Recursos Humanos' },
+    { id: 'disciplinar', nome: 'Gestão Disciplinar', icone: Gavel, categoria: 'Recursos Humanos' },
+    { id: 'competencias', nome: 'Competências', icone: Target, categoria: 'Recursos Humanos' },
+    { id: 'saudeSeguranca', nome: 'Saúde e Segurança', icone: Shield, categoria: 'Recursos Humanos' },
+    { id: 'workflow', nome: 'Workflow', icone: GitBranch, categoria: 'Recursos Humanos' },
     
     // Gestão Patrimonial (4)
     { id: 'viaturas', nome: 'Viaturas', icone: Car, categoria: 'Gestão Patrimonial' },

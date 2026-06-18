@@ -163,6 +163,7 @@ app.use('/api/folha-salarial', verifyToken, folhaSalarialRoutes);
 app.use('/api/faltas', verifyToken, require('./routes/faltas'));
 app.use('/api/abonos', verifyToken, require('./routes/abonos'));
 app.use('/api/avaliacoes', verifyToken, require('./routes/avaliacoes'));
+app.use('/api/rh', verifyToken, require('./routes/rh'));
 app.use('/api/importacao', verifyToken, require('./routes/importacao'));
 app.use('/api/configuracao-banco', verifyToken, configuracaoBancoRoutes);
 

@@ -161,6 +161,7 @@ const EmpresaSchema = new mongoose.Schema({
     fornecedores: { type: Boolean, default: true },
     gestaoCompras: { type: Boolean, default: true },
     rh: { type: Boolean, default: false },
+    rhAvancado: { type: Boolean, default: false },
     contabilidade: { type: Boolean, default: false },
     financas: { type: Boolean, default: false },
     relatorios: { type: Boolean, default: true },

@@ -75,6 +75,14 @@ import FolhaSalarial from "./pages/FolhaSalarial";
 import GestaoFaltas from "./pages/GestaoFaltas";
 import GestaoAbonos from "./pages/GestaoAbonos";
 import AvaliacaoDesempenho from "./pages/AvaliacaoDesempenho";
+import DashboardRH from "./pages/RH/DashboardRH";
+import Vagas from "./pages/RH/Vagas";
+import Cursos from "./pages/RH/Cursos";
+import FeriasLicencas from "./pages/RH/FeriasLicencas";
+import Promocoes from "./pages/RH/Promocoes";
+import Disciplinar from "./pages/RH/Disciplinar";
+import Competencias from "./pages/RH/Competencias";
+import ExamesMedicos from "./pages/RH/ExamesMedicos";
 
 // Gestão Patrimonial
 import CadastroViaturas from "./pages/CadastroViaturas";
@@ -205,6 +213,14 @@ export default function App() {
       <Route path="/gestao-faltas" element={<ProtectedRoute><GestaoFaltas /></ProtectedRoute>} />
       <Route path="/gestao-abonos" element={<ProtectedRoute><GestaoAbonos /></ProtectedRoute>} />
       <Route path="/avaliacao-desempenho" element={<ProtectedRoute><AvaliacaoDesempenho /></ProtectedRoute>} />
+      <Route path="/rh" element={<ProtectedRoute><DashboardRH /></ProtectedRoute>} />
+      <Route path="/rh/recrutamento" element={<ProtectedRoute><Vagas /></ProtectedRoute>} />
+      <Route path="/rh/formacao" element={<ProtectedRoute><Cursos /></ProtectedRoute>} />
+      <Route path="/rh/ferias-licencas" element={<ProtectedRoute><FeriasLicencas /></ProtectedRoute>} />
+      <Route path="/rh/carreira" element={<ProtectedRoute><Promocoes /></ProtectedRoute>} />
+      <Route path="/rh/disciplinar" element={<ProtectedRoute><Disciplinar /></ProtectedRoute>} />
+      <Route path="/rh/competencias" element={<ProtectedRoute><Competencias /></ProtectedRoute>} />
+      <Route path="/rh/saude-seguranca" element={<ProtectedRoute><ExamesMedicos /></ProtectedRoute>} />
 
       {/* Gestão Patrimonial */}
       <Route path="/cadastro-viaturas" element={<ProtectedRoute><CadastroViaturas /></ProtectedRoute>} />
