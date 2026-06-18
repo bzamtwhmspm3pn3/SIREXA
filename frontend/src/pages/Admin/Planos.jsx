@@ -10,6 +10,7 @@ import {
   TrendingUp, PieChart, Eye, ArrowRightLeft, DollarSign,
   FileText, ClipboardList, Wallet, Gift, RefreshCw,LayoutDashboard 
 } from 'lucide-react';
+import API_URL from '../../config/api';
 
 const Planos = () => {
   const { token } = useAuth();
@@ -20,7 +21,6 @@ const Planos = () => {
   const [editando, setEditando] = useState(null);
   const [mensagem, setMensagem] = useState({ texto: '', tipo: '' });
   
-  const API_URL = 'https://sirexa-api.onrender.com/api/gestor';
   
   const [formData, setFormData] = useState({
     nome: '',
@@ -189,7 +189,7 @@ const Planos = () => {
       const token = localStorage.getItem("token");
       console.log('🔄 Carregando planos...');
       
-      const response = await fetch(`${API_URL}/admin/planos`, {
+      const response = await fetch(`${API_URL}/gestor/admin/planos`, {
         headers: { 
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -224,7 +224,7 @@ const Planos = () => {
       const token = localStorage.getItem("token");
       console.log('💾 Salvando plano:', formData.nome);
       
-      const response = await fetch(`${API_URL}/admin/planos`, {
+      const response = await fetch(`${API_URL}/gestor/admin/planos`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

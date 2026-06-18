@@ -1,10 +1,11 @@
 // src/pages/Admin/DashboardAdmin.jsx
 import React, { useState, useEffect } from 'react';
 import LayoutAdmin from './LayoutAdmin';
-import { 
+import {
   Users, Building2, Key, CheckCircle, 
   Loader2, ShieldCheck, AlertTriangle, TrendingUp, Calendar
 } from 'lucide-react';
+import API_URL from '../../config/api';
 
 const DashboardAdmin = () => {
   const [stats, setStats] = useState({
@@ -33,21 +34,21 @@ const DashboardAdmin = () => {
       }
       
       // Buscar gestores
-      const gestoresRes = await fetch('https://sirexa-api.onrender.com/api/gestor/admin/gestores', {
+      const gestoresRes = await fetch('${API_URL}/gestor/admin/gestores', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const gestoresData = await gestoresRes.json();
       const gestores = gestoresData.gestores || [];
       
       // Buscar empresas
-      const empresasRes = await fetch('https://sirexa-api.onrender.com/api/gestor/admin/empresas', {
+      const empresasRes = await fetch('${API_URL}/gestor/admin/empresas', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const empresasData = await empresasRes.json();
       const empresas = empresasData.empresas || [];
       
       // Buscar licenças
-      const licencasRes = await fetch('https://sirexa-api.onrender.com/api/gestor/admin/licencas', {
+      const licencasRes = await fetch('${API_URL}/gestor/admin/licencas', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const licencasData = await licencasRes.json();

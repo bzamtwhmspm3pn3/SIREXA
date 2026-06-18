@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import LayoutAdmin from './LayoutAdmin';
 import { Users, CheckCircle, XCircle, Eye, Loader2, Power } from 'lucide-react';
+import API_URL from '../../config/api';
 
 const Gestores = () => {
   const [gestores, setGestores] = useState([]);
@@ -15,7 +16,7 @@ const Gestores = () => {
   const carregarGestores = async () => {
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch('https://sirexa-api.onrender.com/api/gestor/admin/gestores', {
+      const response = await fetch(`${API_URL}/gestor/admin/gestores`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await response.json();
@@ -31,7 +32,7 @@ const Gestores = () => {
     setActionLoading(gestorId);
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch(`https://sirexa-api.onrender.com/api/gestor/admin/gestores/${gestorId}`, {
+      const response = await fetch(`${API_URL}/gestor/admin/gestores/${gestorId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import LayoutAdmin from './LayoutAdmin';
 import { Key, CheckCircle, XCircle, Copy, Loader2, Power } from 'lucide-react';
+import API_URL from '../../config/api';
 
 const Licencas = () => {
   const [licencas, setLicencas] = useState([]);
@@ -15,7 +16,7 @@ const Licencas = () => {
   const carregarLicencas = async () => {
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch('https://sirexa-api.onrender.com/api/gestor/admin/licencas', {
+      const response = await fetch('${API_URL}/gestor/admin/licencas', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await response.json();
@@ -33,7 +34,7 @@ const Licencas = () => {
     setActionLoading(chave);
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch(`https://sirexa-api.onrender.com/api/gestor/admin/licencas/${chave}`, {
+      const response = await fetch(`${API_URL}/gestor/admin/licencas/${chave}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });

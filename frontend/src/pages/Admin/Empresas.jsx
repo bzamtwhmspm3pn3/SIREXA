@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import LayoutAdmin from './LayoutAdmin';
 import { Building2, CheckCircle, XCircle, Eye, Loader2, Power } from 'lucide-react';
+import API_URL from '../../config/api';
 
 const Empresas = () => {
   const [empresas, setEmpresas] = useState([]);
@@ -15,7 +16,7 @@ const Empresas = () => {
   const carregarEmpresas = async () => {
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch('https://sirexa-api.onrender.com/api/gestor/admin/empresas', {
+      const response = await fetch(`${API_URL}/gestor/admin/empresas`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await response.json();
@@ -31,7 +32,7 @@ const Empresas = () => {
     setActionLoading(empresaId);
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch(`https://sirexa-api.onrender.com/api/empresa/${empresaId}`, {
+      const response = await fetch(`${API_URL}/empresa/${empresaId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

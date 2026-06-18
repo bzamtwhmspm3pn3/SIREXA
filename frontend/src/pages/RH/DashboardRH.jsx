@@ -13,7 +13,7 @@ const modules = [
   { key: "disciplinar", nome: "Gestão Disciplinar", icon: Gavel, cor: "red", desc: "Advertências, sanções, processos", rota: "/rh/disciplinar" },
   { key: "competencias", nome: "Competências", icon: Target, cor: "cyan", desc: "Matriz de competências, gap analysis", rota: "/rh/competencias" },
   { key: "saudeSeguranca", nome: "Saúde e Segurança", icon: Shield, cor: "orange", desc: "Exames, acidentes, EPIs", rota: "/rh/saude-seguranca" },
-  { key: "workflow", nome: "Workflows e Aprovações", icon: GitBranch, cor: "pink", desc: "Fluxos de aprovação configuráveis", rota: "/rh/workflows" }
+  { key: "workflow", nome: "Workflows e Aprovações", icon: GitBranch, cor: "pink", desc: "Fluxos de aprovação configuráveis", rota: "/rh/workflow" }
 ];
 
 const DashboardRH = () => {

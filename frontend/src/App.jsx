@@ -19,6 +19,7 @@ import Licencas from "./pages/Admin/Licencas";
 import Gestores from "./pages/Admin/Gestores";
 import Empresas from "./pages/Admin/Empresas";
 import Planos from "./pages/Admin/Planos";           
+import Estatisticas from "./pages/Admin/Estatisticas";
 
 
 // Empresa
@@ -83,6 +84,7 @@ import Promocoes from "./pages/RH/Promocoes";
 import Disciplinar from "./pages/RH/Disciplinar";
 import Competencias from "./pages/RH/Competencias";
 import ExamesMedicos from "./pages/RH/ExamesMedicos";
+import WorkflowAprovacao from "./pages/RH/WorkflowAprovacao";
 
 // Gestão Patrimonial
 import CadastroViaturas from "./pages/CadastroViaturas";
@@ -165,9 +167,14 @@ export default function App() {
     <Gestores />
   </ProtectedRoute>
 } />
-<Route path="/admin/empresas" element={
+      <Route path="/admin/empresas" element={
   <ProtectedRoute requiredRole="admin_sistema">
     <Empresas />
+  </ProtectedRoute>
+} />
+<Route path="/admin/estatisticas" element={
+  <ProtectedRoute requiredRole="admin_sistema">
+    <Estatisticas />
   </ProtectedRoute>
 } />
      
@@ -221,6 +228,7 @@ export default function App() {
       <Route path="/rh/disciplinar" element={<ProtectedRoute><Disciplinar /></ProtectedRoute>} />
       <Route path="/rh/competencias" element={<ProtectedRoute><Competencias /></ProtectedRoute>} />
       <Route path="/rh/saude-seguranca" element={<ProtectedRoute><ExamesMedicos /></ProtectedRoute>} />
+      <Route path="/rh/workflow" element={<ProtectedRoute><WorkflowAprovacao /></ProtectedRoute>} />
 
       {/* Gestão Patrimonial */}
       <Route path="/cadastro-viaturas" element={<ProtectedRoute><CadastroViaturas /></ProtectedRoute>} />

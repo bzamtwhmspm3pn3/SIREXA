@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import LayoutAdmin from './LayoutAdmin';
 import { Key, Mail, Calendar, AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
+import API_URL from '../../config/api';
 
 const GerarChave = () => {
   const [formData, setFormData] = useState({
@@ -24,7 +25,7 @@ const GerarChave = () => {
   const carregarPlanos = async () => {
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch('https://sirexa-api.onrender.com/api/gestor/admin/planos', {
+      const response = await fetch(`${API_URL}/gestor/admin/planos`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       
@@ -78,7 +79,7 @@ const GerarChave = () => {
     
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch('https://sirexa-api.onrender.com/api/gestor/admin/gerar-chave', {
+      const response = await fetch(`${API_URL}/gestor/admin/gerar-chave`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

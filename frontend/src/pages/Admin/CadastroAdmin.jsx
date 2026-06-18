@@ -6,6 +6,7 @@ import {
   AlertCircle, Shield, Loader2, Key, Crown, ArrowLeft
 } from "lucide-react";
 import logo from "../../assets/sirexa-logo.ico";
+import API_URL from '../../config/api';
 
 const CadastroAdmin = () => {
   const navigate = useNavigate();
@@ -40,7 +41,7 @@ const CadastroAdmin = () => {
     setMensagem({ texto: "", tipo: "" });
 
     try {
-      const response = await fetch("https://sirexa-api.onrender.com/api/admin/validar-chave", {
+      const response = await fetch(`${API_URL}/admin/validar-chave`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ chave: formData.chaveAdmin })
@@ -93,7 +94,7 @@ const CadastroAdmin = () => {
     
     setLoading(true);
     try {
-      const response = await fetch("https://sirexa-api.onrender.com/api/admin/registrar", {
+      const response = await fetch(`${API_URL}/admin/registrar`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

@@ -7,6 +7,7 @@ import {
   BarChart3, Settings, Save, Loader2, CheckCircle,
   Building2, Zap, AlertCircle, Award, Calendar, Database, Shield
 } from 'lucide-react';
+import API_URL from '../../config/api';
 
 const ConfigurarModulos = () => {
   const { token, empresaId, user, empresaPlano, empresaModulos: modulosIniciais } = useAuth();
@@ -45,7 +46,7 @@ const ConfigurarModulos = () => {
 
   const carregarEmpresa = async () => {
     try {
-      const response = await fetch(`https://sirexa-api.onrender.com/api/empresa/${empresaId}`, {
+      const response = await fetch(`${API_URL}/empresa/${empresaId}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await response.json();
@@ -74,7 +75,7 @@ const ConfigurarModulos = () => {
   const handleSalvar = async () => {
     setSalvando(true);
     try {
-      const response = await fetch(`https://sirexa-api.onrender.com/api/empresa/${empresaId}/modulos`, {
+      const response = await fetch(`${API_URL}/empresa/${empresaId}/modulos`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
