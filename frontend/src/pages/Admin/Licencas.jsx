@@ -16,7 +16,7 @@ const Licencas = () => {
   const carregarLicencas = async () => {
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch('${API_URL}/gestor/admin/licencas', {
+      const response = await fetch(`${API_URL}/gestor/admin/licencas`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await response.json();
