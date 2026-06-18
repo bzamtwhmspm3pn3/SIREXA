@@ -2,7 +2,6 @@
 const rateLimit = require('express-rate-limit');
 const helmet = require('helmet');
 const hpp = require('hpp');
-const mongoSanitize = require('express-mongo-sanitize');
 
 // ============================================
 // RATE LIMITING POR USUÁRIO (não por IP) - CORRIGIDO PARA ADMIN
@@ -142,12 +141,23 @@ const securityHeaders = helmet({
 // SANITIZAÇÃO (ACTIVA)
 // ============================================
 
-const sanitizeInput = mongoSanitize({
-  replaceWith: '_',
-  onSanitize: ({ req, key }) => {
-    console.warn(`⚠️ [SANITIZE] Campo suspeito removido: ${key}`);
-  }
-});
+const sanitizeInput = (req, res, next) => {
+  const removeDollarKeys = (obj) => {
+    if (Array.isArray(obj)) {
+      obj.forEach(removeDollarKeys);
+    } else if (obj && typeof obj === 'object') {
+      Object.keys(obj).forEach(key => {
+        if (key.startsWith('$')) {
+          delete obj[key];
+        } else {
+          removeDollarKeys(obj[key]);
+        }
+      });
+    }
+  };
+  if (req.body) removeDollarKeys(req.body);
+  next();
+};
 const protectXSS = (req, res, next) => {
   const stripXSS = (obj) => {
     if (typeof obj === 'string') {
@@ -160,17 +170,14 @@ const protectXSS = (req, res, next) => {
       return obj.map(stripXSS);
     }
     if (obj && typeof obj === 'object') {
-      const sanitized = {};
       for (const [key, value] of Object.entries(obj)) {
-        sanitized[key] = stripXSS(value);
+        obj[key] = stripXSS(value);
       }
-      return sanitized;
+      return obj;
     }
     return obj;
   };
-  if (req.body) req.body = stripXSS(req.body);
-  if (req.query) req.query = stripXSS(req.query);
-  if (req.params) req.params = stripXSS(req.params);
+  if (req.body) stripXSS(req.body);
   next();
 };
 const preventHpp = hpp();
