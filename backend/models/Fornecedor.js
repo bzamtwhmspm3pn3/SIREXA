@@ -146,10 +146,43 @@ fornecedorSchema.pre('save', function(next) {
       let proximoPagamento = new Date(hoje);
       
       switch (contrato.modalidadePagamento) {
+        case 'Diário':
+          proximoPagamento.setDate(hoje.getDate() + 1);
+          break;
+        case 'Semanal':
+          proximoPagamento.setDate(hoje.getDate() + 7);
+          break;
+        case 'Quinzenal':
+          proximoPagamento.setDate(hoje.getDate() + 15);
+          break;
         case 'Mensal':
           proximoPagamento.setDate(diaPagamento);
           if (proximoPagamento <= hoje) {
             proximoPagamento.setMonth(proximoPagamento.getMonth() + 1);
+          }
+          break;
+        case 'Bimestral':
+          proximoPagamento.setDate(diaPagamento);
+          if (proximoPagamento <= hoje) {
+            proximoPagamento.setMonth(proximoPagamento.getMonth() + 2);
+          }
+          break;
+        case 'Trimestral':
+          proximoPagamento.setDate(diaPagamento);
+          if (proximoPagamento <= hoje) {
+            proximoPagamento.setMonth(proximoPagamento.getMonth() + 3);
+          }
+          break;
+        case 'Semestral':
+          proximoPagamento.setDate(diaPagamento);
+          if (proximoPagamento <= hoje) {
+            proximoPagamento.setMonth(proximoPagamento.getMonth() + 6);
+          }
+          break;
+        case 'Anual':
+          proximoPagamento.setDate(diaPagamento);
+          if (proximoPagamento <= hoje) {
+            proximoPagamento.setFullYear(proximoPagamento.getFullYear() + 1);
           }
           break;
         default:

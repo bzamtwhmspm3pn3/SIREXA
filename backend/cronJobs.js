@@ -74,18 +74,18 @@ function iniciarCronJobs() {
           // Para contratos recorrentes
           if (contrato.proximoPagamento) {
             const hoje = new Date();
-            const mesAtual = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`;
-            const mesPagamento = `${contrato.proximoPagamento.getFullYear()}-${String(contrato.proximoPagamento.getMonth() + 1).padStart(2, '0')}`;
+            const hojeData = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
+            const proximoPagamentoData = new Date(contrato.proximoPagamento.getFullYear(), contrato.proximoPagamento.getMonth(), contrato.proximoPagamento.getDate());
             
-            if (mesAtual === mesPagamento) {
+            if (proximoPagamentoData <= hojeData) {
               console.log(`   📄 Contrato ${i + 1}: ${contrato.modalidadePagamento} - ${contrato.valor} Kz`);
               console.log(`      Próximo pagamento: ${contrato.proximoPagamento.toLocaleDateString()}`);
               
-              // Verificar se já existe pagamento para este mês
               const pagamentoExistente = await Pagamento.findOne({
                 tipo: 'Fornecedor',
                 origemId: fornecedor._id,
-                'detalhesPagamento.mesReferencia': mesAtual
+                'detalhesPagamento.contratoId': contrato._id,
+                dataVencimento: contrato.proximoPagamento
               });
               
               if (!pagamentoExistente) {
@@ -102,7 +102,7 @@ function iniciarCronJobs() {
                   console.error(`      ❌ Erro: ${err.message}`);
                 }
               } else {
-                console.log(`      ⏭️ Pagamento já existe para este período`);
+                console.log(`      ⏭️ Pagamento já existe para este vencimento`);
               }
             }
           } else {

@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import API_URL from "../config/api";
 
 // Função para limpar caracteres especiais
 const limparTexto = (texto) => {
@@ -14,14 +15,14 @@ const limparTexto = (texto) => {
   let str = String(texto);
   const mapa = {
     'ç': 'c', 'Ç': 'C', 'ã': 'a', 'Ã': 'A', 'õ': 'o', 'Õ': 'O',
-    'á': 'a', 'Á': 'A', 'à': 'a', 'È': 'E', 'â': 'a', 'Â': 'A',
+    'á': 'a', 'Á': 'A', 'à': 'a', 'À': 'A', 'â': 'a', 'Â': 'A',
     'é': 'e', 'É': 'E', 'è': 'e', 'È': 'E', 'ê': 'e', 'Ê': 'E',
     'í': 'i', 'Í': 'I', 'ì': 'i', 'Ì': 'I', 'î': 'i', 'Î': 'I',
     'ó': 'o', 'Ó': 'O', 'ò': 'o', 'Ò': 'O', 'ô': 'o', 'Ô': 'O',
     'ú': 'u', 'Ú': 'U', 'ù': 'u', 'Ù': 'U', 'û': 'u', 'Û': 'U',
     'ü': 'u', 'Ü': 'U', 'ñ': 'n', 'Ñ': 'N', 'Ø': 'O', 'ø': 'o',
     'æ': 'ae', 'Æ': 'AE', 'ß': 'ss', '°': ' graus', '€': 'EUR',
-    '©': '(c)', '®': '(r)', '™': '(tm)', '°': ' graus'
+    '©': '(c)', '®': '(r)', '™': '(tm)'
   };
   Object.keys(mapa).forEach(key => { str = str.split(key).join(mapa[key]); });
   str = str.replace(/[^\x20-\x7E]/g, '');
@@ -62,7 +63,7 @@ const RelatorioStock = ({ produtos = [], servicos = [], onClose, empresaId }) =>
       const token = localStorage.getItem("token");
       
       if (idEmpresa && token) {
-        const response = await fetch(`https://sirexa-api.onrender.com/api/empresa/${idEmpresa}`, {
+        const response = await fetch(`${API_URL}/empresa/${idEmpresa}`, {
           headers: { "Authorization": `Bearer ${token}` }
         });
         if (response.ok) {

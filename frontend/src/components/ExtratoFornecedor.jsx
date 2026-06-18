@@ -3,6 +3,7 @@ import React, { useState, useEffect } from "react";
 import { X, Printer, Loader2, FileText, AlertCircle } from "lucide-react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import API_URL from "../config/api";
 
 const ExtratoFornecedor = ({ fornecedor, empresaId, onClose }) => {
   const [movimentos, setMovimentos] = useState([]);
@@ -11,8 +12,6 @@ const ExtratoFornecedor = ({ fornecedor, empresaId, onClose }) => {
   const [totais, setTotais] = useState({ totalCredito: 0, totalDebito: 0 });
   const [exportando, setExportando] = useState(false);
   const [erro, setErro] = useState(null);
-
-  const BASE_URL = "https://sirexa-api.onrender.com";
 
   const getHeaders = () => ({
     'Authorization': `Bearer ${localStorage.getItem('token')}`,

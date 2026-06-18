@@ -2,6 +2,7 @@
 const rateLimit = require('express-rate-limit');
 const helmet = require('helmet');
 const hpp = require('hpp');
+const mongoSanitize = require('express-mongo-sanitize');
 
 // ============================================
 // RATE LIMITING POR USUÁRIO (não por IP) - CORRIGIDO PARA ADMIN
@@ -138,11 +139,40 @@ const securityHeaders = helmet({
 });
 
 // ============================================
-// SANITIZAÇÃO (DESABILITADA)
+// SANITIZAÇÃO (ACTIVA)
 // ============================================
 
-const sanitizeInput = (req, res, next) => next();
-const protectXSS = (req, res, next) => next();
+const sanitizeInput = mongoSanitize({
+  replaceWith: '_',
+  onSanitize: ({ req, key }) => {
+    console.warn(`⚠️ [SANITIZE] Campo suspeito removido: ${key}`);
+  }
+});
+const protectXSS = (req, res, next) => {
+  const stripXSS = (obj) => {
+    if (typeof obj === 'string') {
+      return obj.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+                .replace(/<[^>]*>/g, '')
+                .replace(/javascript\s*:/gi, '')
+                .replace(/on\w+\s*=/gi, '');
+    }
+    if (Array.isArray(obj)) {
+      return obj.map(stripXSS);
+    }
+    if (obj && typeof obj === 'object') {
+      const sanitized = {};
+      for (const [key, value] of Object.entries(obj)) {
+        sanitized[key] = stripXSS(value);
+      }
+      return sanitized;
+    }
+    return obj;
+  };
+  if (req.body) req.body = stripXSS(req.body);
+  if (req.query) req.query = stripXSS(req.query);
+  if (req.params) req.params = stripXSS(req.params);
+  next();
+};
 const preventHpp = hpp();
 
 // ============================================
@@ -172,7 +202,7 @@ const validateEmpresaAccess = (req, res, next) => {
     });
   }
   
-  const empresaId = req.params.empresaId || req.query.empresaId || req.body.empresaId;
+  const empresaId = req.params.empresaId || req.query.empresaId || req.body.empresaId || req.body.venda?.empresaId;
   const usuarioEmpresaId = req.user?.empresaId;
   const usuarioEmpresasPermitidas = req.user?.empresasPermitidas || [];
   const usuarioTipo = req.user?.role;
@@ -256,7 +286,7 @@ const verificarLicenca = async (req, res, next) => {
       return next();
     }
     
-    const empresaId = req.empresaAtual || req.user?.empresaId || req.body.empresaId;
+    const empresaId = req.empresaAtual || req.user?.empresaId || req.body.empresaId || req.body.venda?.empresaId;
     
     if (!empresaId) {
       return next();

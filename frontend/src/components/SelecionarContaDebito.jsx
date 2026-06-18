@@ -1,6 +1,7 @@
 // frontend/src/components/SelecionarContaDebito.jsx
 import { useState, useEffect } from "react";
 import { FaUniversity, FaExclamationTriangle, FaCheckCircle } from "react-icons/fa";
+import API_URL from "../config/api";
 
 export default function SelecionarContaDebito({ empresaId, valorPagamento, onSelect, required = true }) {
   const [contas, setContas] = useState([]);
@@ -9,7 +10,7 @@ export default function SelecionarContaDebito({ empresaId, valorPagamento, onSel
   const [saldoInsuficiente, setSaldoInsuficiente] = useState(false);
   const [mensagem, setMensagem] = useState("");
 
-  const BASE_URL = "https://sirexa-api.onrender.com";
+  const BASE_URL = API_URL.replace(/\/api$/, '');
   
   const getHeaders = () => ({
     'Authorization': `Bearer ${localStorage.getItem('token')}`,

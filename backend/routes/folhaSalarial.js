@@ -10,7 +10,8 @@ const Gestor = require('../models/Gestor');
 const Pagamento = require('../models/Pagamento');
 const FolhaService = require('../services/folhaService');
 const { verifyToken } = require('../middlewares/auth');
-const { logMiddleware } = require('../middlewares/logger'); // <-- ADICIONADO
+const { logMiddleware } = require('../middlewares/logger');
+const IntegracaoContabilistica = require('../services/IntegracaoContabilistica');
 
 router.use(verifyToken);
 
@@ -582,6 +583,24 @@ router.put('/:id', logMiddleware('folha-salarial-finalizar'), async (req, res) =
       const usuarioNome = req.user?.nome || req.user?.email || 'Sistema';
       
       pagamentosCriados = await criarPagamentosFolha(folha, empresa, contaDebito || 'BAI01', usuarioNome, datasVencimento);
+
+      // 🔥 INTEGRAÇÃO CONTABILÍSTICA para cada pagamento criado
+      for (const pagamento of pagamentosCriados) {
+        try {
+          await IntegracaoContabilistica.integrarPagamento(
+            { 
+              ...pagamento.toObject(), 
+              tipo: 'Folha Salarial',
+              beneficiario: pagamento.beneficiario || empresa?.nome,
+              formaPagamento: pagamento.formaPagamento || 'Transferência Bancária'
+            },
+            folha.empresaId,
+            req.user?.id || req.user?._id || null
+          );
+        } catch (err) {
+          console.error('⚠️ Erro ao criar lançamento contabilístico da folha:', err.message);
+        }
+      }
       
       if (pagamentosCriados.length > 0) {
         return res.json({

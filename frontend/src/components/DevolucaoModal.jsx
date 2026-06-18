@@ -1,6 +1,7 @@
 // src/components/DevolucaoModal.jsx
 import React, { useState } from 'react';
 import { X, RotateCcw, AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
+import API_URL from "../config/api";
 
 const DevolucaoModal = ({ produto, onClose, onSuccess }) => {
   const [quantidade, setQuantidade] = useState(1);
@@ -21,7 +22,7 @@ const DevolucaoModal = ({ produto, onClose, onSuccess }) => {
 
     setLoading(true);
     try {
-      const response = await fetch(`https://sirexa-api.onrender.com/api/stock/${produto._id}/devolver`, {
+      const response = await fetch(`${API_URL}/stock/${produto._id}/devolver`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

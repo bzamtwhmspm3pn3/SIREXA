@@ -2,7 +2,7 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import axios from "axios";
 
-const API_URL = "https://sirexa-api.onrender.com/api";
+import API_URL from "../config/api";
 
 const AuthContext = createContext({});
 
@@ -42,7 +42,13 @@ export const AuthProvider = ({ children }) => {
           }
           
           // 🔥 CARREGAR MÓDULOS E PLANO DO USUÁRIO
-          const modulos = userData.modulosAtivos || userData.modulos || [];
+          let modulos = userData.modulosAtivos || [];
+          // Para técnicos: converter obj {vendas:true,stock:false} → ['vendas']
+          if (userData.role === 'tecnico' && userData.modulos && typeof userData.modulos === 'object' && !Array.isArray(userData.modulos)) {
+            modulos = Object.keys(userData.modulos).filter(k => userData.modulos[k] === true);
+          } else if (!Array.isArray(modulos)) {
+            modulos = [];
+          }
           const plano = userData.plano || userData.empresaPlano || 'FREE';
           
           setEmpresaModulos(modulos);
@@ -95,8 +101,14 @@ export const AuthProvider = ({ children }) => {
         console.log("👑 Usuário promovido a ADMIN_SISTEMA");
       }
       
-      // 🔥 PEGAR MÓDULOS E PLANO DO GESTOR (enviados pelo backend)
-      const modulosAtivos = userData.modulosAtivos || [];
+      // 🔥 PEGAR MÓDULOS E PLANO (gestor ou técnico)
+      let modulosAtivos = userData.modulosAtivos || [];
+      // Para técnicos: converter obj {vendas:true,stock:false} → ['vendas']
+      if ((tipo === 'tecnico' || userData.role === 'tecnico') && userData.modulos && typeof userData.modulos === 'object' && !Array.isArray(userData.modulos)) {
+        modulosAtivos = Object.keys(userData.modulos).filter(k => userData.modulos[k] === true);
+      } else if (!Array.isArray(modulosAtivos)) {
+        modulosAtivos = [];
+      }
       const plano = userData.plano || userData.empresas?.[0]?.plano || 'FREE';
       
       console.log("📋 Módulos recebidos do backend:", modulosAtivos);

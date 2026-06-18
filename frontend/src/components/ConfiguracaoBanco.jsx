@@ -1,6 +1,7 @@
 // frontend/src/components/ConfiguracaoBanco.jsx - VERSAO CORRIGIDA
 import React, { useState, useEffect } from 'react';
 import { X, Plus, Trash2, Save, Eye, Download, CreditCard, Building, CheckCircle, AlertCircle } from 'lucide-react';
+import API_URL from "../config/api";
 
 const ConfiguracaoBanco = ({ isOpen, onClose, empresaId, onSalvar }) => {
   const [configuracoes, setConfiguracoes] = useState([]);
@@ -56,7 +57,7 @@ const ConfiguracaoBanco = ({ isOpen, onClose, empresaId, onSalvar }) => {
     setLoading(true);
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`https://sirexa-api.onrender.com/api/configuracao-banco/listar?empresaId=${empresaId}`, {
+      const response = await fetch(`${API_URL}/configuracao-banco/listar?empresaId=${empresaId}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (response.ok) {
@@ -128,7 +129,7 @@ const ConfiguracaoBanco = ({ isOpen, onClose, empresaId, onSalvar }) => {
     setLoading(true);
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('https://sirexa-api.onrender.com/api/configuracao-banco/salvar', {
+      const response = await fetch(`${API_URL}/configuracao-banco/salvar`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

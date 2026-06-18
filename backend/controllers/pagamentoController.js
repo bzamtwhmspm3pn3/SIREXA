@@ -6,6 +6,8 @@ const Empresa = require('../models/Empresa');
 const RegistoBancario = require('../models/RegistoBancario');
 const Transferencia = require('../models/Transferencia');
 const contaCorrenteController = require('./contaCorrenteController');
+const integracaoPagamentos = require('../services/integracaoPagamentos');
+const IntegracaoContabilistica = require('../services/IntegracaoContabilistica');
 
 const meses = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
                "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
@@ -580,7 +582,21 @@ exports.atualizarStatus = async (req, res) => {
     await pagamento.save();
     
     console.log(`✅ Pagamento ${pagamento.referencia}: ${statusAnterior} → ${status}`);
-    
+
+    // 🔥 INTEGRAÇÃO CONTABILÍSTICA - lançar quando o pagamento é marcado como Pago
+    if (status === 'Pago' && statusAnterior !== 'Pago') {
+      try {
+        await IntegracaoContabilistica.integrarPagamento(
+          { ...pagamento.toObject(), formaPagamento: pagamento.formaPagamento || 'Transferência Bancária' },
+          pagamento.empresaId,
+          req.user?.id || req.user?._id || null
+        );
+        console.log(`✅ Lançamento contabilístico criado para pagamento ${pagamento.referencia}`);
+      } catch (err) {
+        console.error('⚠️ Erro ao criar lançamento contabilístico:', err.message);
+      }
+    }
+
     const novosaldoConta = await calcularSaldoConta(pagamento.contaDebito, pagamento.empresaId);
     const saldoTotal = await calcularSaldoTotalEmpresa(pagamento.empresaId);
     
@@ -637,7 +653,21 @@ exports.atualizarStatusPagamento = async (req, res) => {
     await pagamento.save();
     
     console.log(`✅ Pagamento ${pagamento.referencia}: ${statusAnterior} → ${status}`);
-    
+
+    // 🔥 INTEGRAÇÃO CONTABILÍSTICA - lançar quando o pagamento é marcado como Pago
+    if (status === 'Pago' && statusAnterior !== 'Pago') {
+      try {
+        await IntegracaoContabilistica.integrarPagamento(
+          { ...pagamento.toObject(), formaPagamento: pagamento.formaPagamento || 'Transferência Bancária' },
+          pagamento.empresaId,
+          req.user?.id || req.user?._id || null
+        );
+        console.log(`✅ Lançamento contabilístico criado para pagamento ${pagamento.referencia}`);
+      } catch (err) {
+        console.error('⚠️ Erro ao criar lançamento contabilístico:', err.message);
+      }
+    }
+
     const novosaldoConta = await calcularSaldoConta(pagamento.contaDebito, pagamento.empresaId);
     const saldoTotal = await calcularSaldoTotalEmpresa(pagamento.empresaId);
     

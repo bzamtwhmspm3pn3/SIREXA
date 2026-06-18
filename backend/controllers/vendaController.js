@@ -9,6 +9,7 @@ const RegistoBancario = require('../models/RegistoBancario');
 const Cliente = require('../models/Cliente');
 const crypto = require('crypto');
 const integracaoPagamentos = require('../services/integracaoPagamentos');
+const IntegracaoContabilistica = require('../services/IntegracaoContabilistica');
 
 const meses = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
                "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
@@ -641,8 +642,34 @@ exports.emitirVenda = async (req, res) => {
       console.log(`⚠️ ERRO: Factura não foi salva corretamente!`);
     }
 
-    // 6. INTEGRAÇÃO COM CONTROLO DE PAGAMENTOS (apenas para vendas à vista)
-    if (venda.formaPagamento !== 'Dinheiro' && tipoVenda === 'avista') {
+    // 6. INTEGRAÇÃO CONTÁBILÍSTICA - lançamento automático para todas as vendas
+    try {
+      await IntegracaoContabilistica.integrarVenda(
+        novaVenda,
+        empresa._id,
+        req.user?.id || req.user?._id || null
+      );
+      console.log(`✅ Lançamento contabilístico criado para venda #${novaVenda.numeroFactura}`);
+    } catch (err) {
+      console.error('⚠️ Erro ao criar lançamento contabilístico da venda:', err.message);
+    }
+
+    // 7. INTEGRAÇÃO COM CONTROLO DE PAGAMENTOS
+    if (tipoVenda === 'prazo' && parcelasGeradas.length > 0) {
+      // Vendas a prazo: criar conta a receber para cada parcela
+      try {
+        for (const parcela of parcelasGeradas) {
+          await integracaoPagamentos.integrarVenda(
+            { ...novaVenda.toObject(), total: parcela.valor, numeroFactura: `${novaVenda.numeroFactura}-P${parcela.numero}` },
+            empresa,
+            usuario
+          );
+        }
+        console.log(`✅ Contas a receber criadas para ${parcelasGeradas.length} parcelas`);
+      } catch (err) {
+        console.error('⚠️ Erro ao integrar parcelas com pagamentos:', err.message);
+      }
+    } else if (venda.formaPagamento !== 'Dinheiro' && tipoVenda === 'avista') {
       try {
         const pagamento = await integracaoPagamentos.integrarVenda(novaVenda, empresa, usuario);
         if (pagamento) {

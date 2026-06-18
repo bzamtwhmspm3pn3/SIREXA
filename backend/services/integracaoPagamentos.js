@@ -362,11 +362,12 @@ class IntegracaoPagamentos {
     try {
       const mesReferencia = `${dataVencimento.getFullYear()}-${String(dataVencimento.getMonth() + 1).padStart(2, '0')}`;
       
-      // Verificar se já existe pagamento para este período
+      // Verificar se já existe pagamento para este vencimento específico deste contrato
       const existe = await Pagamento.findOne({
         tipo: 'Fornecedor',
         origemId: fornecedor._id,
-        'detalhesPagamento.mesReferencia': mesReferencia
+        'detalhesPagamento.contratoId': contrato._id,
+        dataVencimento: dataVencimento
       });
       
       if (existe) {

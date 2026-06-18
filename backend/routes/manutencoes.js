@@ -6,6 +6,7 @@ const Manutencao = require('../models/Manutencao');
 const Viatura = require('../models/Viatura');
 const Empresa = require('../models/Empresa');
 const integracaoPagamentos = require('../services/integracaoPagamentos');
+const IntegracaoContabilistica = require('../services/IntegracaoContabilistica');
 const { verifyToken } = require('../middlewares/auth');
 const { logMiddleware } = require('../middlewares/logger');
 
@@ -152,6 +153,17 @@ router.post('/', logMiddleware('manutencao-criar'), async (req, res) => {
       
       if (pagamento) {
         console.log(`✅ Pagamento criado: ${pagamento.referencia}`);
+        // 🔥 INTEGRAÇÃO CONTABILÍSTICA
+        try {
+          await IntegracaoContabilistica.integrarPagamento(
+            { ...pagamento.toObject(), formaPagamento: pagamento.formaPagamento || 'Transferência Bancária' },
+            empresa._id,
+            req.user?.id || req.user?._id || null
+          );
+          console.log(`✅ Lançamento contabilístico criado para manutenção`);
+        } catch (err) {
+          console.error('⚠️ Erro ao criar lançamento contabilístico:', err.message);
+        }
       } else {
         console.log(`⚠️ Falha ao criar pagamento`);
       }

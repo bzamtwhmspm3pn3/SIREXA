@@ -73,7 +73,8 @@ router.get('/:id', async (req, res) => {
     }
     
     const usuarioEmpresasPermitidas = req.user?.empresasPermitidas || [];
-    const temAcesso = usuarioEmpresasPermitidas.includes(funcionario.empresaId.toString());
+    const temAcesso = usuarioEmpresasPermitidas.includes(funcionario.empresaId.toString()) || 
+                      (req.user?.empresaId && req.user.empresaId.toString() === funcionario.empresaId.toString());
     
     if (!temAcesso && req.user?.role !== 'admin') {
       console.error(`❌ ACESSO NEGADO: ${req.user?.nome} tentou acessar funcionário de empresa ${funcionario.empresaId}`);
@@ -242,7 +243,8 @@ router.put('/:id', logMiddleware('funcionarios'), upload.single('foto'), async (
     }
     
     const usuarioEmpresasPermitidas = req.user?.empresasPermitidas || [];
-    const temAcesso = usuarioEmpresasPermitidas.includes(funcionario.empresaId.toString());
+    const temAcesso = usuarioEmpresasPermitidas.includes(funcionario.empresaId.toString()) || 
+                      (req.user?.empresaId && req.user.empresaId.toString() === funcionario.empresaId.toString());
     
     if (!temAcesso && req.user?.role !== 'admin') {
       console.error(`❌ ACESSO NEGADO: ${req.user?.nome} tentou editar funcionário de empresa ${funcionario.empresaId}`);
@@ -394,7 +396,8 @@ router.delete('/:id', logMiddleware('funcionarios'), async (req, res) => {
     }
     
     const usuarioEmpresasPermitidas = req.user?.empresasPermitidas || [];
-    const temAcesso = usuarioEmpresasPermitidas.includes(funcionario.empresaId.toString());
+    const temAcesso = usuarioEmpresasPermitidas.includes(funcionario.empresaId.toString()) || 
+                      (req.user?.empresaId && req.user.empresaId.toString() === funcionario.empresaId.toString());
     
     if (!temAcesso && req.user?.role !== 'admin') {
       console.error(`❌ ACESSO NEGADO: ${req.user?.nome} tentou excluir funcionário de empresa ${funcionario.empresaId}`);

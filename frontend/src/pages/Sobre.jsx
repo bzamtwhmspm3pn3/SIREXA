@@ -1,7 +1,6 @@
 // src/pages/Sobre.jsx - CORRIGIDO COM CLASSES 8 e 9 E COR AZUL
 import { useState } from "react";
 import Layout from "../components/Layout";
-import { useAuth } from "../contexts/AuthContext";
 import logo from "../assets/sirexa-logo.ico";
 import { 
   Building, Shield, Users, TrendingUp, Award, Heart, 
@@ -11,7 +10,7 @@ import {
   Store, Package, Receipt, Calculator, Calendar, Gift,
   Fuel, Wrench, Warehouse, PiggyBank, Wallet,
   Target, ArrowLeftRight, GitBranch, Network, 
-  Zap, Sparkles, Infinity, Code2, Workflow, 
+  Zap, Sparkles, Infinity as InfinityIcon, Code2, Workflow, 
   RefreshCw, Webhook, Layers,
   Landmark, ChartNoAxesCombined, HandCoins, 
   ReceiptText, ChartColumn, BarChart3, PieChart,
@@ -21,7 +20,6 @@ import {
 } from "lucide-react";
 
 const Sobre = () => {
-  const { user, isGestor, isTecnico } = useAuth();
   const [copiado, setCopiado] = useState(false);
   const [anoAtual] = useState(new Date().getFullYear());
   const [imagemErro, setImagemErro] = useState(false);
@@ -331,7 +329,7 @@ const Sobre = () => {
         {/* BENEFÍCIOS */}
         <div className="bg-[#0A1F44]/60 backdrop-blur-md rounded-2xl p-6 border border-white/10 shadow-xl">
           <h2 className="text-xl font-bold text-white mb-6 text-center flex items-center justify-center gap-2 drop-shadow-md">
-            <Infinity className="text-blue-400" size={24} />
+            <InfinityIcon className="text-blue-400" size={24} />
             Benefícios da Integração Inteligente
           </h2>
           

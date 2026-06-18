@@ -1,6 +1,7 @@
 // src/contexts/LicencaContext.jsx
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useAuth } from './AuthContext';
+import API_URL from "../config/api";
 
 const LicencaContext = createContext({});
 
@@ -20,7 +21,7 @@ export const LicencaProvider = ({ children }) => {
     }
 
     try {
-      const response = await fetch('https://sirexa-api.onrender.com/api/licenca/status', {
+      const response = await fetch(`${API_URL}/licenca/status`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
 

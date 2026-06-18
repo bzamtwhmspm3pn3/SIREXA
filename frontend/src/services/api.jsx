@@ -1,7 +1,8 @@
 import axios from "axios";
+import API_URL from "../config/api";
 
 const api = axios.create({
-  baseURL: "https://sirexa-api.onrender.com/api", // Ajusta se necessário
+  baseURL: API_URL,
 });
 
 // Interceptor para enviar token com cada requisição protegida

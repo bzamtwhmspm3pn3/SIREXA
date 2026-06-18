@@ -1,5 +1,4 @@
-// Configuração base para requisições
-const API_URL = 'https://sirexa-api.onrender.com/api';
+import API_URL from "../config/api";
 
 // Função para fazer requisições autenticadas
 export const apiRequest = async (endpoint, options = {}) => {
