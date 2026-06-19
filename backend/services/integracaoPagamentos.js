@@ -649,6 +649,7 @@ class IntegracaoPagamentos {
     if (venda.formaPagamento === 'Dinheiro') return null;
     
     const referencia = this.gerarReferencia('REC');
+    const contaPadrao = await this.obterContaPadrao(empresa._id);
     
     const pagamento = new Pagamento({
       referencia,
@@ -666,6 +667,10 @@ class IntegracaoPagamentos {
       dataVencimento: new Date(Date.now() + 30 * 86400000),
       descricao: `Venda de mercadorias - Factura Nº ${venda.numeroFactura}`,
       formaPagamento: venda.formaPagamento || 'Transferência Bancária',
+      contaDebito: contaPadrao.codNome,
+      contaDebitoId: contaPadrao.contaId,
+      ibanDebito: contaPadrao.iban,
+      observacao: venda.observacao || '',
       criadoPor: usuario,
       status: 'Pendente'
     });

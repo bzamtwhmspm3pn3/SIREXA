@@ -7,7 +7,8 @@ const PagamentoSchema = new mongoose.Schema({
     type: String, 
     enum: ['Operacional', 'Fornecedor', 'Folha Salarial', 'Manutenção', 'Abastecimento', 
            'Investimento', 'Financiamento', 'Imposto', 'Infraestrutura', 'Tecnologia', 
-           'Marketing', 'Educação', 'Saúde', 'Imobiliário', 'Veículos', 'Outro'],
+           'Marketing', 'Educação', 'Saúde', 'Imobiliário', 'Veículos', 'Outro',
+           'Conta a Receber'],
     required: true 
   },
   categoria: { type: String, default: 'Operacional' },

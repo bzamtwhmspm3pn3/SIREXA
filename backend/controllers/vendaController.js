@@ -10,6 +10,10 @@ const Cliente = require('../models/Cliente');
 const crypto = require('crypto');
 const integracaoPagamentos = require('../services/integracaoPagamentos');
 const IntegracaoContabilistica = require('../services/IntegracaoContabilistica');
+const Pagamento = require('../models/Pagamento');
+const PlanoContas = require('../models/PlanoContas');
+const LancamentoContabilistico = require('../models/LancamentoContabilistico');
+const ContaCorrente = require('../models/ContaCorrente');
 
 const meses = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
                "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
@@ -660,7 +664,7 @@ exports.emitirVenda = async (req, res) => {
       try {
         for (const parcela of parcelasGeradas) {
           await integracaoPagamentos.integrarVenda(
-            { ...novaVenda.toObject(), total: parcela.valor, numeroFactura: `${novaVenda.numeroFactura}-P${parcela.numero}` },
+            { ...novaVenda.toObject(), total: parcela.valor, numeroFactura: `${novaVenda.numeroFactura}-P${parcela.numero}`, observacao: `Parcela ${parcela.numero}` },
             empresa,
             usuario
           );
@@ -1085,6 +1089,7 @@ exports.registrarPagamentoParcela = async (req, res) => {
     const { id } = req.params;
     const { parcelaNumero, valorPago, formaPagamento, contaBancaria } = req.body;
     const usuario = req.user?.nome || req.user?.email || "Sistema";
+    const usuarioId = req.user?.id || req.user?._id || null;
     
     const venda = await Venda.findById(id);
     
@@ -1131,6 +1136,199 @@ exports.registrarPagamentoParcela = async (req, res) => {
     }
     
     await venda.save();
+
+    // ============================================
+    // INTEGRAÇÃO FINANCEIRA (não-bloqueante)
+    // ============================================
+    try {
+      const empresaId = venda.empresaId;
+      const contaDestino = parcela.contaBancaria;
+      const dataPagamento = new Date();
+      const ano = dataPagamento.getFullYear();
+      const mes = meses[dataPagamento.getMonth()];
+
+      // 1. LOCALIZAR E ATUALIZAR CONTA A RECEBER (Pagamento)
+      const pagamento = await Pagamento.findOne({
+        origemId: venda._id,
+        origemModel: 'Venda',
+        observacao: `Parcela ${parcelaNumero}`
+      });
+
+      if (pagamento) {
+        pagamento.status = 'Pago';
+        pagamento.valorPago = valorPago;
+        pagamento.dataPagamento = dataPagamento;
+        pagamento.formaPagamento = parcela.formaPagamento || pagamento.formaPagamento;
+        if (contaDestino) {
+          pagamento.contaDebito = contaDestino;
+        }
+        pagamento.atualizadoPor = usuario;
+        await pagamento.save();
+        console.log(`✅ Conta a receber ${pagamento.referencia} marcada como Paga`);
+      } else {
+        console.log(`⚠️ Nenhum Pagamento encontrado para Parcela ${parcelaNumero} da Venda ${venda._id}`);
+      }
+
+      // 2. OBTER CONTA BANCÁRIA (para registo e saldo)
+      let contaParaRegisto = contaDestino;
+      if (!contaParaRegisto) {
+        const bancoPadrao = await Banco.findOne({ empresaId, ativo: true });
+        contaParaRegisto = bancoPadrao?.codNome || 'BAI01';
+      }
+
+      // 3. CRIAR REGISTO BANCÁRIO (entrada do recebimento)
+      const banco = await Banco.findOne({ codNome: contaParaRegisto, empresaId });
+      const registoExistente = await RegistoBancario.findOne({
+        documentoReferencia: `${venda._id}-P${parcelaNumero}`,
+        empresaId
+      });
+
+      if (!registoExistente) {
+        const registo = new RegistoBancario({
+          data: dataPagamento,
+          conta: contaParaRegisto,
+          contaId: banco?._id,
+          descricao: `RECEBIMENTO PARCELA ${parcelaNumero}: ${venda.cliente} - Factura Nº ${venda.numeroFactura}`,
+          tipo: 'Receita - Parcela',
+          valor: valorPago,
+          entradaSaida: 'entrada',
+          ano,
+          mes,
+          documentoReferencia: `${venda._id}-P${parcelaNumero}`,
+          facturaReferencia: String(venda.numeroFactura),
+          clienteReferencia: venda.cliente,
+          nifCliente: venda.nifCliente,
+          empresaId,
+          detalhesAdicionais: {
+            numeroFactura: String(venda.numeroFactura),
+            cliente: venda.cliente,
+            nifCliente: venda.nifCliente,
+            formaPagamento: parcela.formaPagamento || 'Transferência Bancária',
+            parcelaNumero,
+            totalParcelas: venda.numeroParcelas
+          },
+          usuario
+        });
+        await registo.save();
+        console.log(`✅ Registo bancário criado: Receita - Parcela ${parcelaNumero}`);
+      } else {
+        console.log(`⚠️ Registo bancário já existe para Parcela ${parcelaNumero}`);
+      }
+
+      // 4. ATUALIZAR SALDO DA CONTA BANCÁRIA
+      if (contaParaRegisto) {
+        await atualizarSaldoContaBancaria(empresaId, contaParaRegisto);
+      }
+
+      // 5. LANÇAMENTO CONTABILÍSTICO (Débito Caixa/Banco / Crédito Clientes)
+      let contaCaixa = await PlanoContas.findOne({ empresaId, codigo: '43.1.1' });
+      if (!contaCaixa) {
+        contaCaixa = new PlanoContas({
+          codigo: '43.1.1', nome: 'Depósitos à Ordem', classe: 4, nivel: 2,
+          natureza: 'Devedora', empresaId, criadoPor: usuarioId, ativo: true
+        });
+        await contaCaixa.save();
+      }
+
+      let contaCliente = await PlanoContas.findOne({ empresaId, codigo: '31.1.2.1' });
+      if (!contaCliente) {
+        contaCliente = new PlanoContas({
+          codigo: '31.1.2.1', nome: 'Clientes Nacionais', classe: 3, nivel: 4,
+          natureza: 'Devedora', empresaId, criadoPor: usuarioId, ativo: true
+        });
+        await contaCliente.save();
+      }
+
+      const lancamentoExistente = await LancamentoContabilistico.findOne({
+        numeroLancamento: `REC-${venda.numeroFactura}-P${parcelaNumero}`,
+        empresaId
+      });
+
+      if (!lancamentoExistente) {
+        const lancamento = new LancamentoContabilistico({
+          numeroLancamento: `REC-${venda.numeroFactura}-P${parcelaNumero}`,
+          descricao: `Recebimento Parcela ${parcelaNumero} - ${venda.cliente} - Factura Nº ${venda.numeroFactura}`,
+          dataLancamento: dataPagamento,
+          empresaId,
+          partidas: [
+            {
+              contaCodigo: contaCaixa.codigo,
+              contaDescricao: contaCaixa.nome,
+              classe: 4,
+              debito: valorPago,
+              credito: 0,
+              documentoOrigem: { tipo: 'Venda', id: venda._id, referencia: `${venda.numeroFactura}-P${parcelaNumero}` }
+            },
+            {
+              contaCodigo: contaCliente.codigo,
+              contaDescricao: contaCliente.nome,
+              classe: 3,
+              debito: 0,
+              credito: valorPago,
+              documentoOrigem: { tipo: 'Venda', id: venda._id, referencia: `${venda.numeroFactura}-P${parcelaNumero}` }
+            }
+          ],
+          totalDebito: valorPago,
+          totalCredito: valorPago,
+          status: 'Contabilizado',
+          criadoPor: usuarioId,
+          periodo: { ano, mes: dataPagamento.getMonth() + 1 }
+        });
+        await lancamento.save();
+        console.log(`✅ Lançamento contabilístico criado: REC-${venda.numeroFactura}-P${parcelaNumero}`);
+      }
+
+      // 6. ATUALIZAR CONTA CORRENTE DO CLIENTE
+      let contaCorrente = await ContaCorrente.findOne({
+        empresaId,
+        beneficiario: venda.cliente,
+        tipo: 'Cliente'
+      });
+
+      if (!contaCorrente) {
+        const clienteData = await Cliente.findById(venda.clienteId);
+        contaCorrente = new ContaCorrente({
+          empresaId,
+          beneficiario: venda.cliente,
+          beneficiarioDocumento: venda.nifCliente,
+          tipo: 'Cliente',
+          contato: clienteData?.telefone || '',
+          email: clienteData?.email || '',
+          telefone: clienteData?.telefone || '',
+          saldo: 0,
+          status: 'Ativo'
+        });
+      }
+
+      const saldoAnterior = contaCorrente.saldo;
+      const novoSaldo = saldoAnterior - valorPago;
+
+      const movimento = {
+        tipo: 'Recebimento',
+        valor: valorPago,
+        descricao: `Recebimento Parcela ${parcelaNumero} - Factura Nº ${venda.numeroFactura}`,
+        data: dataPagamento,
+        referencia: `${venda.numeroFactura}-P${parcelaNumero}`,
+        documentoReferencia: `${venda.numeroFactura}`,
+        formaPagamento: parcela.formaPagamento || 'Transferência Bancária',
+        origemId: venda._id,
+        origemModel: 'Venda',
+        status: 'Pago',
+        saldoAnterior,
+        saldoAtual: novoSaldo
+      };
+
+      contaCorrente.movimentos.push(movimento);
+      contaCorrente.saldo = novoSaldo;
+      contaCorrente.dataUltimaMovimentacao = dataPagamento;
+      await contaCorrente.save();
+
+      console.log(`✅ Conta corrente actualizada: ${venda.cliente} - ${novoSaldo.toLocaleString()} Kz`);
+
+    } catch (integrationError) {
+      console.error('⚠️ Erro na integração financeira do pagamento da parcela:', integrationError.message);
+      console.error(integrationError.stack);
+    }
     
     res.json({
       sucesso: true,
