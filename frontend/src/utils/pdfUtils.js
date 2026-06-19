@@ -43,14 +43,6 @@ export async function carregarDadosEmpresa(empresaId) {
   return { nome: 'Empresa', nif: '---' };
 }
 
-const COR_PRIMARIA = [37, 99, 235];
-const COR_SECUNDARIA = [59, 130, 246];
-const COR_ESCURA = [30, 58, 138];
-const COR_CINZA_CLARO = [245, 247, 250];
-const COR_CINZA_MEDIO = [156, 163, 175];
-const COR_TEXTO = [55, 65, 81];
-const COR_BORDA = [209, 213, 219];
-
 export const COR_PRIMARIA = [37, 99, 235];
 export const COR_SECUNDARIA = [59, 130, 246];
 export const COR_ESCURA = [30, 58, 138];

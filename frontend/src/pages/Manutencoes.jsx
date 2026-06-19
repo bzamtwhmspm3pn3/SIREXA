@@ -365,7 +365,7 @@ const Manutencoes = () => {
       const logo = await carregarLogoBase64(empresaAtual);
       
       const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
-      const y = drawCabecalhoProfissional(doc, empresaAtual, logo) + 5;
+      let y = drawCabecalhoProfissional(doc, empresaAtual, logo) + 5;
       
       doc.setFontSize(9);
       doc.setFont("helvetica", "bold");

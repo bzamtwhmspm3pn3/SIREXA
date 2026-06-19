@@ -247,3 +247,5 @@ export async function gerarDocumentoPDF(documento, items, config = {}) {
   const fileName = `${tipo.replace(/\s+/g, '_')}_${documento.numeroDocumento || Date.now()}.pdf`;
   return { doc, fileName };
 }
+
+export const gerarDocumentoProfissional = gerarDocumentoPDF;
