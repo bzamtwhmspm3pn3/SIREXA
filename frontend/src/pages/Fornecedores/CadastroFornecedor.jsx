@@ -34,10 +34,13 @@ const CadastroFornecedor = () => {
   
   const tiposFornecedor = [
     { value: "mercadoria", label: "📦 Mercadoria / Produto", icon: Package, descricao: "Produtos físicos para stock" },
-    { value: "servico", label: "🛠️ Serviço Geral", icon: Wrench, descricao: "Prestação de serviços" },
+    { value: "servicoGeral", label: "🛠️ Serviço Geral", icon: Wrench, descricao: "Prestação de serviços" },
+    { value: "manutencao", label: "🔧 Manutenção", icon: Wrench, descricao: "Serviços de manutenção" },
+    { value: "abastecimento", label: "⛽ Abastecimento", icon: Truck, descricao: "Combustível e lubrificantes" },
+    { value: "equipamento", label: "🖥️ Equipamento", icon: Briefcase, descricao: "Aquisição de equipamentos" },
+    { value: "servicoProfissional", label: "👔 Serviço Profissional", icon: Award, descricao: "Consultoria, advocacia, contabilidade" },
     { value: "renda", label: "🏠 Renda / Aluguer", icon: Home, descricao: "Arrendamento de imóveis ou equipamentos" },
-    { value: "internet", label: "🌐 Internet / Telecom", icon: Globe, descricao: "Serviços de comunicação" },
-    { value: "outro", label: "📝 Outro", icon: FileText, descricao: "Outros tipos de serviços" }
+    { value: "internet", label: "🌐 Internet / Telecom", icon: Globe, descricao: "Serviços de comunicação" }
   ];
   
   // ============================================
@@ -630,7 +633,7 @@ const CadastroFornecedor = () => {
             )}
 
             {/* CONTRATOS - Para serviços, renda, internet, etc. */}
-            {(tipoFornecedor === "servico" || tipoFornecedor === "renda" || tipoFornecedor === "internet" || tipoFornecedor === "outro") && (
+            {(tipoFornecedor && tipoFornecedor !== "mercadoria") && (
               <div className="bg-gray-700/30 rounded-xl p-4">
                 <div className="flex justify-between items-center mb-4">
                   <div className="flex items-center gap-2">

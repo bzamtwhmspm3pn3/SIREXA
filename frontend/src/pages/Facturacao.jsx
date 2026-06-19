@@ -794,6 +794,49 @@ const Facturacao = () => {
     await gerarDocumentoProfissional(doc, user, empresaAtual, contasBancarias);
   };
 
+  const exportarSAFT = async () => {
+    if (!empresaSelecionada && !userEmpresaNif) {
+      mostrarMensagem("Selecione uma empresa primeiro", "erro");
+      return;
+    }
+    
+    const empresaNifValue = isTecnico() ? userEmpresaNif : empresas.find(e => e._id === empresaSelecionada)?.nif;
+    if (!empresaNifValue) {
+      mostrarMensagem("NIF da empresa não encontrado", "erro");
+      return;
+    }
+    
+    try {
+      setLoading(true);
+      const token = localStorage.getItem("token");
+      const response = await fetch(`https://sirexa-api.onrender.com/api/vendas/exportar-saft/${empresaNifValue}`, {
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        mostrarMensagem(`Erro ao exportar SAF-T: ${errorText}`, "erro");
+        return;
+      }
+      
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `saft_${empresaNifValue}_${new Date().toISOString().split('T')[0]}.xml`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      mostrarMensagem("✅ SAF-T exportado com sucesso!", "sucesso");
+    } catch (error) {
+      console.error("Erro ao exportar SAF-T:", error);
+      mostrarMensagem("Erro ao exportar SAF-T", "erro");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const getStatusColor = (status) => {
     const cores = {
       "emitido": "bg-green-600/20 text-green-400",
@@ -909,6 +952,9 @@ const Facturacao = () => {
                   <option value="Recibo">Recibo</option>
                   <option value="Nota Credito">Nota de Crédito</option>
                 </select>
+                <button onClick={exportarSAFT} disabled={loading} className="bg-gradient-to-r from-orange-600 to-orange-700 hover:from-orange-700 hover:to-orange-800 px-5 py-3 rounded-xl transition flex items-center gap-2 shadow-lg">
+                  <FileText size={18} /> SAF-T
+                </button>
                 <button onClick={() => { resetForm(); setModalOpen(true); }} className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 px-5 py-3 rounded-xl transition flex items-center gap-2 shadow-lg">
                   <Plus size={18} /> Novo Documento
                 </button>

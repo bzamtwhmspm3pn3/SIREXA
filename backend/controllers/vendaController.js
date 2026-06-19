@@ -511,7 +511,7 @@ exports.emitirVenda = async (req, res) => {
     let entradaValor = 0;
     let tipoVenda = venda.tipoVenda || 'avista';
     
-    if (tipoVenda === 'prazo' && venda.numeroParcelas && venda.numeroParcelas > 1) {
+    if (tipoVenda === 'prazo' && (venda.parcelas?.length > 0 || (venda.numeroParcelas && venda.numeroParcelas > 1))) {
       entradaValor = venda.entrada || 0;
       
       if (venda.parcelas && venda.parcelas.length > 0) {
