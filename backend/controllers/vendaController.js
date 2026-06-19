@@ -941,30 +941,19 @@ exports.exportarSAFT = async (req, res) => {
       });
     }
     
-    const queryVendas = { empresaId: empresa._id, status: { $in: ['finalizada', 'parcialmente_paga'] } };
-    if (dataInicio && dataFim) {
-      queryVendas.data = {
-        $gte: new Date(dataInicio),
-        $lte: new Date(dataFim)
-      };
-    }
-    
-    const queryFacturas = {
+    const queryDocs = {
       empresaId: empresa._id,
       tipo: { $in: ['Factura', 'Factura Recibo', 'Nota Credito', 'Nota Debito', 'Factura-Simplificada'] },
       status: { $in: ['emitido', 'emitida', 'pago', 'parcialmente_pago'] }
     };
     if (dataInicio && dataFim) {
-      queryFacturas.dataEmissao = {
+      queryDocs.dataEmissao = {
         $gte: new Date(dataInicio),
         $lte: new Date(dataFim)
       };
     }
     
-    const [vendas, facturas] = await Promise.all([
-      Venda.find(queryVendas).sort({ data: 1 }),
-      require('../models/Factura').find(queryFacturas).sort({ dataEmissao: 1 })
-    ]);
+    const docs = await require('../models/Factura').find(queryDocs).sort({ dataEmissao: 1 });
     
     const mapTipoAGT = (tipo) => ({
       'Factura': 'FT',
@@ -984,36 +973,21 @@ exports.exportarSAFT = async (req, res) => {
         .replace(/'/g, '&apos;');
     };
     
-    const todosDocs = [
-      ...vendas.map(v => ({
-        data: v.data,
-        numero: v.numeroFactura,
-        serie: v.serie || 'FT',
-        tipoAGT: 'FT',
-        nifCliente: v.nifCliente,
-        cliente: v.cliente,
-        itens: v.itens,
-        subtotal: v.subtotal,
-        totalIva: v.totalIva,
-        desconto: v.desconto,
-        total: v.total
-      })),
-      ...facturas.map(f => ({
-        data: f.dataEmissao,
-        numero: f.numeroFactura || f.numeroDocumento,
-        serie: f.serie || 'FT',
-        tipoAGT: mapTipoAGT(f.tipo),
-        nifCliente: f.nifCliente,
-        cliente: f.cliente,
-        itens: f.itens,
-        subtotal: f.subtotal,
-        totalIva: f.totalIva,
-        desconto: f.desconto,
-        total: f.total
-      }))
-    ].sort((a, b) => new Date(a.data) - new Date(b.data));
+    const todosDocs = docs.map(f => ({
+      data: f.dataEmissao,
+      numero: f.numeroFactura || f.numeroDocumento,
+      serie: f.serie || 'FT',
+      tipoAGT: mapTipoAGT(f.tipo),
+      nifCliente: f.nifCliente,
+      cliente: f.cliente,
+      itens: f.itens,
+      subtotal: f.subtotal,
+      totalIva: f.totalIva,
+      desconto: f.desconto,
+      total: f.total
+    })).sort((a, b) => new Date(a.data) - new Date(b.data));
     
-    console.log(`📄 SAF-T: ${vendas.length} vendas + ${facturas.length} facturas = ${todosDocs.length} documentos`);
+    console.log(`📄 SAF-T: ${todosDocs.length} documentos definitivos`);
     
     const dataGeracao = new Date();
     let xml = `<?xml version="1.0" encoding="UTF-8"?>
@@ -1024,7 +998,7 @@ exports.exportarSAFT = async (req, res) => {
       <Name>${escapeXml(empresa.nome)}</Name>
       <TaxRegistrationNumber>${empresa.nif}</TaxRegistrationNumber>
       <Address>
-        <AddressDetail>${escapeXml(empresa.endereco || '')}</AddressDetail>
+        <AddressDetail>${escapeXml(typeof empresa.endereco === 'string' ? empresa.endereco : (empresa.endereco?.rua || empresa.endereco?.cidade || ''))}</AddressDetail>
         <City>${escapeXml(empresa.cidade || 'Luanda')}</City>
         <Country>AO</Country>
       </Address>
