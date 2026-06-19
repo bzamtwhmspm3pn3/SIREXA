@@ -49,7 +49,13 @@ export function drawCabecalhoProfissional(doc, empresa, logoBase64, yStart = 15)
     const nif = empresa.nif || '---';
     const telefone = empresa.telefone || empresa.contactos?.telefone || '';
     const email = empresa.email || empresa.contactos?.email || '';
-    const endereco = empresa.endereco?.cidade || empresa.endereco || '';
+    let endereco = '';
+    if (typeof empresa.endereco === 'string') {
+      endereco = empresa.endereco;
+    } else if (empresa.endereco?.cidade) {
+      endereco = empresa.endereco.cidade;
+      if (empresa.endereco.provincia) endereco += `, ${empresa.endereco.provincia}`;
+    }
 
     if (logoBase64) {
       const formato = detectarFormatoImagem(empresa.logotipo, logoBase64);
