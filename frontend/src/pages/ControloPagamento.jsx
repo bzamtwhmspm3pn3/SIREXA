@@ -71,8 +71,9 @@ const ControloPagamento = () => {
     'Content-Type': 'application/json'
   });
 
+  const [mostrarAReceber, setMostrarAReceber] = useState(false);
   const statusOptions = ["Todos", "Pago", "Pendente", "Atrasado", "Cancelado"];
-  const tipoOptions = ["Todos", "Folha Salarial", "Fornecedor", "Imposto", "Manutenção", "Abastecimento", "Outro"];
+  const tipoOptions = ["Todos", "Folha Salarial", "Fornecedor", "Imposto", "Manutenção", "Abastecimento", "Outro", "Conta a Receber"];
   const formaPagamentoOptions = ["Transferência Bancária", "Dinheiro", "Cheque", "Depósito Bancário"];
 
   const mostrarMensagem = (texto, tipo) => {
@@ -100,7 +101,7 @@ const ControloPagamento = () => {
       setContasDebito([]);
       setSaldoDisponivel(0);
     }
-  }, [empresaSelecionada, filtroStatus, filtroTipo, filtroDataInicio, filtroDataFim, recarregar]);
+  }, [empresaSelecionada, filtroStatus, filtroTipo, filtroDataInicio, filtroDataFim, recarregar, mostrarAReceber]);
 
   const carregarEmpresas = async () => {
   if (isTecnico() && userEmpresaId) {
@@ -201,7 +202,12 @@ const ControloPagamento = () => {
     try {
       let url = `${BASE_URL}/api/pagamentos?empresaId=${empresaSelecionada}`;
       
-      if (filtroTipo === "Folha Salarial") {
+      if (mostrarAReceber) {
+        url += `&tipo=Conta a Receber`;
+        if (filtroStatus !== "Todos") url += `&status=${filtroStatus}`;
+        if (filtroDataInicio) url += `&dataInicio=${filtroDataInicio}`;
+        if (filtroDataFim) url += `&dataFim=${filtroDataFim}`;
+      } else if (filtroTipo === "Folha Salarial") {
         url = `${BASE_URL}/api/pagamentos/folha?empresaId=${empresaSelecionada}`;
         if (filtroDataInicio && filtroDataFim) {
           const mes = new Date(filtroDataInicio).getMonth() + 1;
@@ -692,35 +698,46 @@ const ControloPagamento = () => {
               </div>
             </div>
 
+            <div className="flex items-center gap-2 bg-gray-800 rounded-lg p-1 border border-gray-700 w-fit">
+              <button onClick={() => { setMostrarAReceber(false); setFiltroTipo("Todos"); }} className={`px-4 py-2 rounded-lg text-sm flex items-center gap-2 ${!mostrarAReceber ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-white'}`}>
+                <FileText size={16} /> Pagamentos
+              </button>
+              <button onClick={() => { setMostrarAReceber(true); setFiltroTipo("Todos"); }} className={`px-4 py-2 rounded-lg text-sm flex items-center gap-2 ${mostrarAReceber ? 'bg-green-600 text-white' : 'text-gray-400 hover:text-white'}`}>
+                <TrendingUp size={16} /> Contas a Receber
+              </button>
+            </div>
+
             <div className="flex justify-between gap-2">
               <button onClick={() => setRecarregar(!recarregar)} className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg flex items-center gap-2">
                 <RefreshCw size={18} /> Atualizar
               </button>
-              <button onClick={() => setMostrarFormulario(true)} className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg flex items-center gap-2">
-                <Plus size={18} /> Novo Pagamento
-              </button>
+              {!mostrarAReceber && (
+                <button onClick={() => setMostrarFormulario(true)} className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg flex items-center gap-2">
+                  <Plus size={18} /> Novo Pagamento
+                </button>
+              )}
             </div>
 
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div className="bg-gray-800 rounded-lg p-4 text-center border border-gray-700">
                 <DollarSign className="mx-auto mb-2 text-yellow-400" size={24} />
                 <p className="text-2xl font-bold text-yellow-400">{formatarNumero(dashboard.totalPendente)} Kz</p>
-                <p className="text-xs text-gray-400">Total Pendente</p>
+                <p className="text-xs text-gray-400">{mostrarAReceber ? 'A Receber' : 'Total Pendente'}</p>
               </div>
               <div className="bg-gray-800 rounded-lg p-4 text-center border border-gray-700">
                 <CheckCircle className="mx-auto mb-2 text-green-400" size={24} />
                 <p className="text-2xl font-bold text-green-400">{formatarNumero(dashboard.totalPago)} Kz</p>
-                <p className="text-xs text-gray-400">Total Pago</p>
+                <p className="text-xs text-gray-400">{mostrarAReceber ? 'Total Recebido' : 'Total Pago'}</p>
               </div>
               <div className="bg-gray-800 rounded-lg p-4 text-center border border-gray-700">
                 <AlertCircle className="mx-auto mb-2 text-red-400" size={24} />
                 <p className="text-2xl font-bold text-red-400">{dashboard.atrasados || 0}</p>
-                <p className="text-xs text-gray-400">Pagamentos Atrasados</p>
+                <p className="text-xs text-gray-400">{mostrarAReceber ? 'Clientes em Atraso' : 'Pagamentos Atrasados'}</p>
               </div>
               <div className="bg-gray-800 rounded-lg p-4 text-center border border-gray-700">
                 <FileText className="mx-auto mb-2 text-blue-400" size={24} />
                 <p className="text-2xl font-bold text-blue-400">{dashboard.totalPagamentos}</p>
-                <p className="text-xs text-gray-400">Total de Pagamentos</p>
+                <p className="text-xs text-gray-400">{mostrarAReceber ? 'Total de Recebimentos' : 'Total de Pagamentos'}</p>
               </div>
             </div>
 
@@ -734,9 +751,11 @@ const ControloPagamento = () => {
                 <select value={filtroStatus} onChange={e => setFiltroStatus(e.target.value)} className="p-2 rounded bg-gray-700 text-white">
                   {statusOptions.map(s => <option key={s} value={s}>{s}</option>)}
                 </select>
-                <select value={filtroTipo} onChange={e => setFiltroTipo(e.target.value)} className="p-2 rounded bg-gray-700 text-white">
-                  {tipoOptions.map(t => <option key={t} value={t}>{t}</option>)}
-                </select>
+                {!mostrarAReceber && (
+                  <select value={filtroTipo} onChange={e => setFiltroTipo(e.target.value)} className="p-2 rounded bg-gray-700 text-white">
+                    {tipoOptions.map(t => <option key={t} value={t}>{t}</option>)}
+                  </select>
+                )}
                 <div className="flex gap-2">
                   <input type="date" placeholder="Data inicial" value={filtroDataInicio} onChange={e => setFiltroDataInicio(e.target.value)}
                     className="flex-1 p-2 rounded bg-gray-700 text-white" />
@@ -749,7 +768,7 @@ const ControloPagamento = () => {
             {loading ? (
               <div className="text-center py-12">
                 <Loader2 className="animate-spin mx-auto text-blue-400" size={40} />
-                <p className="text-gray-400 mt-2">Carregando pagamentos...</p>
+                <p className="text-gray-400 mt-2">{mostrarAReceber ? 'Carregando contas a receber...' : 'Carregando pagamentos...'}</p>
               </div>
             ) : pagamentosVisiveis.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -822,7 +841,7 @@ const ControloPagamento = () => {
             ) : (
               <div className="bg-gray-800 rounded-lg p-12 text-center border border-gray-700">
                 <ShieldCheck className="mx-auto mb-4 text-gray-500" size={48} />
-                <p className="text-gray-400 text-lg">Nenhum pagamento encontrado.</p>
+                <p className="text-gray-400 text-lg">{mostrarAReceber ? 'Nenhuma conta a receber encontrada.' : 'Nenhum pagamento encontrado.'}</p>
               </div>
             )}
 

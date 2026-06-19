@@ -713,7 +713,8 @@ const Vendas = () => {
         setModalPagamentoParcela(false);
         carregarVendas();
       } else {
-        mostrarMensagem("Erro ao processar pagamento", "erro");
+        const errData = await response.json().catch(() => ({}));
+        mostrarMensagem(errData.mensagem || `Erro ao pagar parcela (${response.status})`, "erro");
       }
     } catch (error) {
       console.error("Erro:", error);
