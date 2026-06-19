@@ -188,6 +188,7 @@ export default function Menu() {
                 {moduloAtivo('formacao') && <MenuCard to="/rh/formacao" icon={<GraduationCap size={28} />} title="Formação" description="Cursos e treinamentos" gradient="from-indigo-500 to-purple-500" />}
                 {moduloAtivo('feriasLicencas') && <MenuCard to="/rh/ferias-licencas" icon={<CalendarDays size={28} />} title="Férias e Licenças" description="Gestão de ausências" gradient="from-cyan-500 to-blue-500" />}
                 {moduloAtivo('carreira') && <MenuCard to="/rh/carreira" icon={<TrendingUp size={28} />} title="Carreira" description="Promoções e planos" gradient="from-amber-500 to-orange-500" />}
+                {moduloAtivo('carreira') && <MenuCard to="/rh/cargos" icon={<Briefcase size={28} />} title="Cargos" description="Hierarquia e salários" gradient="from-sky-500 to-indigo-500" />}
                 {moduloAtivo('disciplinar') && <MenuCard to="/rh/disciplinar" icon={<Scale size={28} />} title="Disciplinar" description="Processos disciplinares" gradient="from-red-500 to-rose-500" />}
                 {moduloAtivo('competencias') && <MenuCard to="/rh/competencias" icon={<Award size={28} />} title="Competências" description="Matriz de skills" gradient="from-emerald-500 to-teal-500" />}
                 {moduloAtivo('saudeSeguranca') && <MenuCard to="/rh/saude-seguranca" icon={<Heart size={28} />} title="Saúde Ocupacional" description="Exames e segurança" gradient="from-pink-500 to-red-500" />}

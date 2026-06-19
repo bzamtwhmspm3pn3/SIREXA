@@ -11,6 +11,7 @@ const modules = [
   { key: "formacao", nome: "Formação e Desenvolvimento", icon: GraduationCap, cor: "green", desc: "Cursos, certificações, inscrições", rota: "/rh/formacao" },
   { key: "feriasLicencas", nome: "Férias e Licenças", icon: CalendarCheck, cor: "purple", desc: "Pedidos, saldos, aprovações", rota: "/rh/ferias-licencas" },
   { key: "carreira", nome: "Carreira e Promoções", icon: TrendingUp, cor: "yellow", desc: "Planos de carreira, promoções, sucessão", rota: "/rh/carreira" },
+  { key: "cargos", nome: "Cargos e Hierarquia", icon: Briefcase, cor: "indigo", desc: "Definição de cargos, níveis e salários", rota: "/rh/cargos" },
   { key: "disciplinar", nome: "Gestão Disciplinar", icon: Gavel, cor: "red", desc: "Advertências, sanções, processos", rota: "/rh/disciplinar" },
   { key: "competencias", nome: "Competências", icon: Target, cor: "cyan", desc: "Matriz de competências, gap analysis", rota: "/rh/competencias" },
   { key: "saudeSeguranca", nome: "Saúde e Segurança", icon: Shield, cor: "orange", desc: "Exames, acidentes, EPIs", rota: "/rh/saude-seguranca" },

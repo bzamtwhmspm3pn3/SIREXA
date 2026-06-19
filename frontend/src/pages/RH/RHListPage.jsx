@@ -20,6 +20,7 @@ const RHListPage = ({ title, endpoint, columns, formFields, emptyMessage }) => {
   const [empresaSelecionada, setEmpresaSelecionada] = useState("");
   const [loadingEmpresas, setLoadingEmpresas] = useState(true);
   const [funcionarios, setFuncionarios] = useState([]);
+  const [cargos, setCargos] = useState([]);
 
   const token = localStorage.getItem("token");
 
@@ -35,9 +36,11 @@ const RHListPage = ({ title, endpoint, columns, formFields, emptyMessage }) => {
     if (empresaSelecionada) {
       carregar();
       carregarFuncionarios();
+      carregarCargos();
     } else {
       setItems([]);
       setFuncionarios([]);
+      setCargos([]);
       setLoading(false);
     }
   }, [empresaSelecionada]);
@@ -54,6 +57,20 @@ const RHListPage = ({ title, endpoint, columns, formFields, emptyMessage }) => {
     } catch (error) {
       console.error("Erro ao carregar funcionários:", error);
       setFuncionarios([]);
+    }
+  };
+
+  const carregarCargos = async () => {
+    if (!empresaSelecionada) { setCargos([]); return; }
+    try {
+      const response = await fetch(`${API_URL}/rh/cargos?empresaId=${empresaSelecionada}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await response.json();
+      setCargos(data.dados || []);
+    } catch (error) {
+      console.error("Erro ao carregar cargos:", error);
+      setCargos([]);
     }
   };
 
@@ -292,6 +309,24 @@ const RHListPage = ({ title, endpoint, columns, formFields, emptyMessage }) => {
                             <option value="">Seleccione um funcionário...</option>
                             {funcionarios.map(f => (
                               <option key={f._id} value={f._id}>{f.nome} - {f.cargo || f.funcao || 'Sem cargo'}</option>
+                            ))}
+                          </select>
+                        ) : field.key === 'cargoNovo' || field.key === 'cargoAnterior' ? (
+                          <select className="w-full p-3 rounded-xl bg-gray-700/50 border border-gray-600 text-white"
+                            value={formData[field.key] || ""}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              const cargo = cargos.find(c => c.nome === val);
+                              const extras = { [field.key]: val };
+                              if (cargo && field.key === 'cargoNovo' && !formData.salarioNovo) {
+                                extras.salarioNovo = cargo.salarioMin || 0;
+                              }
+                              setFormData({ ...formData, ...extras });
+                            }}
+                          >
+                            <option value="">Seleccione um cargo...</option>
+                            {cargos.map(c => (
+                              <option key={c._id} value={c.nome}>{c.nome} (Nível {c.nivel}) {c.salarioMin ? `- ${c.salarioMin.toLocaleString()} Kz` : ''}</option>
                             ))}
                           </select>
                         ) : field.type === 'select' ? (

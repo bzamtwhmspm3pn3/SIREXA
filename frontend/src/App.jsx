@@ -85,6 +85,7 @@ import Disciplinar from "./pages/RH/Disciplinar";
 import Competencias from "./pages/RH/Competencias";
 import ExamesMedicos from "./pages/RH/ExamesMedicos";
 import WorkflowAprovacao from "./pages/RH/WorkflowAprovacao";
+import Cargos from "./pages/RH/Cargos";
 
 // Gestão Patrimonial
 import CadastroViaturas from "./pages/CadastroViaturas";
@@ -225,6 +226,7 @@ export default function App() {
       <Route path="/rh/formacao" element={<ProtectedRoute><Cursos /></ProtectedRoute>} />
       <Route path="/rh/ferias-licencas" element={<ProtectedRoute><FeriasLicencas /></ProtectedRoute>} />
       <Route path="/rh/carreira" element={<ProtectedRoute><Promocoes /></ProtectedRoute>} />
+      <Route path="/rh/cargos" element={<ProtectedRoute><Cargos /></ProtectedRoute>} />
       <Route path="/rh/disciplinar" element={<ProtectedRoute><Disciplinar /></ProtectedRoute>} />
       <Route path="/rh/competencias" element={<ProtectedRoute><Competencias /></ProtectedRoute>} />
       <Route path="/rh/saude-seguranca" element={<ProtectedRoute><ExamesMedicos /></ProtectedRoute>} />
