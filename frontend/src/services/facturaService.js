@@ -38,7 +38,7 @@ export const gerarFacturaProfissional = async (venda, usuario, empresa, contasBa
 
     let yPos = drawCabecalhoProfissional(doc, empresa, logoBase64);
 
-    doc.setDrawColor(COR_PRIMARIA);
+    doc.setDrawColor(...COR_PRIMARIA);
     doc.setLineWidth(0.5);
     doc.rect(margin, yPos, rMargin - margin, 9, 'S');
 
@@ -136,7 +136,7 @@ export const gerarFacturaProfissional = async (venda, usuario, empresa, contasBa
 
     if (venda.formaPagamento) {
       yPos += 3;
-      doc.setDrawColor(COR_BORDA);
+      doc.setDrawColor(...COR_BORDA);
       doc.setLineWidth(0.3);
       doc.line(margin, yPos, rMargin, yPos);
       yPos += 4;
