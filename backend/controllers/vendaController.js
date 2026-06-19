@@ -941,16 +941,38 @@ exports.exportarSAFT = async (req, res) => {
       });
     }
     
-    const query = { empresaId: empresa._id, status: { $in: ['finalizada', 'parcialmente_paga'] } };
+    const queryVendas = { empresaId: empresa._id, status: { $in: ['finalizada', 'parcialmente_paga'] } };
     if (dataInicio && dataFim) {
-      query.data = {
+      queryVendas.data = {
         $gte: new Date(dataInicio),
         $lte: new Date(dataFim)
       };
     }
     
-    const vendas = await Venda.find(query).sort({ data: 1 });
-    console.log(`Encontradas ${vendas.length} vendas para exportar`);
+    const queryFacturas = {
+      empresaId: empresa._id,
+      tipo: { $in: ['Factura', 'Factura Recibo', 'Nota Credito', 'Nota Debito', 'Factura-Simplificada'] },
+      status: { $in: ['emitido', 'emitida', 'pago', 'parcialmente_pago'] }
+    };
+    if (dataInicio && dataFim) {
+      queryFacturas.dataEmissao = {
+        $gte: new Date(dataInicio),
+        $lte: new Date(dataFim)
+      };
+    }
+    
+    const [vendas, facturas] = await Promise.all([
+      Venda.find(queryVendas).sort({ data: 1 }),
+      require('../models/Factura').find(queryFacturas).sort({ dataEmissao: 1 })
+    ]);
+    
+    const mapTipoAGT = (tipo) => ({
+      'Factura': 'FT',
+      'Factura Recibo': 'FR',
+      'Nota Credito': 'NC',
+      'Nota Debito': 'ND',
+      'Factura-Simplificada': 'FS'
+    })[tipo] || 'FT';
     
     const escapeXml = (unsafe) => {
       if (unsafe == null) return '';
@@ -961,6 +983,37 @@ exports.exportarSAFT = async (req, res) => {
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&apos;');
     };
+    
+    const todosDocs = [
+      ...vendas.map(v => ({
+        data: v.data,
+        numero: v.numeroFactura,
+        serie: v.serie || 'FT',
+        tipoAGT: 'FT',
+        nifCliente: v.nifCliente,
+        cliente: v.cliente,
+        itens: v.itens,
+        subtotal: v.subtotal,
+        totalIva: v.totalIva,
+        desconto: v.desconto,
+        total: v.total
+      })),
+      ...facturas.map(f => ({
+        data: f.dataEmissao,
+        numero: f.numeroFactura || f.numeroDocumento,
+        serie: f.serie || 'FT',
+        tipoAGT: mapTipoAGT(f.tipo),
+        nifCliente: f.nifCliente,
+        cliente: f.cliente,
+        itens: f.itens,
+        subtotal: f.subtotal,
+        totalIva: f.totalIva,
+        desconto: f.desconto,
+        total: f.total
+      }))
+    ].sort((a, b) => new Date(a.data) - new Date(b.data));
+    
+    console.log(`📄 SAF-T: ${vendas.length} vendas + ${facturas.length} facturas = ${todosDocs.length} documentos`);
     
     const dataGeracao = new Date();
     let xml = `<?xml version="1.0" encoding="UTF-8"?>
@@ -988,19 +1041,19 @@ exports.exportarSAFT = async (req, res) => {
   <SourceDocuments>
     <SalesInvoices>`;
     
-    vendas.forEach(venda => {
-      const dataVenda = new Date(venda.data);
+    todosDocs.forEach(doc => {
+      const dataDoc = new Date(doc.data);
       xml += `
       <Invoice>
-        <InvoiceNo>FT ${venda.numeroFactura}</InvoiceNo>
-        <InvoiceDate>${dataVenda.toISOString().split('T')[0]}</InvoiceDate>
-        <InvoiceType>FT</InvoiceType>
+        <InvoiceNo>${doc.serie} ${doc.numero}</InvoiceNo>
+        <InvoiceDate>${dataDoc.toISOString().split('T')[0]}</InvoiceDate>
+        <InvoiceType>${doc.tipoAGT}</InvoiceType>
         <Customer>
-          <CustomerTaxID>${escapeXml(venda.nifCliente)}</CustomerTaxID>
-          <CompanyName>${escapeXml(venda.cliente)}</CompanyName>
+          <CustomerTaxID>${escapeXml(doc.nifCliente)}</CustomerTaxID>
+          <CompanyName>${escapeXml(doc.cliente)}</CompanyName>
         </Customer>`;
       
-      venda.itens.forEach((item, idx) => {
+      (doc.itens || []).forEach((item, idx) => {
         xml += `
         <Line>
           <LineNumber>${idx + 1}</LineNumber>
@@ -1008,7 +1061,7 @@ exports.exportarSAFT = async (req, res) => {
           <ProductDescription>${escapeXml(item.produtoOuServico)}</ProductDescription>
           <Quantity>${item.quantidade}</Quantity>
           <UnitPrice>${item.precoUnitario}</UnitPrice>
-          <TaxPointDate>${dataVenda.toISOString().split('T')[0]}</TaxPointDate>
+          <TaxPointDate>${dataDoc.toISOString().split('T')[0]}</TaxPointDate>
           <Description>${escapeXml(item.produtoOuServico)}</Description>
           <Amount>${item.total}</Amount>
           <Tax>
@@ -1023,9 +1076,9 @@ exports.exportarSAFT = async (req, res) => {
       
       xml += `
         <DocumentTotals>
-          <TaxPayable>${venda.totalIva || 0}</TaxPayable>
-          <NetTotal>${venda.subtotal - (venda.desconto || 0)}</NetTotal>
-          <GrossTotal>${venda.total}</GrossTotal>
+          <TaxPayable>${doc.totalIva || 0}</TaxPayable>
+          <NetTotal>${doc.subtotal - (doc.desconto || 0)}</NetTotal>
+          <GrossTotal>${doc.total}</GrossTotal>
         </DocumentTotals>
       </Invoice>`;
     });
