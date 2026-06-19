@@ -850,8 +850,8 @@ exports.cancelarVenda = async (req, res) => {
       numeroFactura: venda.numeroFactura 
     });
     
-    if (factura && factura.status !== 'cancelada') {
-      factura.status = 'cancelada';
+    if (factura && factura.status !== 'cancelado') {
+      factura.status = 'cancelado';
       await factura.save();
     }
 

@@ -293,7 +293,7 @@ const verificarLicenca = async (req, res, next) => {
       return next();
     }
     
-    const empresaId = req.empresaAtual || req.user?.empresaId || req.body.empresaId || req.body.venda?.empresaId;
+    const empresaId = req.empresaAtual || req.user?.empresaId || req.body?.empresaId || req.body?.venda?.empresaId;
     
     if (!empresaId) {
       return next();
