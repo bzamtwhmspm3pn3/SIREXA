@@ -4,16 +4,24 @@ const Pagamento = require('../models/Pagamento');
 const Banco = require('../models/Banco');
 const Empresa = require('../models/Empresa');
 const RegistoBancario = require('../models/RegistoBancario');
-const Transferencia = require('../models/Transferencia');
 const ContaCorrente = require('../models/ContaCorrente');
 const contaCorrenteController = require('./contaCorrenteController');
 const integracaoPagamentos = require('../services/integracaoPagamentos');
 const IntegracaoContabilistica = require('../services/IntegracaoContabilistica');
+const saldoService = require('../services/saldoService');
 
 const meses = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
                "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
 
 // ==================== FUNÇÕES AUXILIARES ====================
+
+async function calcularSaldoConta(codNome, empresaId) {
+  return saldoService.calcularSaldoConta(codNome, empresaId);
+}
+
+async function calcularSaldoTotalEmpresa(empresaId) {
+  return saldoService.calcularSaldoTotalEmpresa(empresaId);
+}
 
 // Função para criar registo bancário do pagamento (SAÍDA)
 async function criarRegistoBancarioPagamento(pagamento, empresa, contaDebito, ehEntrada = false) {
@@ -77,59 +85,7 @@ async function criarRegistoBancarioPagamento(pagamento, empresa, contaDebito, eh
   }
 }
 
-// Função para calcular saldo disponível de uma conta específica
-async function calcularSaldoConta(codNome, empresaId) {
-  try {
-    const entradasTransferencias = await Transferencia.find({ empresaId, contaCreditar: codNome });
-    const entradasVendas = await RegistoBancario.find({ 
-      empresaId, 
-      conta: codNome,
-      entradaSaida: 'entrada'
-    });
-    const saidasTransferencias = await Transferencia.find({ empresaId, contaDebitar: codNome });
-    const saidasPagamentos = await RegistoBancario.find({ 
-      empresaId, 
-      conta: codNome,
-      entradaSaida: 'saida'
-    });
-    
-    const totalEntradas = entradasTransferencias.reduce((sum, t) => sum + (t.valorCreditar || 0), 0) +
-                         entradasVendas.reduce((sum, r) => sum + (r.valor || 0), 0);
-    
-    const totalSaidas = saidasTransferencias.reduce((sum, t) => sum + (t.valorDebitar || 0), 0) +
-                       saidasPagamentos.reduce((sum, r) => sum + (r.valor || 0), 0);
-    
-    const banco = await Banco.findOne({ codNome, empresaId });
-    const saldoInicial = banco?.saldoInicial || 0;
-    
-    const saldoAtual = saldoInicial + totalEntradas - totalSaidas;
-    
-    console.log(`💰 Saldo ${codNome}: Inicial=${saldoInicial}, Entradas=${totalEntradas}, Saídas=${totalSaidas}, Atual=${saldoAtual}`);
-    
-    return saldoAtual;
-  } catch (error) {
-    console.error('Erro ao calcular saldo da conta:', error);
-    return 0;
-  }
-}
 
-// Função para calcular saldo total da empresa
-async function calcularSaldoTotalEmpresa(empresaId) {
-  try {
-    const bancos = await Banco.find({ empresaId, ativo: true });
-    let saldoTotal = 0;
-    
-    for (const banco of bancos) {
-      const saldo = await calcularSaldoConta(banco.codNome, empresaId);
-      saldoTotal += saldo;
-    }
-    
-    return saldoTotal;
-  } catch (error) {
-    console.error('Erro ao calcular saldo total:', error);
-    return 0;
-  }
-}
 
 // Gerar referência única para pagamento
 async function gerarReferenciaUnica(tipo, empresaId) {

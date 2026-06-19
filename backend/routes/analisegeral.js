@@ -17,7 +17,7 @@ const Manutencao = require('../models/Manutencao');
 const Viatura = require('../models/Viatura');
 const Tecnico = require('../models/Tecnico');
 const Banco = require('../models/Banco');
-const RegistoBancario = require('../models/RegistoBancario');
+const saldoService = require('../services/saldoService');
 
 router.use(verifyToken);
 
@@ -26,53 +26,8 @@ const meses = [
   "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
 ];
 
-// ============================================
-// FUNÇÃO PARA CALCULAR SALDO EM CONTA BANCÁRIA
-// ============================================
 const calcularSaldoEmConta = async (empresaId, dataRef) => {
-  try {
-    const dataLimite = new Date(dataRef);
-    dataLimite.setHours(23, 59, 59, 999);
-    
-    const bancos = await Banco.find({ empresaId, ativo: true });
-    let saldoTotalContas = 0;
-    let detalhesContas = [];
-    
-    for (const banco of bancos) {
-      // APENAS REGISTOS BANCÁRIOS (sem transferências)
-      const entradas = await RegistoBancario.find({
-        empresaId,
-        conta: banco.codNome,
-        entradaSaida: 'entrada',
-        data: { $lte: dataLimite }
-      });
-      
-      const saidas = await RegistoBancario.find({
-        empresaId,
-        conta: banco.codNome,
-        entradaSaida: 'saida',
-        data: { $lte: dataLimite }
-      });
-      
-      const totalEntradas = entradas.reduce((sum, r) => sum + (r.valor || 0), 0);
-      const totalSaidas = saidas.reduce((sum, r) => sum + (r.valor || 0), 0);
-      
-      const saldoConta = (banco.saldoInicial || 0) + totalEntradas - totalSaidas;
-      saldoTotalContas += saldoConta;
-      
-      detalhesContas.push({
-        nome: banco.nome,
-        codNome: banco.codNome,
-        iban: banco.iban,
-        saldo: saldoConta
-      });
-    }
-    
-    return { saldoTotal: saldoTotalContas, detalhesContas };
-  } catch (error) {
-    console.error('Erro ao calcular saldo em conta:', error);
-    return { saldoTotal: 0, detalhesContas: [] };
-  }
+  return saldoService.calcularSaldoEmConta(empresaId, dataRef);
 };
 
 // ============================================

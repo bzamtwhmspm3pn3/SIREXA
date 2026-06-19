@@ -13,35 +13,13 @@ const { logMiddleware } = require('../middlewares/logger');
 
 router.use(verifyToken);
 
+const saldoService = require('../services/saldoService');
+
 const meses = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
                "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
 
-// Função para calcular saldo atual
 async function calcularSaldoAtual(codNome, empresaId) {
-  try {
-    const entradas = await RegistoBancario.find({ 
-      empresaId, 
-      conta: codNome,
-      entradaSaida: 'entrada'
-    });
-    const totalEntradas = entradas.reduce((sum, r) => sum + (r.valor || 0), 0);
-    
-    const saidas = await RegistoBancario.find({ 
-      empresaId, 
-      conta: codNome,
-      entradaSaida: 'saida'
-    });
-    const totalSaidas = saidas.reduce((sum, r) => sum + (r.valor || 0), 0);
-    
-    const banco = await Banco.findOne({ codNome, empresaId });
-    const saldoInicial = banco?.saldoInicial || 0;
-    const saldoAtual = saldoInicial + totalEntradas - totalSaidas;
-    
-    return saldoAtual;
-  } catch (error) {
-    console.error('Erro ao calcular saldo:', error);
-    return 0;
-  }
+  return saldoService.calcularSaldoConta(codNome, empresaId);
 }
 
 // ============================================

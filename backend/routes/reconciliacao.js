@@ -11,6 +11,7 @@ const Pagamento = require('../models/Pagamento');
 const Custo = require('../models/Custo');
 const Receita = require('../models/Receita');
 const { verifyToken } = require('../middlewares/auth');
+const saldoService = require('../services/saldoService');
 
 router.use(verifyToken);
 
@@ -44,33 +45,7 @@ const upload = multer({
 // FUNÇÃO PARA CALCULAR SALDO ATUAL
 // ============================================
 async function calcularSaldoAtual(codNome, empresaId, dataLimite = null) {
-  try {
-    const filtroEntradas = { empresaId, conta: codNome, entradaSaida: 'entrada' };
-    const filtroSaidas = { empresaId, conta: codNome, entradaSaida: 'saida' };
-    
-    if (dataLimite) {
-      const data = new Date(dataLimite);
-      data.setHours(23, 59, 59, 999);
-      filtroEntradas.data = { $lte: data };
-      filtroSaidas.data = { $lte: data };
-    }
-    
-    const entradas = await RegistoBancario.find(filtroEntradas);
-    const saidas = await RegistoBancario.find(filtroSaidas);
-    
-    const totalEntradas = entradas.reduce((sum, r) => sum + (r.valor || 0), 0);
-    const totalSaidas = saidas.reduce((sum, r) => sum + (r.valor || 0), 0);
-    
-    const banco = await Banco.findOne({ codNome, empresaId });
-    const saldoInicial = banco?.saldoInicial || 0;
-    
-    const saldoAtual = saldoInicial + totalEntradas - totalSaidas;
-    
-    return saldoAtual;
-  } catch (error) {
-    console.error('Erro ao calcular saldo:', error);
-    return 0;
-  }
+  return saldoService.calcularSaldoConta(codNome, empresaId, dataLimite);
 }
 
 // ============================================

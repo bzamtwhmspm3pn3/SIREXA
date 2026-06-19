@@ -13,6 +13,7 @@ const IntegracaoContabilistica = require('../services/IntegracaoContabilistica')
 const Pagamento = require('../models/Pagamento');
 const PlanoContas = require('../models/PlanoContas');
 const LancamentoContabilistico = require('../models/LancamentoContabilistico');
+const saldoService = require('../services/saldoService');
 const ContaCorrente = require('../models/ContaCorrente');
 
 const meses = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
@@ -249,58 +250,7 @@ async function criarRegistoBancarioVendaCompleto(venda, empresa, contaBancaria, 
 // FUNÇÃO CORRIGIDA: Atualizar saldo da conta bancária
 // ============================================
 async function atualizarSaldoContaBancaria(empresaId, contaBancaria) {
-  try {
-    console.log('💰 [SALDO] Calculando saldo da conta...');
-    console.log(`   Empresa: ${empresaId}`);
-    console.log(`   Conta: ${contaBancaria}`);
-    
-    if (!empresaId || !contaBancaria) {
-      console.log('⚠️ Dados incompletos para calcular saldo');
-      return null;
-    }
-    
-    const banco = await Banco.findOne({ codNome: contaBancaria, empresaId });
-    if (!banco) {
-      console.log(`⚠️ Conta ${contaBancaria} não encontrada para calcular saldo`);
-      return null;
-    }
-    
-    const entradas = await RegistoBancario.find({ 
-      empresaId, 
-      conta: contaBancaria, 
-      entradaSaida: 'entrada' 
-    });
-    
-    const saidas = await RegistoBancario.find({ 
-      empresaId, 
-      conta: contaBancaria, 
-      entradaSaida: 'saida' 
-    });
-    
-    const totalEntradas = entradas.reduce((sum, r) => sum + (r.valor || 0), 0);
-    const totalSaidas = saidas.reduce((sum, r) => sum + (r.valor || 0), 0);
-    const saldoAtual = (banco.saldoInicial || 0) + totalEntradas - totalSaidas;
-    
-    console.log(`💰 Saldo atual da conta ${contaBancaria}:`);
-    console.log(`   Saldo inicial: ${(banco.saldoInicial || 0).toFixed(2)} Kz`);
-    console.log(`   Total entradas: ${totalEntradas.toFixed(2)} Kz`);
-    console.log(`   Total saídas: ${totalSaidas.toFixed(2)} Kz`);
-    console.log(`   Saldo atual: ${saldoAtual.toFixed(2)} Kz`);
-    
-    // Opcional: Atualizar campo de saldo no banco (se existir)
-    if (banco.saldoAtual !== undefined) {
-      banco.saldoAtual = saldoAtual;
-      await banco.save();
-      console.log(`✅ Saldo atualizado no registro do banco`);
-    }
-    
-    return saldoAtual;
-    
-  } catch (error) {
-    console.error('❌ Erro ao calcular saldo da conta:', error);
-    console.error('   Stack:', error.stack);
-    return null;
-  }
+  return saldoService.calcularSaldoConta(contaBancaria, empresaId);
 }
 
 

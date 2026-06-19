@@ -2,24 +2,13 @@
 const express = require('express');
 const router = express.Router();
 const Banco = require('../models/Banco');
-const RegistoBancario = require('../models/RegistoBancario');
 const { verifyToken } = require('../middlewares/auth');
+const saldoService = require('../services/saldoService');
 
 router.use(verifyToken);
 
 async function calcularSaldoAtual(codNome, empresaId) {
-  try {
-    const entradas = await RegistoBancario.find({ empresaId, conta: codNome, entradaSaida: 'entrada' });
-    const totalEntradas = entradas.reduce((sum, r) => sum + (r.valor || 0), 0);
-    const saidas = await RegistoBancario.find({ empresaId, conta: codNome, entradaSaida: 'saida' });
-    const totalSaidas = saidas.reduce((sum, r) => sum + (r.valor || 0), 0);
-    const banco = await Banco.findOne({ codNome, empresaId });
-    const saldoInicial = banco?.saldoInicial || 0;
-    return saldoInicial + totalEntradas - totalSaidas;
-  } catch (error) {
-    console.error('Erro ao calcular saldo:', error);
-    return 0;
-  }
+  return saldoService.calcularSaldoConta(codNome, empresaId);
 }
 
 // Helper para obter empresaId - VERSÃO SIMPLIFICADA
