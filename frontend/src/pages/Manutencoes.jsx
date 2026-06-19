@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { carregarLogoBase64, drawCabecalhoProfissional, drawRodape } from '../utils/pdfUtils';
 
 const Manutencoes = () => {
   const [empresas, setEmpresas] = useState([]);
@@ -357,33 +358,15 @@ const Manutencoes = () => {
 
     setExportando(true);
     try {
-      const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
-      const dataAtual = new Date();
       const empresaAtual = isTecnico() 
         ? { nome: userEmpresaNome, nif: user?.nif || "---" }
         : empresas.find(e => e._id === empresaSelecionada);
       
-      // Cabeçalho
-      doc.setFontSize(22);
-      doc.setFont("helvetica", "bold");
-      doc.setTextColor(37, 99, 235);
-      doc.text("CONTROLE DE MANUTENCOES", 148.5, 20, { align: "center" });
+      const logo = await carregarLogoBase64(empresaAtual);
       
-      doc.setFontSize(12);
-      doc.setFont("helvetica", "bold");
-      doc.setTextColor(0, 0, 0);
-      doc.text(empresaAtual?.nome || "Empresa", 148.5, 30, { align: "center" });
+      const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+      const y = drawCabecalhoProfissional(doc, empresaAtual, logo) + 5;
       
-      doc.setFontSize(10);
-      doc.setFont("helvetica", "normal");
-      doc.setTextColor(100, 100, 100);
-      doc.text(`Gerado em: ${dataAtual.toLocaleDateString("pt-AO")}`, 148.5, 38, { align: "center" });
-      
-      doc.setDrawColor(37, 99, 235);
-      doc.line(15, 44, 282, 44);
-      
-      // Estatísticas
-      let y = 52;
       doc.setFontSize(9);
       doc.setFont("helvetica", "bold");
       doc.setTextColor(0, 0, 0);
@@ -429,16 +412,8 @@ const Manutencoes = () => {
         margin: { left: 20, right: 20 }
       });
       
-      // Rodapé
       const pageCount = doc.internal.getNumberOfPages();
-      for (let i = 1; i <= pageCount; i++) {
-        doc.setPage(i);
-        doc.setFontSize(7);
-        doc.setFont("helvetica", "italic");
-        doc.setTextColor(120, 120, 120);
-        doc.text(`Gerado por: ${user?.nome || user?.email || "Sistema"}`, 148.5, 195, { align: "center" });
-        doc.text(`© ${new Date().getFullYear()} AnDioGest - Gestao Corporativa`, 148.5, 200, { align: "center" });
-      }
+      drawRodape(doc, empresaAtual?.nome || 'Empresa', pageCount);
       
       doc.save(`manutencoes_${empresaAtual?.nome}_${dataAtual.toISOString().split('T')[0]}.pdf`);
       mostrarMensagem("PDF exportado com sucesso!", "sucesso");

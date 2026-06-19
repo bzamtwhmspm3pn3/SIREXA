@@ -10,6 +10,7 @@ import {
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { carregarLogoBase64, drawCabecalhoProfissional, drawRodape } from '../../utils/pdfUtils';
 
 // Componente de Seletor de Empresa
 const EmpresaSelector = ({ empresas, empresaSelecionada, setEmpresaSelecionada, onRefresh, loading, isTecnico, empresaNome }) => {
@@ -466,18 +467,26 @@ const DiarioGeral = () => {
   const exportarPDF = async () => {
     setExportando(true);
     try {
+      const empresaObj = isTecnico()
+        ? { _id: userEmpresaId, nome: userEmpresaNome }
+        : empresas.find(e => e._id === empresaSelecionada);
+      const logo = await carregarLogoBase64(empresaObj);
+      const empresaNome = empresaObj?.nome || "Não selecionada";
+      
       const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
-      const empresaAtual = isTecnico() ? userEmpresaNome : empresas.find(e => e._id === empresaSelecionada)?.nome;
+      
+      let yPos = drawCabecalhoProfissional(doc, empresaObj, logo);
       
       doc.setFontSize(14);
       doc.setFont("helvetica", "bold");
-      doc.text("DIÁRIO GERAL", doc.internal.pageSize.getWidth() / 2, 15, { align: "center" });
+      doc.text("DIÁRIO GERAL", doc.internal.pageSize.getWidth() / 2, yPos, { align: "center" });
       
+      yPos += 7;
       doc.setFontSize(9);
       doc.setFont("helvetica", "normal");
-      doc.text(`Empresa: ${empresaAtual || "Não selecionada"}`, 14, 25);
-      doc.text(`Período: ${filtros.dataInicio || "Início"} a ${filtros.dataFim || "Actual"}`, 14, 32);
-      doc.text(`Data de emissão: ${new Date().toLocaleDateString("pt-AO")}`, 14, 39);
+      doc.text(`Período: ${filtros.dataInicio || "Início"} a ${filtros.dataFim || "Actual"}`, 14, yPos);
+      yPos += 7;
+      doc.text(`Data de emissão: ${new Date().toLocaleDateString("pt-AO")}`, 14, yPos);
       
       const dadosTabela = movimentosDetalhados.map(mov => [
         formatarData(mov.data),
@@ -489,7 +498,7 @@ const DiarioGeral = () => {
       ]);
       
       autoTable(doc, {
-        startY: 45,
+        startY: yPos + 6,
         head: [["Data", "Nº", "Descrição", "Conta", "Débito", "Crédito"]],
         body: dadosTabela,
         theme: "striped",
@@ -497,6 +506,8 @@ const DiarioGeral = () => {
         styles: { fontSize: 7, cellPadding: 2 }
       });
       
+      const pageCount = doc.internal.getNumberOfPages();
+      drawRodape(doc, empresaNome, pageCount);
       doc.save(`diario_geral_${new Date().toISOString().split("T")[0]}.pdf`);
       alert("✅ PDF exportado com sucesso!");
     } catch (error) {

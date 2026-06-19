@@ -626,6 +626,8 @@ exports.exportarPDF = async (req, res) => {
     const totalGeral = orcamentos.reduce((sum, o) => sum + o.valor, 0);
     
     // HTML para o PDF
+    const logotipoUrl = empresa?.logotipo ? `${req.protocol}://${req.get('host')}/uploads/${empresa.logotipo}` : null;
+
     const html = `
       <!DOCTYPE html>
       <html>
@@ -634,17 +636,28 @@ exports.exportarPDF = async (req, res) => {
         <title>Relatório de Orçamentos</title>
         <style>
           body { font-family: Arial, sans-serif; margin: 40px; }
-          h1 { color: #2563eb; text-align: center; }
-          h2 { text-align: center; }
+          .header { display: flex; align-items: center; justify-content: center; gap: 20px; margin-bottom: 10px; }
+          .header img { max-height: 80px; max-width: 80px; }
+          .header-text { text-align: left; }
+          h1 { color: #2563eb; margin: 0; }
+          h2 { text-align: center; color: #333; margin-top: 5px; }
           table { width: 100%; border-collapse: collapse; margin-top: 20px; }
           th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
           th { background-color: #f3f4f6; }
           .total { font-weight: bold; font-size: 18px; margin-top: 20px; text-align: right; }
           .footer { margin-top: 30px; text-align: center; font-size: 12px; color: #666; }
+          .linha { border: none; border-top: 2px solid #2563eb; margin: 10px 0; }
         </style>
       </head>
       <body>
-        <h1>${empresa?.nome || 'EMPRESA'}</h1>
+        <div class="header">
+          ${logotipoUrl ? `<img src="${logotipoUrl}" alt="Logo" />` : ''}
+          <div class="header-text">
+            <h1>${empresa?.nome || 'EMPRESA'}</h1>
+            <p style="color:#666;font-size:12px;margin:0">NIF: ${empresa?.nif || '---'}</p>
+          </div>
+        </div>
+        <hr class="linha" />
         <h2>Relatório de Orçamentos</h2>
         <p>Período: ${new Date(ano, mes - 1).toLocaleDateString('pt-AO', { month: 'long', year: 'numeric' })}</p>
         

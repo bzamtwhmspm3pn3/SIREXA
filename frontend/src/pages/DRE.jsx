@@ -11,6 +11,7 @@ import {
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import * as XLSX from "xlsx";
+import { carregarLogoBase64, drawCabecalhoProfissional, drawRodape } from '../utils/pdfUtils';
 
 const DRE = () => {
   const { user, isGestor, isTecnico, empresaId: userEmpresaId, empresaNome: userEmpresaNome } = useAuth();
@@ -149,25 +150,13 @@ const DRE = () => {
     if (!dre) return;
     setExportando(true);
     try {
-      const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-      const pageWidth = doc.internal.pageSize.getWidth();
-      let yPos = 20;
-      
       const empresaAtual = isTecnico() ? { nome: userEmpresaNome } : empresas.find(e => e._id === empresaSelecionada);
+      const logo = await carregarLogoBase64(empresaAtual);
       
-      // Cabeçalho
-      doc.setFillColor(37, 99, 235);
-      doc.rect(0, 0, pageWidth, 45, 'F');
-      doc.setTextColor(255, 255, 255);
-      doc.setFontSize(20);
-      doc.setFont("helvetica", "bold");
-      doc.text("DEMONSTRAÇÃO DE RESULTADOS", pageWidth / 2, 25, { align: "center" });
-      doc.setFontSize(12);
-      doc.text(empresaAtual?.nome || dre.empresaNome, pageWidth / 2, 38, { align: "center" });
-      
-      doc.setTextColor(0, 0, 0);
+      const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+      let yPos = drawCabecalhoProfissional(doc, empresaAtual, logo) + 5;
       doc.setFontSize(10);
-      yPos = 60;
+      doc.setTextColor(0, 0, 0);
       doc.text(`Período: ${getPeriodoNome()} de ${ano}`, 20, yPos);
       doc.text(`Data: ${new Date().toLocaleDateString("pt-AO")}`, 20, yPos + 8);
       yPos += 20;
@@ -211,6 +200,8 @@ const DRE = () => {
         columnStyles: { 0: { cellWidth: 140 }, 1: { cellWidth: 50, halign: 'right' } }
       });
       
+      const pageCount = doc.internal.getNumberOfPages();
+      drawRodape(doc, empresaAtual?.nome || dre.empresaNome, pageCount);
       doc.save(`DRE_${empresaAtual?.nome?.replace(/\s/g, "_")}_${getPeriodoNome()}_${ano}.pdf`);
       mostrarMensagem("PDF exportado com sucesso!", "sucesso");
     } catch (error) {

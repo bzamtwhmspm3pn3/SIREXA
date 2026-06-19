@@ -10,6 +10,7 @@ import {
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
+import { carregarLogoBase64, drawCabecalhoProfissional, drawRodape } from '../utils/pdfUtils';
 
 function FluxoCaixa() {
   const navigate = useNavigate();
@@ -160,20 +161,21 @@ function FluxoCaixa() {
   
   setLoadingPDF(true);
   try {
-    // Configurar PDF em retrato
+    const logo = await carregarLogoBase64(empresaDados);
+    
     const pdf = new jsPDF({ 
       orientation: 'portrait', 
       unit: 'mm', 
       format: 'a4'
     });
     
-    const pageWidth = pdf.internal.pageSize.getWidth();  // 210mm
-    const pageHeight = pdf.internal.pageSize.getHeight(); // 297mm
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
     const margin = 10;
-    const maxWidth = pageWidth - (margin * 2);  // 190mm
-    const maxHeight = pageHeight - (margin * 2); // 277mm
+    const maxWidth = pageWidth - (margin * 2);
     
-    // Capturar a tabela
+    const headerY = drawCabecalhoProfissional(pdf, empresaDados, logo);
+    
     const canvas = await html2canvas(element, { 
       scale: 1.5, 
       backgroundColor: '#ffffff',
@@ -183,21 +185,20 @@ function FluxoCaixa() {
     
     const imgData = canvas.toDataURL('image/png');
     
-    // Calcular proporção para caber na página
+    const availableHeight = pageHeight - headerY - margin - 15;
     let imgWidth = maxWidth;
     let imgHeight = (canvas.height * imgWidth) / canvas.width;
     
-    // Se a altura ultrapassar, redimensionar pela altura
-    if (imgHeight > maxHeight) {
-      imgHeight = maxHeight;
+    if (imgHeight > availableHeight) {
+      imgHeight = availableHeight;
       imgWidth = (canvas.width * imgHeight) / canvas.height;
     }
     
-    // Centralizar
     const xOffset = (pageWidth - imgWidth) / 2;
-    const yOffset = (pageHeight - imgHeight) / 2;
+    pdf.addImage(imgData, 'PNG', xOffset, headerY + 5, imgWidth, imgHeight);
     
-    pdf.addImage(imgData, 'PNG', xOffset, Math.max(margin, yOffset), imgWidth, imgHeight);
+    const pageCount = pdf.internal.getNumberOfPages();
+    drawRodape(pdf, empresaDados?.nome, pageCount);
     pdf.save(`fluxo_caixa_${getPeriodoNome()}_${anoSelecionado}.pdf`);
     mostrarMsg("✅ PDF exportado com sucesso!", "sucesso");
   } catch (error) {

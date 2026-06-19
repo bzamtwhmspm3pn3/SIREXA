@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { carregarLogoBase64, drawCabecalhoProfissional, drawRodape } from '../../utils/pdfUtils';
 import QRCode from "qrcode";
 
 const FolhaSalarial = () => {
@@ -386,33 +387,23 @@ const FolhaSalarial = () => {
     try {
       const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
       const dataAtual = new Date();
-      const nomeEmpresa = detalhes.empresaNome || "Empresa";
-      const nifEmpresa = detalhes.empresaNif || "---";
+      const empresaObj = dadosEmpresa || { nome: detalhes.empresaNome || "Empresa", nif: detalhes.empresaNif || "---" };
+      const logo = await carregarLogoBase64(empresaObj);
       
-      doc.setFontSize(22);
-      doc.setFont("helvetica", "bold");
-      doc.setTextColor(37, 99, 235);
-      doc.text("FOLHA SALARIAL", 148.5, 15, { align: "center" });
-      doc.setFontSize(12);
-      doc.setFont("helvetica", "bold");
-      doc.setTextColor(0, 0, 0);
-      doc.text(nomeEmpresa, 148.5, 23, { align: "center" });
-      doc.setFontSize(10);
-      doc.setFont("helvetica", "normal");
-      doc.setTextColor(100, 100, 100);
-      doc.text(`${meses[detalhes.mesReferencia - 1]} / ${detalhes.anoReferencia}`, 148.5, 30, { align: "center" });
-      doc.setDrawColor(37, 99, 235);
-      doc.line(15, 35, 282, 35);
+      let y = drawCabecalhoProfissional(doc, empresaObj, logo, 10);
       doc.setFontSize(8);
       doc.setFont("helvetica", "normal");
       doc.setTextColor(0, 0, 0);
-      doc.text(`NIF: ${nifEmpresa}`, 15, 42);
-      doc.text(`Data: ${dataAtual.toLocaleDateString("pt-AO")}`, 100, 42);
-      doc.text(`Status: ${detalhes.status === "finalizado" ? "FINALIZADO" : "RASCUNHO"}`, 200, 42);
-      doc.text(`Regime INSS: ${detalhes.regimeINSS || "Normal"}`, 15, 48);
+      doc.text(`${meses[detalhes.mesReferencia - 1]} / ${detalhes.anoReferencia}`, 148.5, y, { align: "center" });
+      y += 4;
+      doc.text(`NIF: ${empresaObj.nif || "---"}`, 15, y);
+      doc.text(`Data: ${dataAtual.toLocaleDateString("pt-AO")}`, 100, y);
+      doc.text(`Status: ${detalhes.status === "finalizado" ? "FINALIZADO" : "RASCUNHO"}`, 200, y);
+      y += 5;
+      doc.text(`Regime INSS: ${detalhes.regimeINSS || "Normal"}`, 15, y);
       
       const totais = detalhes.totais || {};
-      let y = 55;
+      y += 6;
       doc.setFontSize(9);
       doc.setFont("helvetica", "bold");
       doc.setTextColor(37, 99, 235);
@@ -495,15 +486,7 @@ const FolhaSalarial = () => {
           9: { halign: "right", cellWidth: 18 },
           10: { halign: "left", cellWidth: 35 }
         },
-        didDrawPage: function(data) {
-          const pageNumber = doc.internal.getNumberOfPages();
-          doc.setFontSize(7);
-          doc.setFont("helvetica", "italic");
-          doc.setTextColor(120,120,120);
-          doc.text(`Folha Salarial - ${nomeEmpresa} - ${meses[detalhes.mesReferencia-1]}/${detalhes.anoReferencia}`, 15, 203);
-          doc.text(`Página ${pageNumber}`, 280, 203, { align: "right" });
-          doc.text(`© ${new Date().getFullYear()} SIREXA - Plataforma Integrada`, 15, 207);
-        }
+        didDrawPage: function() {},
       });
       
       const assinaturaY = doc.lastAutoTable.finalY + 15;
@@ -517,14 +500,9 @@ const FolhaSalarial = () => {
       doc.text("Assinatura do Gestor", 80, assY-3, { align: "center" });
       doc.line(160, assY, 260, assY);
       doc.text("Assinatura do Técnico RH", 210, assY-3, { align: "center" });
-      if (doc.internal.getNumberOfPages() === 1) {
-        doc.setFontSize(7);
-        doc.setFont("helvetica", "italic");
-        doc.setTextColor(120,120,120);
-        doc.text(`Gerado por: ${user?.nome || user?.email || "Sistema"}`, 148.5, 195, { align: "center" });
-        doc.text(`© ${new Date().getFullYear()} SIREXA - Plataforma Integrada`, 148.5, 200, { align: "center" });
-      }
-      doc.save(`Folha_Salarial_${nomeEmpresa}_${meses[detalhes.mesReferencia-1]}_${detalhes.anoReferencia}.pdf`);
+      const pageCount = doc.internal.getNumberOfPages();
+      drawRodape(doc, empresaObj.nome || "Empresa", pageCount);
+      doc.save(`Folha_Salarial_${empresaObj.nome}_${meses[detalhes.mesReferencia-1]}_${detalhes.anoReferencia}.pdf`);
       mostrarMensagem("PDF exportado com sucesso!", "sucesso");
     } catch (error) {
       console.error("Erro:", error);
@@ -604,41 +582,14 @@ const FolhaSalarial = () => {
                            (funcionario.irt || 0);
     const salarioLiquido = funcionario.salarioLiquido || (salarioBruto - totalDescontos);
     
-    let y = 15;
-    if (dadosEmpresa?.logoUrl) {
-      try {
-        const imgResponse = await fetch(dadosEmpresa.logoUrl);
-        const imgBlob = await imgResponse.blob();
-        const imgBase64 = await new Promise((resolve) => {
-          const reader = new FileReader();
-          reader.onloadend = () => resolve(reader.result);
-          reader.readAsDataURL(imgBlob);
-        });
-        doc.addImage(imgBase64, 'PNG', 15, 10, 25, 25);
-      } catch (err) { console.warn("Erro ao carregar logotipo:", err); }
-    }
+    const logoReceipt = await carregarLogoBase64(dadosEmpresa);
+    let y = drawCabecalhoProfissional(doc, dadosEmpresa, logoReceipt, 10) + 5;
+    
     doc.setFontSize(18);
     doc.setFont("helvetica", "bold");
     doc.setTextColor(37, 99, 235);
-    doc.text("RECIBO DE PAGAMENTO", 105, 20, { align: "center" });
-    doc.setFontSize(11);
-    doc.setFont("helvetica", "bold");
-    doc.setTextColor(0, 0, 0);
-    doc.text(dadosEmpresa?.nome || "Empresa", 105, 28, { align: "center" });
-    doc.setFontSize(9);
-    doc.setFont("helvetica", "normal");
-    doc.setTextColor(80, 80, 80);
-    const enderecoCompleto = `${dadosEmpresa?.endereco?.rua || ""}, ${dadosEmpresa?.endereco?.numero || ""} - ${dadosEmpresa?.endereco?.bairro || ""}, ${dadosEmpresa?.endereco?.cidade || ""}`;
-    doc.text(`NIF: ${dadosEmpresa?.nif || "---"}`, 105, 34, { align: "center" });
-    doc.text(enderecoCompleto, 105, 39, { align: "center" });
-    if (dadosEmpresa?.telefone) {
-      doc.text(`Tel: ${dadosEmpresa.telefone}`, 105, 44, { align: "center" });
-      y = 52;
-    } else {
-      y = 50;
-    }
-    doc.setDrawColor(37, 99, 235);
-    doc.line(15, y-2, 195, y-2);
+    doc.text("RECIBO DE PAGAMENTO", 105, y, { align: "center" });
+    y += 10;
     
     doc.setFontSize(10);
     doc.setFont("helvetica", "bold");
@@ -726,11 +677,7 @@ const FolhaSalarial = () => {
     doc.line(110, assY, 170, assY);
     doc.text("Assinatura do Empregador", 140, assY+4, { align: "center" });
     doc.text("Carimbo da Empresa", 140, assY+9, { align: "center" });
-    doc.setFontSize(7);
-    doc.setFont("helvetica", "italic");
-    doc.setTextColor(120, 120, 120);
-    doc.text(`Documento gerado por SIREXA - ${dataAtual.toLocaleDateString()} ${dataAtual.toLocaleTimeString()}`, 105, 285, { align: "center" });
-    doc.text(`© ${anoAtual} SIREXA - Plataforma Integrada`, 105, 290, { align: "center" });
+    // Footer is handled by the calling function
   };
 
   const gerarReciboIndividual = async (funcionario, dadosFolha) => {
@@ -741,6 +688,7 @@ const FolhaSalarial = () => {
     try {
       const doc = new jsPDF({ unit: 'mm', format: 'a4' });
       await adicionarReciboAoDoc(doc, funcionario, dadosFolha, localPagamento);
+      drawRodape(doc, dadosEmpresa?.nome || "Empresa", doc.internal.getNumberOfPages());
       doc.save(`Recibo_${funcionario.nome.replace(/\s/g, "_")}_${dadosFolha.mesReferencia}_${dadosFolha.anoReferencia}.pdf`);
       mostrarMensagem(`Recibo de ${funcionario.nome} gerado com sucesso!`, "sucesso");
     } catch (error) {
@@ -768,6 +716,7 @@ const FolhaSalarial = () => {
         primeiro = false;
         await adicionarReciboAoDoc(doc, func, detalhes, localPagamento);
       }
+      drawRodape(doc, dadosEmpresa?.nome || "Empresa", doc.internal.getNumberOfPages());
       doc.save(`Recibos_Todos_${detalhes.empresaNome}_${meses[detalhes.mesReferencia-1]}_${detalhes.anoReferencia}.pdf`);
       mostrarMensagem(`${detalhes.funcionarios.length} recibos gerados com sucesso!`, "sucesso");
     } catch (error) {

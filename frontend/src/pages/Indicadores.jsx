@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { carregarLogoBase64, drawCabecalhoProfissional, drawRodape } from '../utils/pdfUtils';
 
 const Indicadores = () => {
   const navigate = useNavigate();
@@ -228,23 +229,22 @@ const Indicadores = () => {
     if (!dados) return;
     setExportando(true);
     try {
+      const empresaAtualObj = isTecnico() 
+        ? { nome: userEmpresaNome }
+        : empresas.find(e => e._id === empresaSelecionada);
+      const logo = await carregarLogoBase64(empresaAtualObj);
+      
       const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
       const pageWidth = doc.internal.pageSize.getWidth();
-      let yPos = 20;
-      
-      doc.setFontSize(18);
-      doc.setFont("helvetica", "bold");
-      doc.setTextColor(37, 99, 235);
-      doc.text("RELATORIO DE INDICADORES", pageWidth / 2, yPos, { align: "center" });
-      yPos += 12;
+      let yPos = drawCabecalhoProfissional(doc, empresaAtualObj, logo) + 5;
       
       doc.setFontSize(10);
       doc.setTextColor(0, 0, 0);
-      const empresaAtual = isTecnico() ? userEmpresaNome : empresas.find(e => e._id === empresaSelecionada)?.nome;
-      doc.text(`Empresa: ${empresaAtual || "Nao selecionada"}`, 20, yPos + 5);
-      doc.text(`Periodo: ${meses[periodo.mes - 1]} de ${periodo.ano}`, 20, yPos + 12);
-      doc.text(`Data: ${new Date().toLocaleDateString("pt-AO")}`, 20, yPos + 19);
-      yPos += 35;
+      const empresaNome = empresaAtualObj?.nome || "Nao selecionada";
+      doc.text(`Periodo: ${meses[periodo.mes - 1]} de ${periodo.ano}`, 20, yPos);
+      yPos += 7;
+      doc.text(`Data: ${new Date().toLocaleDateString("pt-AO")}`, 20, yPos);
+      yPos += 20;
       
       if (analiseInteligente) {
         doc.setFontSize(12);
@@ -341,6 +341,8 @@ const Indicadores = () => {
         margin: { left: 20, right: 20 }
       });
       
+      const pageCount = doc.internal.getNumberOfPages();
+      drawRodape(doc, empresaAtualObj?.nome || 'Empresa', pageCount);
       doc.save(`indicadores_${meses[periodo.mes - 1]}_${periodo.ano}.pdf`);
     } catch (error) {
       console.error("Erro ao gerar PDF:", error);

@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { carregarLogoBase64, drawCabecalhoProfissional, drawRodape } from '../../utils/pdfUtils';
 
 // ==================== COMPONENTE DE EXTRATO INTEGRADO - CORRIGIDO ====================
 const ModalExtrato = ({ fornecedor, empresaId, onClose }) => {
@@ -105,53 +106,11 @@ const ModalExtrato = ({ fornecedor, empresaId, onClose }) => {
     });
     const empresaData = await empresaResponse.json();
     const dadosEmpresa = empresaData.dados || empresaData;
+    const logo = await carregarLogoBase64(dadosEmpresa);
     
     const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
     const pageWidth = doc.internal.pageSize.getWidth();
-    let yPos = 20;
-    
-    // ============================================
-    // CABEÇALHO COM DADOS DA EMPRESA
-    // ============================================
-    
-    // Nome da Empresa
-    doc.setFontSize(20);
-    doc.setFont("helvetica", "bold");
-    doc.setTextColor(37, 99, 235);
-    doc.text(dadosEmpresa?.nome?.toUpperCase() || "EMPRESA", pageWidth / 2, yPos, { align: "center" });
-    yPos += 8;
-    
-    // NIF
-    doc.setFontSize(10);
-    doc.setTextColor(100, 100, 100);
-    doc.text(`NIF: ${dadosEmpresa?.nif || "---"}`, pageWidth / 2, yPos, { align: "center" });
-    yPos += 6;
-    
-    // Endereço
-    if (dadosEmpresa?.endereco) {
-      let enderecoStr = "";
-      if (typeof dadosEmpresa.endereco === 'object') {
-        enderecoStr = [dadosEmpresa.endereco.rua, dadosEmpresa.endereco.numero, dadosEmpresa.endereco.bairro, dadosEmpresa.endereco.cidade, dadosEmpresa.endereco.provincia]
-          .filter(Boolean).join(", ");
-      } else {
-        enderecoStr = dadosEmpresa.endereco;
-      }
-      doc.text(enderecoStr, pageWidth / 2, yPos, { align: "center" });
-      yPos += 6;
-    }
-    
-    // Contactos
-    if (dadosEmpresa?.telefone || dadosEmpresa?.email) {
-      const contato = [dadosEmpresa.telefone, dadosEmpresa.email].filter(Boolean).join(" | ");
-      doc.text(contato, pageWidth / 2, yPos, { align: "center" });
-      yPos += 6;
-    }
-    
-    // Linha separadora
-    doc.setDrawColor(37, 99, 235);
-    doc.setLineWidth(0.5);
-    doc.line(20, yPos, pageWidth - 20, yPos);
-    yPos += 8;
+    let yPos = drawCabecalhoProfissional(doc, dadosEmpresa, logo, 10) + 5;
     
     // ============================================
     // TÍTULO DO EXTRATO
@@ -211,12 +170,7 @@ const ModalExtrato = ({ fornecedor, empresaId, onClose }) => {
         6: { cellWidth: 30, halign: 'right' }
       },
       margin: { left: 20, right: 20 },
-      didDrawPage: (data) => {
-        const pageCount = doc.internal.getNumberOfPages();
-        doc.setFontSize(8);
-        doc.setTextColor(150, 150, 150);
-        doc.text(`Página ${data.pageNumber} de ${pageCount}`, pageWidth - 30, doc.internal.pageSize.height - 10);
-      }
+      didDrawPage: () => {},
     });
     
     const finalY = doc.lastAutoTable?.finalY || yPos + 50;
@@ -263,10 +217,8 @@ const ModalExtrato = ({ fornecedor, empresaId, onClose }) => {
     // ============================================
     // RODAPÉ
     // ============================================
-    doc.setFontSize(8);
-    doc.setTextColor(150, 150, 150);
-    doc.text("Documento emitido eletronicamente - Sistema de Gestão Empresarial AnDioGest", pageWidth / 2, doc.internal.pageSize.height - 20, { align: "center" });
-    doc.text("Este documento é válido como comprovante de movimentação da conta corrente", pageWidth / 2, doc.internal.pageSize.height - 15, { align: "center" });
+    const pageCount = doc.internal.getNumberOfPages();
+    drawRodape(doc, dadosEmpresa?.nome || "Empresa", pageCount);
     
     // ============================================
     // SALVAR PDF
@@ -725,53 +677,11 @@ const ContaCorrente = () => {
     });
     const empresaData = await empresaResponse.json();
     const dadosEmpresa = empresaData.dados || empresaData;
+    const logo = await carregarLogoBase64(dadosEmpresa);
     
     const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
     const pageWidth = doc.internal.pageSize.getWidth();
-    let yPos = 20;
-    
-    // ============================================
-    // CABEÇALHO COM DADOS DA EMPRESA
-    // ============================================
-    
-    // Nome da Empresa
-    doc.setFontSize(20);
-    doc.setFont("helvetica", "bold");
-    doc.setTextColor(37, 99, 235);
-    doc.text(dadosEmpresa?.nome?.toUpperCase() || "EMPRESA", pageWidth / 2, yPos, { align: "center" });
-    yPos += 8;
-    
-    // NIF
-    doc.setFontSize(10);
-    doc.setTextColor(100, 100, 100);
-    doc.text(`NIF: ${dadosEmpresa?.nif || "---"}`, pageWidth / 2, yPos, { align: "center" });
-    yPos += 6;
-    
-    // Endereço
-    if (dadosEmpresa?.endereco) {
-      let enderecoStr = "";
-      if (typeof dadosEmpresa.endereco === 'object') {
-        enderecoStr = [dadosEmpresa.endereco.rua, dadosEmpresa.endereco.numero, dadosEmpresa.endereco.bairro, dadosEmpresa.endereco.cidade, dadosEmpresa.endereco.provincia]
-          .filter(Boolean).join(", ");
-      } else {
-        enderecoStr = dadosEmpresa.endereco;
-      }
-      doc.text(enderecoStr, pageWidth / 2, yPos, { align: "center" });
-      yPos += 6;
-    }
-    
-    // Contactos
-    if (dadosEmpresa?.telefone || dadosEmpresa?.email) {
-      const contato = [dadosEmpresa.telefone, dadosEmpresa.email].filter(Boolean).join(" | ");
-      doc.text(contato, pageWidth / 2, yPos, { align: "center" });
-      yPos += 6;
-    }
-    
-    // Linha separadora
-    doc.setDrawColor(37, 99, 235);
-    doc.setLineWidth(0.5);
-    doc.line(20, yPos, pageWidth - 20, yPos);
-    yPos += 8;
+    let yPos = drawCabecalhoProfissional(doc, dadosEmpresa, logo, 10) + 5;
     
     // ============================================
     // TÍTULO DO EXTRATO
@@ -831,12 +741,7 @@ const ContaCorrente = () => {
         6: { cellWidth: 30, halign: 'right' }
       },
       margin: { left: 20, right: 20 },
-      didDrawPage: (data) => {
-        const pageCount = doc.internal.getNumberOfPages();
-        doc.setFontSize(8);
-        doc.setTextColor(150, 150, 150);
-        doc.text(`Página ${data.pageNumber} de ${pageCount}`, pageWidth - 30, doc.internal.pageSize.height - 10);
-      }
+      didDrawPage: () => {},
     });
     
     const finalY = doc.lastAutoTable?.finalY || yPos + 50;
@@ -883,10 +788,8 @@ const ContaCorrente = () => {
     // ============================================
     // RODAPÉ
     // ============================================
-    doc.setFontSize(8);
-    doc.setTextColor(150, 150, 150);
-    doc.text("Documento emitido eletronicamente - Sistema de Gestão Empresarial AnDioGest", pageWidth / 2, doc.internal.pageSize.height - 20, { align: "center" });
-    doc.text("Este documento é válido como comprovante de movimentação da conta corrente", pageWidth / 2, doc.internal.pageSize.height - 15, { align: "center" });
+    const pageCount = doc.internal.getNumberOfPages();
+    drawRodape(doc, dadosEmpresa?.nome || "Empresa", pageCount);
     
     // ============================================
     // SALVAR PDF

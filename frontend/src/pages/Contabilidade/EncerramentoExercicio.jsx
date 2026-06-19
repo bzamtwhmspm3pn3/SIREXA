@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { carregarLogoBase64, drawCabecalhoProfissional, drawRodape } from '../../utils/pdfUtils';
 import * as XLSX from "xlsx";
 
 // Componente de Seletor de Empresa
@@ -223,29 +224,38 @@ const EncerramentoExercicio = () => {
   const exportarPDF = async () => {
     setExportando(true);
     try {
+      const empresaObj = isTecnico()
+        ? { _id: userEmpresaId, nome: userEmpresaNome }
+        : empresas.find(e => e._id === empresaSelecionada);
+      const logo = await carregarLogoBase64(empresaObj);
+      const empresaNome = empresaObj?.nome || "Não selecionada";
+      
       const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-      const empresaAtual = isTecnico() ? userEmpresaNome : empresas.find(e => e._id === empresaSelecionada)?.nome;
       
-      // Cabeçalho
-      doc.setFontSize(16);
+      let yPos = drawCabecalhoProfissional(doc, empresaObj, logo);
+      
+      doc.setFontSize(14);
       doc.setFont("helvetica", "bold");
-      doc.text("TERMO DE ENCERRAMENTO DE EXERCÍCIO", doc.internal.pageSize.getWidth() / 2, 15, { align: "center" });
+      doc.text("TERMO DE ENCERRAMENTO DE EXERCÍCIO", doc.internal.pageSize.getWidth() / 2, yPos, { align: "center" });
       
+      yPos += 7;
       doc.setFontSize(10);
       doc.setFont("helvetica", "normal");
-      doc.text(`Empresa: ${empresaAtual || "Não selecionada"}`, 14, 25);
-      doc.text(`Exercício: ${anoEncerramento}`, 14, 32);
-      doc.text(`Data de encerramento: ${new Date().toLocaleDateString("pt-AO")}`, 14, 39);
-      doc.text(`Hora: ${new Date().toLocaleTimeString("pt-AO")}`, 14, 46);
+      doc.text(`Exercício: ${anoEncerramento}`, 14, yPos);
+      yPos += 7;
+      doc.text(`Data de encerramento: ${new Date().toLocaleDateString("pt-AO")}`, 14, yPos);
+      yPos += 7;
+      doc.text(`Hora: ${new Date().toLocaleTimeString("pt-AO")}`, 14, yPos);
       
       // Resultado
       if (resultado) {
+        yPos += 8;
         doc.setFontSize(12);
         doc.setFont("helvetica", "bold");
-        doc.text("RESULTADO DO EXERCÍCIO", 14, 60);
+        doc.text("RESULTADO DO EXERCÍCIO", 14, yPos);
         
         autoTable(doc, {
-          startY: 65,
+          startY: yPos + 5,
           body: [
             ["Total de Receitas (Proveitos)", `${formatarNumero(resultado.totalReceitas)} Kz`],
             ["Total de Despesas (Custos)", `${formatarNumero(resultado.totalDespesas)} Kz`],
@@ -293,6 +303,8 @@ const EncerramentoExercicio = () => {
         doc.text("Gestor", 165, assinaturaY + 5);
       }
       
+      const pageCount = doc.internal.getNumberOfPages();
+      drawRodape(doc, empresaNome, pageCount);
       doc.save(`encerramento_${anoEncerramento}_${new Date().toISOString().split("T")[0]}.pdf`);
       alert("✅ PDF exportado com sucesso!");
     } catch (error) {

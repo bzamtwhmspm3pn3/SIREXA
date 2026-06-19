@@ -10,6 +10,7 @@ import {
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { carregarLogoBase64, drawCabecalhoProfissional, drawRodape } from '../../utils/pdfUtils';
 
 // Componente de Seletor de Empresa
 const EmpresaSelector = ({ empresas, empresaSelecionada, setEmpresaSelecionada, onRefresh, loading, isTecnico, empresaNome }) => {
@@ -527,22 +528,31 @@ const BalancoPatrimonial = () => {
   const exportarPDF = async () => {
     setExportando(true);
     try {
+      const empresaObj = isTecnico()
+        ? { _id: userEmpresaId, nome: userEmpresaNome }
+        : empresas.find(e => e._id === empresaSelecionada);
+      const logo = await carregarLogoBase64(empresaObj);
+      const empresaNome = empresaObj?.nome || "Não selecionada";
+      
       const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-      const empresaAtual = isTecnico() ? userEmpresaNome : empresas.find(e => e._id === empresaSelecionada)?.nome;
       
-      doc.setFontSize(16);
+      let yPos = drawCabecalhoProfissional(doc, empresaObj, logo);
+      
+      doc.setFontSize(14);
       doc.setFont("helvetica", "bold");
-      doc.text("BALANÇO PATRIMONIAL", doc.internal.pageSize.getWidth() / 2, 15, { align: "center" });
+      doc.text("BALANÇO PATRIMONIAL", doc.internal.pageSize.getWidth() / 2, yPos, { align: "center" });
       
+      yPos += 7;
       doc.setFontSize(10);
       doc.setFont("helvetica", "normal");
-      doc.text(`Empresa: ${empresaAtual || "Não selecionada"}`, 14, 25);
-      doc.text(`Data de referência: ${new Date(dataReferencia).toLocaleDateString("pt-AO")}`, 14, 32);
-      doc.text(`Data de emissão: ${new Date().toLocaleDateString("pt-AO")}`, 14, 39);
+      doc.text(`Data de referência: ${new Date(dataReferencia).toLocaleDateString("pt-AO")}`, 14, yPos);
+      yPos += 7;
+      doc.text(`Data de emissão: ${new Date().toLocaleDateString("pt-AO")}`, 14, yPos);
       
+      yPos += 10;
       doc.setFontSize(12);
       doc.setFont("helvetica", "bold");
-      doc.text("ATIVO", 14, 55);
+      doc.text("ATIVO", 14, yPos);
       
       const dadosAtivo = [
         ["ATIVO CIRCULANTE", "", formatarNumero(balanco.ativo.circulante.reduce((s, c) => s + Math.abs(c.saldo), 0))],
@@ -552,7 +562,7 @@ const BalancoPatrimonial = () => {
         ["TOTAL DO ATIVO", "", formatarNumero(balanco.totalAtivo)]
       ];
       
-      autoTable(doc, { startY: 60, head: [["Descrição", "", "Valor (Kz)"]], body: dadosAtivo, theme: "striped", headStyles: { fillColor: [41, 128, 185] }, styles: { fontSize: 8, cellPadding: 2 } });
+      autoTable(doc, { startY: yPos + 5, head: [["Descrição", "", "Valor (Kz)"]], body: dadosAtivo, theme: "striped", headStyles: { fillColor: [41, 128, 185] }, styles: { fontSize: 8, cellPadding: 2 } });
       
       let finalY = doc.lastAutoTable.finalY + 10;
       
@@ -579,6 +589,8 @@ const BalancoPatrimonial = () => {
       
       autoTable(doc, { startY: finalY + 5, head: [["Descrição", "Valor (Kz)"]], body: dadosPL, theme: "striped", headStyles: { fillColor: [41, 128, 185] }, styles: { fontSize: 8, cellPadding: 2 } });
       
+      const pageCount = doc.internal.getNumberOfPages();
+      drawRodape(doc, empresaNome, pageCount);
       doc.save(`balanco_patrimonial_${new Date().toISOString().split("T")[0]}.pdf`);
       alert("✅ PDF exportado com sucesso!");
     } catch (error) {

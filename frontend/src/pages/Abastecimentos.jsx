@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { carregarLogoBase64, drawCabecalhoProfissional, drawRodape, carregarDadosEmpresa } from '../utils/pdfUtils';
 
 const Abastecimentos = () => {
   const [empresas, setEmpresas] = useState([]);
@@ -298,33 +299,30 @@ const Abastecimentos = () => {
 
     setExportando(true);
     try {
+      const empresa = await carregarDadosEmpresa(empresaSelecionada);
+      const logo = await carregarLogoBase64(empresa);
+      const empresaNome = empresa?.nome || "Empresa";
+      
       const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
       const dataAtual = new Date();
-      const empresaAtual = isTecnico() 
-        ? { nome: userEmpresaNome, nif: user?.nif || "---" }
-        : empresas.find(e => e._id === empresaSelecionada);
       
-      // Cabeçalho
+      let yPosHeader = drawCabecalhoProfissional(doc, empresa, logo, 10);
+      
       doc.setFontSize(22);
       doc.setFont("helvetica", "bold");
       doc.setTextColor(37, 99, 235);
-      doc.text("CONTROLE DE ABASTECIMENTOS", 148.5, 20, { align: "center" });
-      
-      doc.setFontSize(12);
-      doc.setFont("helvetica", "bold");
-      doc.setTextColor(0, 0, 0);
-      doc.text(empresaAtual?.nome || "Empresa", 148.5, 30, { align: "center" });
+      doc.text("CONTROLE DE ABASTECIMENTOS", 148.5, yPosHeader + 2, { align: "center" });
       
       doc.setFontSize(10);
       doc.setFont("helvetica", "normal");
       doc.setTextColor(100, 100, 100);
-      doc.text(`Gerado em: ${dataAtual.toLocaleDateString("pt-AO")}`, 148.5, 38, { align: "center" });
+      doc.text(`Gerado em: ${dataAtual.toLocaleDateString("pt-AO")}`, 148.5, yPosHeader + 10, { align: "center" });
       
       doc.setDrawColor(37, 99, 235);
-      doc.line(15, 44, 282, 44);
+      doc.line(15, yPosHeader + 14, 282, yPosHeader + 14);
       
       // Estatísticas
-      let y = 52;
+      let y = yPosHeader + 22;
       doc.setFontSize(9);
       doc.setFont("helvetica", "bold");
       doc.setTextColor(0, 0, 0);
@@ -372,18 +370,10 @@ const Abastecimentos = () => {
         margin: { left: 20, right: 20 }
       });
       
-      // Rodapé
       const pageCount = doc.internal.getNumberOfPages();
-      for (let i = 1; i <= pageCount; i++) {
-        doc.setPage(i);
-        doc.setFontSize(7);
-        doc.setFont("helvetica", "italic");
-        doc.setTextColor(120, 120, 120);
-        doc.text(`Gerado por: ${user?.nome || user?.email || "Sistema"}`, 148.5, 195, { align: "center" });
-        doc.text(`© ${new Date().getFullYear()} AnDioGest - Gestao Corporativa`, 148.5, 200, { align: "center" });
-      }
+      drawRodape(doc, empresaNome, pageCount);
       
-      doc.save(`abastecimentos_${empresaAtual?.nome}_${dataAtual.toISOString().split('T')[0]}.pdf`);
+      doc.save(`abastecimentos_${empresaNome}_${dataAtual.toISOString().split('T')[0]}.pdf`);
       mostrarMensagem("PDF exportado com sucesso!", "sucesso");
     } catch (error) {
       console.error("Erro ao gerar PDF:", error);

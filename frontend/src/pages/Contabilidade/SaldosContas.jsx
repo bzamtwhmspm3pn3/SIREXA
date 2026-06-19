@@ -11,6 +11,7 @@ import {
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { carregarLogoBase64, drawCabecalhoProfissional, drawRodape } from '../../utils/pdfUtils';
 
 // Componente de Seletor de Empresa
 const EmpresaSelector = ({ empresas, empresaSelecionada, setEmpresaSelecionada, onRefresh, loading, isTecnico, empresaNome }) => {
@@ -509,17 +510,24 @@ const SaldosContas = () => {
   const exportarPDF = async () => {
     setExportando(true);
     try {
+      const empresaObj = isTecnico()
+        ? { _id: userEmpresaId, nome: userEmpresaNome }
+        : empresas.find(e => e._id === empresaSelecionada);
+      const logo = await carregarLogoBase64(empresaObj);
+      const empresaNome = empresaObj?.nome || "Não selecionada";
+      
       const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
-      const empresaAtual = isTecnico() ? userEmpresaNome : empresas.find(e => e._id === empresaSelecionada)?.nome;
+      
+      let yPos = drawCabecalhoProfissional(doc, empresaObj, logo);
       
       doc.setFontSize(14);
       doc.setFont("helvetica", "bold");
-      doc.text("SALDOS DE CONTAS", doc.internal.pageSize.getWidth() / 2, 15, { align: "center" });
+      doc.text("SALDOS DE CONTAS", doc.internal.pageSize.getWidth() / 2, yPos, { align: "center" });
       
+      yPos += 7;
       doc.setFontSize(10);
       doc.setFont("helvetica", "normal");
-      doc.text(`Empresa: ${empresaAtual || "Não selecionada"}`, 14, 25);
-      doc.text(`Data de referência: ${new Date(dataReferencia).toLocaleDateString("pt-AO")}`, 14, 32);
+      doc.text(`Data de referência: ${new Date(dataReferencia).toLocaleDateString("pt-AO")}`, 14, yPos);
       
       const dadosTabela = saldos.map(item => [
         item.contaCodigo,
@@ -531,7 +539,7 @@ const SaldosContas = () => {
       ]);
       
       autoTable(doc, {
-        startY: 40,
+        startY: yPos + 6,
         head: [["Código", "Conta", "Cls", "Débito", "Crédito", "Saldo"]],
         body: dadosTabela,
         theme: "striped",
@@ -539,6 +547,8 @@ const SaldosContas = () => {
         styles: { fontSize: 7, cellPadding: 2 }
       });
       
+      const pageCount = doc.internal.getNumberOfPages();
+      drawRodape(doc, empresaNome, pageCount);
       doc.save(`saldos_contas_${new Date().toISOString().split("T")[0]}.pdf`);
       alert("✅ PDF exportado com sucesso!");
     } catch (error) {

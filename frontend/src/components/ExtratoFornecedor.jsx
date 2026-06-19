@@ -4,6 +4,7 @@ import { X, Printer, Loader2, FileText, AlertCircle } from "lucide-react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import API_URL from "../config/api";
+import { carregarLogoBase64, drawCabecalhoProfissional, drawRodape, carregarDadosEmpresa } from '../utils/pdfUtils';
 
 const ExtratoFornecedor = ({ fornecedor, empresaId, onClose }) => {
   const [movimentos, setMovimentos] = useState([]);
@@ -90,9 +91,14 @@ const ExtratoFornecedor = ({ fornecedor, empresaId, onClose }) => {
     
     setExportando(true);
     try {
+      const empresa = await carregarDadosEmpresa(empresaId);
+      const logo = await carregarLogoBase64(empresa);
+      const empresaNome = empresa?.nome || "Empresa";
+      
       const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
-      let yPos = 20;
       const pageWidth = doc.internal.pageSize.getWidth();
+      let yPos = drawCabecalhoProfissional(doc, empresa, logo, 10);
+      yPos += 5;
       
       doc.setFontSize(16);
       doc.setFont("helvetica", "bold");
@@ -145,6 +151,9 @@ const ExtratoFornecedor = ({ fornecedor, empresaId, onClose }) => {
       doc.text(`Total de Débitos (Pagamentos): ${formatarNumero(totais.totalDebito)} Kz`, 30, finalY + 20);
       doc.text(`Saldo Atual: ${formatarNumero(Math.abs(saldoAtual))} Kz`, 30, finalY + 27);
       doc.text(`Situação: ${saldoAtual > 0 ? "Credor (Empresa deve)" : saldoAtual < 0 ? "Devedor (Fornecedor deve)" : "Zerado"}`, 30, finalY + 34);
+      
+      const pageCount = doc.internal.getNumberOfPages();
+      drawRodape(doc, empresaNome, pageCount);
       
       doc.save(`extrato_${fornecedor.nome}_${new Date().toISOString().split("T")[0]}.pdf`);
     } catch (error) {

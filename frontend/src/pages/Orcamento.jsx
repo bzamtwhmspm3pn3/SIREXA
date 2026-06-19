@@ -15,6 +15,7 @@ import {
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { carregarLogoBase64, drawCabecalhoProfissional, drawRodape } from '../utils/pdfUtils';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -592,18 +593,10 @@ function Orcamento() {
         ? { nome: userEmpresaNome }
         : empresas.find(e => e._id === empresaSelecionada);
       
-      doc.setFillColor(37, 99, 235);
-      doc.rect(0, 0, pageWidth, 45, 'F');
-      doc.setTextColor(255, 255, 255);
-      doc.setFontSize(20);
-      doc.setFont("helvetica", "bold");
-      doc.text("RELATÓRIO DE ORÇAMENTOS", pageWidth / 2, 25, { align: "center" });
-      doc.setFontSize(12);
-      doc.text(empresaAtual?.nome || "Empresa", pageWidth / 2, 38, { align: "center" });
-      
-      doc.setTextColor(0, 0, 0);
+      const logo = await carregarLogoBase64(empresaAtual);
+      let yPos = drawCabecalhoProfissional(doc, empresaAtual, logo) + 5;
       doc.setFontSize(10);
-      let yPos = 60;
+      doc.setTextColor(0, 0, 0);
       doc.text(`Período: ${meses[periodo.mes - 1]} de ${periodo.ano}`, 20, yPos);
       doc.text(`Data: ${new Date().toLocaleDateString("pt-BR")}`, 20, yPos + 8);
       yPos += 25;
@@ -627,6 +620,8 @@ function Orcamento() {
         margin: { left: 15, right: 15 }
       });
       
+      const pageCount = doc.internal.getNumberOfPages();
+      drawRodape(doc, empresaAtual?.nome || 'Empresa', pageCount);
       doc.save(`orcamentos_${periodo.ano}.pdf`);
       mostrarMsg("✅ PDF exportado!", "sucesso");
     } catch (error) {

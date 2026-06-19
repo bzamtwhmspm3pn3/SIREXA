@@ -31,6 +31,7 @@ import {
 } from "lucide-react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { carregarLogoBase64, drawCabecalhoProfissional, drawRodape } from '../../utils/pdfUtils';
 
 function Transferencias() {
   const { user, isGestor, isTecnico, empresaId: userEmpresaId, empresaNome: userEmpresaNome } = useAuth();
@@ -440,59 +441,12 @@ function Transferencias() {
     }
     setLoading(true);
     try {
-      let empresaNome = "EMPRESA";
-      let empresaNif = "---";
-      let empresaEndereco = "";
-      let empresaTelefone = "";
-      let empresaEmail = "";
-      
-      if (isTecnico() && userEmpresaNome) {
-        empresaNome = userEmpresaNome;
-      } else if (empresaDados) {
-        empresaNome = empresaDados.nome || "EMPRESA";
-        empresaNif = empresaDados.nif || "---";
-        if (empresaDados.endereco) {
-          if (typeof empresaDados.endereco === 'object') {
-            empresaEndereco = [empresaDados.endereco.rua, empresaDados.endereco.numero, empresaDados.endereco.bairro, empresaDados.endereco.cidade]
-              .filter(Boolean).join(", ");
-          } else {
-            empresaEndereco = empresaDados.endereco;
-          }
-        }
-        empresaTelefone = empresaDados.telefone || "";
-        empresaEmail = empresaDados.email || "";
-      }
+      const empresaObj = empresaDados || { nome: userEmpresaNome || "Empresa" };
+      const logo = await carregarLogoBase64(empresaObj);
       
       const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
       const pageWidth = doc.internal.pageSize.getWidth();
-      let yPos = 20;
-      
-      doc.setFontSize(20);
-      doc.setFont("helvetica", "bold");
-      doc.setTextColor(37, 99, 235);
-      doc.text(empresaNome.toUpperCase(), pageWidth / 2, yPos, { align: "center" });
-      yPos += 8;
-      
-      doc.setFontSize(10);
-      doc.setTextColor(100, 100, 100);
-      doc.text(`NIF: ${empresaNif}`, pageWidth / 2, yPos, { align: "center" });
-      yPos += 6;
-      
-      if (empresaEndereco) {
-        doc.text(empresaEndereco, pageWidth / 2, yPos, { align: "center" });
-        yPos += 6;
-      }
-      
-      if (empresaTelefone || empresaEmail) {
-        const contato = [empresaTelefone, empresaEmail].filter(Boolean).join(" | ");
-        doc.text(contato, pageWidth / 2, yPos, { align: "center" });
-        yPos += 6;
-      }
-      
-      doc.setDrawColor(37, 99, 235);
-      doc.setLineWidth(0.5);
-      doc.line(20, yPos, pageWidth - 20, yPos);
-      yPos += 8;
+      let yPos = drawCabecalhoProfissional(doc, empresaObj, logo, 10) + 5;
       
       doc.setFontSize(16);
       doc.setFont("helvetica", "bold");
@@ -575,10 +529,8 @@ function Transferencias() {
       
       yPos += 40;
       
-      doc.setFontSize(8);
-      doc.setTextColor(150, 150, 150);
-      doc.text("Documento emitido eletronicamente - Sistema de Gestão Empresarial AnDioGest", pageWidth / 2, doc.internal.pageSize.height - 20, { align: "center" });
-      doc.text("Este documento é válido como comprovante de movimentação financeira", pageWidth / 2, doc.internal.pageSize.height - 15, { align: "center" });
+      const pageCount = doc.internal.getNumberOfPages();
+      drawRodape(doc, empresaObj?.nome || "Empresa", pageCount);
       
       doc.save(`transferencias_${new Date().toISOString().split("T")[0]}.pdf`);
       mostrarMsg("📄 PDF exportado com sucesso!", "sucesso");

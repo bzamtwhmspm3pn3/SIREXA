@@ -42,6 +42,7 @@ import {
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { carregarLogoBase64, drawCabecalhoProfissional, drawRodape, carregarDadosEmpresa } from '../utils/pdfUtils';
 
 ChartJS.register(
   CategoryScale,
@@ -442,11 +443,15 @@ const CustosReceitas = () => {
   const exportarPDF = async () => {
     setExportando(true);
     try {
+      const empresa = await carregarDadosEmpresa(empresaSelecionada);
+      const logo = await carregarLogoBase64(empresa);
+      const empresaNome = empresa?.nome || "Empresa";
+      
       const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
       const pageWidth = doc.internal.pageSize.getWidth();
-      let yPos = 20;
+      let yPos = drawCabecalhoProfissional(doc, empresa, logo, 10);
+      yPos += 5;
       
-      // Cabeçalho
       doc.setFontSize(20);
       doc.setFont("helvetica", "bold");
       doc.setTextColor(37, 99, 235);
@@ -563,6 +568,9 @@ const CustosReceitas = () => {
           }
         });
       }
+      
+      const pageCount = doc.internal.getNumberOfPages();
+      drawRodape(doc, empresaNome, pageCount);
       
       doc.save(`relatorio_custos_receitas_${new Date().toISOString().split("T")[0]}.pdf`);
       mostrarMensagem("✅ PDF exportado com sucesso!", "sucesso");

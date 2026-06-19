@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { carregarLogoBase64, drawCabecalhoProfissional, drawRodape } from '../../utils/pdfUtils';
 
 const ListaFuncionarios = () => {
   const [empresas, setEmpresas] = useState([]);
@@ -366,27 +367,20 @@ const ListaFuncionarios = () => {
     
     setExportando(true);
     try {
+      const empresaAtual = getEmpresaAtual();
+      const logo = await carregarLogoBase64(empresaAtual);
+      
       const doc = new jsPDF();
       const dataAtual = new Date();
       const numeroRelatorio = `${dataAtual.toISOString().slice(0, 10).replace(/-/g, "")}-${String(Math.floor(Math.random() * 999) + 1).padStart(3, "0")}`;
-      const empresaAtual = getEmpresaAtual();
       
-      doc.setFontSize(20);
-      doc.setFont("helvetica", "bold");
-      doc.setTextColor(37, 99, 235);
-      doc.text("RELATÓRIO DE FUNCIONÁRIOS", 14, 20);
-      
-      doc.setFontSize(16);
-      doc.setFont("helvetica", "bold");
-      doc.setTextColor(0, 0, 0);
-      doc.text(empresaAtual?.nome || "Empresa", 14, 32);
-      
+      const startY = drawCabecalhoProfissional(doc, empresaAtual, logo) + 5;
       doc.setFontSize(10);
       doc.setFont("helvetica", "normal");
       doc.setTextColor(100, 100, 100);
-      doc.text(`Nº Relatório: ${numeroRelatorio}`, 14, 42);
-      doc.text(`Gerado em: ${dataAtual.toLocaleString("pt-AO")}`, 14, 50);
-      doc.text(`Total de Funcionários: ${filteredFuncionarios.length}`, 14, 58);
+      doc.text(`Nº Relatório: ${numeroRelatorio}`, 14, startY);
+      doc.text(`Gerado em: ${dataAtual.toLocaleString("pt-AO")}`, 14, startY + 8);
+      doc.text(`Total de Funcionários: ${filteredFuncionarios.length}`, 14, startY + 16);
       
       const tabelaDados = filteredFuncionarios.map(func => [
         func.nome || "—", func.nif || "—", func.cargo || "—",
@@ -395,7 +389,7 @@ const ListaFuncionarios = () => {
       ]);
       
       autoTable(doc, {
-        startY: 70,
+        startY: startY + 22,
         head: [["Nome", "NIF", "Cargo", "Departamento", "Status", "Salário Base", "Técnico"]],
         body: tabelaDados,
         theme: "striped",
@@ -404,12 +398,8 @@ const ListaFuncionarios = () => {
         alternateRowStyles: { fillColor: [240, 248, 255] },
       });
       
-      const paginaAltura = doc.internal.pageSize.height;
-      doc.setFontSize(9);
-      doc.setFont("helvetica", "italic");
-      doc.setTextColor(100, 100, 100);
-      doc.text(`Sistema SIREXA - Relatório gerado eletronicamente.`, 14, paginaAltura - 10);
-      doc.text(`© ${new Date().getFullYear()} SIREXA - Gestão Corporativa.`, 14, paginaAltura - 5);
+      const pageCount = doc.internal.getNumberOfPages();
+      drawRodape(doc, empresaAtual?.nome || 'Empresa', pageCount);
 
       doc.save(`lista_funcionarios_${empresaAtual?.nome?.replace(/\s/g, '_') || 'empresa'}_${numeroRelatorio}.pdf`);
       mostrarMensagem("✅ PDF da lista gerado com sucesso!", "sucesso");
@@ -424,28 +414,23 @@ const ListaFuncionarios = () => {
   const exportarPDFFuncionarioIndividual = async (funcionario) => {
     setExportando(true);
     try {
+      const empresaAtual = getEmpresaAtual();
+      const logo = await carregarLogoBase64(empresaAtual);
+      
       const doc = new jsPDF();
       const dataAtual = new Date();
       const numeroRelatorio = `${dataAtual.toISOString().slice(0, 10).replace(/-/g, "")}-${String(Math.floor(Math.random() * 999) + 1).padStart(3, "0")}`;
-      const empresaAtual = getEmpresaAtual();
       
-      doc.setFontSize(20);
-      doc.setFont("helvetica", "bold");
-      doc.setTextColor(37, 99, 235);
-      doc.text("FICHA DE FUNCIONÁRIO", 14, 20);
-      doc.setFontSize(16);
-      doc.setFont("helvetica", "bold");
-      doc.setTextColor(0, 0, 0);
-      doc.text(funcionario.nome || "—", 14, 32);
+      const startY = drawCabecalhoProfissional(doc, empresaAtual, logo) + 5;
       doc.setFontSize(10);
       doc.setFont("helvetica", "normal");
       doc.setTextColor(100, 100, 100);
-      doc.text(`Nº Relatório: ${numeroRelatorio}`, 14, 42);
-      doc.text(`Gerado em: ${dataAtual.toLocaleString("pt-AO")}`, 14, 50);
-      doc.text(`Empresa: ${empresaAtual?.nome || "—"}`, 14, 58);
+      doc.text(`Nº Relatório: ${numeroRelatorio}`, 14, startY);
+      doc.text(`Gerado em: ${dataAtual.toLocaleString("pt-AO")}`, 14, startY + 8);
+      doc.text(`Empresa: ${empresaAtual?.nome || "—"}`, 14, startY + 16);
 
       autoTable(doc, {
-        startY: 70,
+        startY: startY + 22,
         body: [
           ["Nome Completo", funcionario.nome || "—"],
           ["NIF", funcionario.nif || "—"],
@@ -469,12 +454,8 @@ const ListaFuncionarios = () => {
         alternateRowStyles: { fillColor: [240, 248, 255] }
       });
       
-      const paginaAltura = doc.internal.pageSize.height;
-      doc.setFontSize(9);
-      doc.setFont("helvetica", "italic");
-      doc.setTextColor(100, 100, 100);
-      doc.text(`Sistema SIREXA - Documento gerado eletronicamente.`, 14, paginaAltura - 10);
-      doc.text(`© ${new Date().getFullYear()} SIREXA - Gestão Corporativa.`, 14, paginaAltura - 5);
+      const pageCount = doc.internal.getNumberOfPages();
+      drawRodape(doc, empresaAtual?.nome || 'Empresa', pageCount);
 
       doc.save(`funcionario_${funcionario.nome?.replace(/\s/g, '_')}_${numeroRelatorio}.pdf`);
       mostrarMensagem("✅ PDF do funcionário gerado com sucesso!", "sucesso");

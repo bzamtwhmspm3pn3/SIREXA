@@ -11,6 +11,7 @@ import {
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { carregarLogoBase64, drawCabecalhoProfissional, drawRodape } from '../../utils/pdfUtils';
 
 // Componente de Seletor de Empresa
 const EmpresaSelector = ({ empresas, empresaSelecionada, setEmpresaSelecionada, onRefresh, loading, isTecnico, empresaNome }) => {
@@ -489,19 +490,27 @@ const RazaoGeral = () => {
   const exportarPDF = async () => {
     setExportando(true);
     try {
+      const empresaObj = isTecnico()
+        ? { _id: userEmpresaId, nome: userEmpresaNome }
+        : empresas.find(e => e._id === empresaSelecionada);
+      const logo = await carregarLogoBase64(empresaObj);
+      const empresaNome = empresaObj?.nome || "Não selecionada";
+      
       const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
       const contaInfo = contas.find(c => c.codigo === contaSelecionada);
-      const empresaAtual = isTecnico() ? userEmpresaNome : empresas.find(e => e._id === empresaSelecionada)?.nome;
+      
+      let yPos = drawCabecalhoProfissional(doc, empresaObj, logo);
       
       doc.setFontSize(14);
       doc.setFont("helvetica", "bold");
-      doc.text("RAZÃO GERAL", doc.internal.pageSize.getWidth() / 2, 15, { align: "center" });
+      doc.text("RAZÃO GERAL", doc.internal.pageSize.getWidth() / 2, yPos, { align: "center" });
       
+      yPos += 7;
       doc.setFontSize(10);
       doc.setFont("helvetica", "normal");
-      doc.text(`Empresa: ${empresaAtual || "Não selecionada"}`, 14, 25);
-      doc.text(`Conta: ${contaSelecionada} - ${contaInfo?.nome || ""}`, 14, 32);
-      doc.text(`Período: ${filtros.dataInicio || "Início"} a ${filtros.dataFim || "Actual"}`, 14, 39);
+      doc.text(`Conta: ${contaSelecionada} - ${contaInfo?.nome || ""}`, 14, yPos);
+      yPos += 7;
+      doc.text(`Período: ${filtros.dataInicio || "Início"} a ${filtros.dataFim || "Actual"}`, 14, yPos);
       
       const dadosTabela = movimentos.map(mov => [
         formatarData(mov.data),
@@ -513,7 +522,7 @@ const RazaoGeral = () => {
       ]);
       
       autoTable(doc, {
-        startY: 45,
+        startY: yPos + 6,
         head: [["Data", "Nº", "Descrição", "Débito", "Crédito", "Saldo"]],
         body: dadosTabela,
         theme: "striped",
@@ -521,6 +530,8 @@ const RazaoGeral = () => {
         styles: { fontSize: 8, cellPadding: 2 }
       });
       
+      const pageCount = doc.internal.getNumberOfPages();
+      drawRodape(doc, empresaNome, pageCount);
       doc.save(`razao_${contaSelecionada}_${new Date().toISOString().split("T")[0]}.pdf`);
       alert("✅ PDF exportado com sucesso!");
     } catch (error) {

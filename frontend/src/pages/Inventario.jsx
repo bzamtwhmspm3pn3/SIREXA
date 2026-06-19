@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { carregarLogoBase64, drawCabecalhoProfissional, drawRodape } from '../utils/pdfUtils';
 
 const Inventario = () => {
   const [empresas, setEmpresas] = useState([]);
@@ -465,31 +466,12 @@ const Inventario = () => {
     };
     
     const empresaAtual = isTecnico() 
-      ? { nome: limparTexto(userEmpresaNome), nif: user?.nif || "---" }
-      : { nome: limparTexto(empresas.find(e => e._id === empresaSelecionada)?.nome || "Empresa"), 
-          nif: empresas.find(e => e._id === empresaSelecionada)?.nif || "---" };
+      ? { nome: userEmpresaNome, nif: user?.nif || "---" }
+      : empresas.find(e => e._id === empresaSelecionada);
     
-    // Cabeçalho - sem acentos
-    doc.setFontSize(22);
-    doc.setFont("helvetica", "bold");
-    doc.setTextColor(37, 99, 235);
-    doc.text("INVENTARIO GERAL", 148.5, 20, { align: "center" });
+    const logo = await carregarLogoBase64(empresaAtual);
+    let y = drawCabecalhoProfissional(doc, empresaAtual, logo) + 5;
     
-    doc.setFontSize(12);
-    doc.setFont("helvetica", "bold");
-    doc.setTextColor(0, 0, 0);
-    doc.text(empresaAtual.nome, 148.5, 30, { align: "center" });
-    
-    doc.setFontSize(10);
-    doc.setFont("helvetica", "normal");
-    doc.setTextColor(100, 100, 100);
-    doc.text(`Gerado em: ${dataAtual.toLocaleDateString("pt-AO")}`, 148.5, 38, { align: "center" });
-    
-    doc.setDrawColor(37, 99, 235);
-    doc.line(15, 44, 282, 44);
-    
-    // Estatísticas
-    let y = 52;
     doc.setFontSize(9);
     doc.setFont("helvetica", "bold");
     doc.setTextColor(0, 0, 0);
@@ -499,7 +481,6 @@ const Inventario = () => {
     
     y += 10;
     
-    // Tabela de itens por categoria (agrupada)
     doc.setFontSize(10);
     doc.setFont("helvetica", "bold");
     doc.setTextColor(37, 99, 235);
@@ -552,18 +533,10 @@ const Inventario = () => {
       startY = doc.lastAutoTable.finalY + 10;
     }
     
-    // Rodapé - sem acentos
     const pageCount = doc.internal.getNumberOfPages();
-    for (let i = 1; i <= pageCount; i++) {
-      doc.setPage(i);
-      doc.setFontSize(7);
-      doc.setFont("helvetica", "italic");
-      doc.setTextColor(120, 120, 120);
-      doc.text(`Gerado por: ${limparTexto(user?.nome || "Sistema")}`, 148.5, 195, { align: "center" });
-      doc.text(`© ${new Date().getFullYear()} AnDioGest - Gestao Corporativa`, 148.5, 200, { align: "center" });
-    }
+    drawRodape(doc, empresaAtual?.nome || 'Empresa', pageCount);
     
-    doc.save(`inventario_${limparTexto(empresaAtual.nome)}_${dataAtual.toISOString().split('T')[0]}.pdf`);
+    doc.save(`inventario_${dataAtual.toISOString().split('T')[0]}.pdf`);
     mostrarMensagem("PDF exportado com sucesso!", "sucesso");
   } catch (error) {
     console.error("Erro ao gerar PDF:", error);

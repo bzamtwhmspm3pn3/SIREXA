@@ -10,6 +10,7 @@ import {
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { carregarLogoBase64, drawCabecalhoProfissional, drawRodape } from '../../utils/pdfUtils';
 import { Bar } from "react-chartjs-2";
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ArcElement } from "chart.js";
 
@@ -450,15 +451,28 @@ const Balancete = () => {
   const exportarPDF = async () => {
     setExportando(true);
     try {
+      const empresaObj = isTecnico()
+        ? { _id: userEmpresaId, nome: userEmpresaNome }
+        : empresas.find(e => e._id === empresaSelecionada);
+      const logo = await carregarLogoBase64(empresaObj);
+      const empresaNome = empresaObj?.nome || "Não selecionada";
+      
       const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
-      const empresaAtual = isTecnico() ? userEmpresaNome : empresas.find(e => e._id === empresaSelecionada)?.nome;
+      
+      let yPos = drawCabecalhoProfissional(doc, empresaObj, logo);
+      
       doc.setFontSize(14); doc.setFont("helvetica", "bold");
-      doc.text("BALANCETE DE VERIFICAÇÃO", doc.internal.pageSize.getWidth() / 2, 15, { align: "center" });
+      doc.text("BALANCETE DE VERIFICAÇÃO", doc.internal.pageSize.getWidth() / 2, yPos, { align: "center" });
+      
+      yPos += 7;
       doc.setFontSize(10); doc.setFont("helvetica", "normal");
-      doc.text(`Empresa: ${empresaAtual || "Não selecionada"}`, 14, 25);
-      doc.text(`Período: ${periodo.dataInicio} a ${periodo.dataFim}`, 14, 32);
+      doc.text(`Período: ${periodo.dataInicio} a ${periodo.dataFim}`, 14, yPos);
+      
       const dadosTabela = balancete.map(item => [item.contaCodigo, item.contaDescricao?.substring(0, 40), item.classe, formatarNumero(item.debito), formatarNumero(item.credito), `${formatarNumero(Math.abs(item.saldo))} ${item.saldo >= 0 ? 'D' : 'C'}`]);
-      autoTable(doc, { startY: 40, head: [["Código", "Conta", "Cls", "Débito", "Crédito", "Saldo"]], body: dadosTabela, theme: "striped", headStyles: { fillColor: [41, 128, 185] }, styles: { fontSize: 7, cellPadding: 2 } });
+      autoTable(doc, { startY: yPos + 6, head: [["Código", "Conta", "Cls", "Débito", "Crédito", "Saldo"]], body: dadosTabela, theme: "striped", headStyles: { fillColor: [41, 128, 185] }, styles: { fontSize: 7, cellPadding: 2 } });
+      
+      const pageCount = doc.internal.getNumberOfPages();
+      drawRodape(doc, empresaNome, pageCount);
       doc.save(`balancete_${new Date().toISOString().split("T")[0]}.pdf`);
       alert("✅ PDF exportado com sucesso!");
     } catch (error) { console.error("Erro ao gerar PDF:", error); alert("❌ Erro ao gerar PDF"); }

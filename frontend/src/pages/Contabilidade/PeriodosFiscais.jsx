@@ -11,6 +11,7 @@ import {
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { carregarLogoBase64, drawCabecalhoProfissional, drawRodape } from '../../utils/pdfUtils';
 
 // Componente de Seletor de Empresa
 const EmpresaSelector = ({ empresas, empresaSelecionada, setEmpresaSelecionada, onRefresh, loading, isTecnico, empresaNome }) => {
@@ -476,15 +477,28 @@ const PeriodosFiscais = () => {
   const exportarPDF = async () => {
     setExportando(true);
     try {
+      const empresaObj = isTecnico()
+        ? { _id: userEmpresaId, nome: userEmpresaNome }
+        : empresas.find(e => e._id === empresaSelecionada);
+      const logo = await carregarLogoBase64(empresaObj);
+      const empresaNome = empresaObj?.nome || "Não selecionada";
+      
       const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
-      const empresaAtual = isTecnico() ? userEmpresaNome : empresas.find(e => e._id === empresaSelecionada)?.nome;
+      
+      let yPos = drawCabecalhoProfissional(doc, empresaObj, logo);
+      
       doc.setFontSize(14); doc.setFont("helvetica", "bold");
-      doc.text("PERÍODOS FISCAIS", doc.internal.pageSize.getWidth() / 2, 15, { align: "center" });
+      doc.text("PERÍODOS FISCAIS", doc.internal.pageSize.getWidth() / 2, yPos, { align: "center" });
+      
+      yPos += 7;
       doc.setFontSize(10); doc.setFont("helvetica", "normal");
-      doc.text(`Empresa: ${empresaAtual || "Não selecionada"}`, 14, 25);
-      doc.text(`Data de emissão: ${new Date().toLocaleDateString("pt-AO")}`, 14, 32);
+      doc.text(`Data de emissão: ${new Date().toLocaleDateString("pt-AO")}`, 14, yPos);
+      
       const dadosTabela = periodosFiltrados.map(p => [p.ano, p.nome, new Date(p.dataInicio).toLocaleDateString("pt-AO"), new Date(p.dataFim).toLocaleDateString("pt-AO"), p.tipo, p.status]);
-      autoTable(doc, { startY: 40, head: [["Ano", "Nome", "Início", "Fim", "Tipo", "Status"]], body: dadosTabela, theme: "striped", headStyles: { fillColor: [41, 128, 185] }, styles: { fontSize: 8, cellPadding: 2 } });
+      autoTable(doc, { startY: yPos + 6, head: [["Ano", "Nome", "Início", "Fim", "Tipo", "Status"]], body: dadosTabela, theme: "striped", headStyles: { fillColor: [41, 128, 185] }, styles: { fontSize: 8, cellPadding: 2 } });
+      
+      const pageCount = doc.internal.getNumberOfPages();
+      drawRodape(doc, empresaNome, pageCount);
       doc.save(`periodos_fiscais_${new Date().toISOString().split("T")[0]}.pdf`);
       alert("✅ PDF exportado!");
     } catch (error) { console.error("Erro ao gerar PDF:", error); alert("❌ Erro ao gerar PDF"); }

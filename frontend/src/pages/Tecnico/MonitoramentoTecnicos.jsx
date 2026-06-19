@@ -11,6 +11,7 @@ import {
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { carregarLogoBase64, drawCabecalhoProfissional, drawRodape } from '../../utils/pdfUtils';
 
 const MonitoramentoTecnicos = () => {
   const { user, isGestor, empresaId: userEmpresaId } = useAuth();
@@ -171,16 +172,17 @@ const MonitoramentoTecnicos = () => {
   };
 
   const exportarPDF = async () => {
+    const empresaAtual = empresas.find(e => e._id === empresaSelecionada) || { nome: "Empresa" };
+    const logo = await carregarLogoBase64(empresaAtual);
+    
     const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
     
-    doc.setFontSize(14);
-    doc.setFont("helvetica", "bold");
-    doc.text("RELATÓRIO DE MONITORAMENTO DE TÉCNICOS", doc.internal.pageSize.getWidth() / 2, 15, { align: "center" });
-    
+    let yPos = drawCabecalhoProfissional(doc, empresaAtual, logo) + 5;
     doc.setFontSize(10);
     doc.setFont("helvetica", "normal");
-    doc.text(`Empresa: ${empresas.find(e => e._id === empresaSelecionada)?.nome || "Não selecionada"}`, 14, 25);
-    doc.text(`Período: ${filtros.dataInicio || "Início"} a ${filtros.dataFim || "Actual"}`, 14, 32);
+    doc.setTextColor(0, 0, 0);
+    doc.text(`Período: ${filtros.dataInicio || "Início"} a ${filtros.dataFim || "Actual"}`, 14, yPos);
+    yPos += 8;
     
     const dadosTabela = logs.map(log => [
       formatarData(log.createdAt),
@@ -192,7 +194,7 @@ const MonitoramentoTecnicos = () => {
     ]);
     
     autoTable(doc, {
-      startY: 40,
+      startY: yPos + 5,
       head: [["Data/Hora", "Técnico", "Ação", "Módulo", "Descrição", "Status"]],
       body: dadosTabela,
       theme: "striped",
@@ -200,6 +202,8 @@ const MonitoramentoTecnicos = () => {
       styles: { fontSize: 7, cellPadding: 2 }
     });
     
+    const pageCount = doc.internal.getNumberOfPages();
+    drawRodape(doc, empresaAtual?.nome || 'Empresa', pageCount);
     doc.save(`monitoramento_${new Date().toISOString().split("T")[0]}.pdf`);
     alert("✅ PDF exportado com sucesso!");
   };

@@ -12,6 +12,7 @@ import {
 import QRCode from "react-qr-code";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
+import { carregarLogoBase64, drawCabecalhoProfissional, drawRodape, carregarDadosEmpresa } from '../utils/pdfUtils';
 
 const ControloPagamento = () => {
   const [empresas, setEmpresas] = useState([]);
@@ -566,12 +567,24 @@ const ControloPagamento = () => {
     
     setLoading(true);
     try {
+      const empresa = await carregarDadosEmpresa(empresaSelecionada);
+      const logo = await carregarLogoBase64(empresa);
+      const empresaNome = empresa?.nome || "Empresa";
+      
       const canvas = await html2canvas(element, { scale: 2, backgroundColor: '#ffffff', logging: false });
       const imgData = canvas.toDataURL('image/png');
       const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
       const imgWidth = 190;
       const imgHeight = (canvas.height * imgWidth) / canvas.width;
-      pdf.addImage(imgData, 'PNG', 10, 10, imgWidth, imgHeight);
+      
+      drawCabecalhoProfissional(pdf, empresa, logo, 10);
+      
+      const headerBottom = 55;
+      pdf.addImage(imgData, 'PNG', 10, headerBottom, imgWidth, imgHeight);
+      
+      const pageCount = pdf.internal.getNumberOfPages();
+      drawRodape(pdf, empresaNome, pageCount);
+      
       pdf.save(`${nomeArquivo}.pdf`);
       mostrarMensagem("Documento exportado com sucesso!", "sucesso");
     } catch (error) {
