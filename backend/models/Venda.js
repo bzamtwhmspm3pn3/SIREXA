@@ -98,6 +98,7 @@ const VendaSchema = new mongoose.Schema({
   usuarioId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   hashDocumento: { type: String },
   observacoes: { type: String },
+  contabilizado: { type: Boolean, default: false },
   data: { type: Date, default: Date.now },
   dataAtualizacao: { type: Date, default: Date.now }
 });

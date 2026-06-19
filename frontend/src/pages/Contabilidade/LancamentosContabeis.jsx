@@ -459,6 +459,30 @@ const LancamentosContabeis = () => {
     setShowDetalhes(true);
   };
 
+  const estornarLancamento = async () => {
+    if (!lancamentoSelecionado) return;
+    if (!window.confirm(`Tem certeza que deseja estornar o lançamento ${lancamentoSelecionado.numeroLancamento}?`)) return;
+    try {
+      const response = await fetch(`${BASE_URL}/api/contabilidade/lancamentos/${lancamentoSelecionado._id}/estornar`, {
+        method: "POST",
+        headers: getHeaders(),
+        body: JSON.stringify({ motivo: `Estornado por ${user?.nome || 'utilizador'}` })
+      });
+      const data = await response.json();
+      if (response.ok && data.sucesso) {
+        alert(`✅ Lançamento estornado com sucesso!`);
+        setShowDetalhes(false);
+        carregarLancamentos();
+        carregarResumo();
+      } else {
+        alert(`❌ ${data.mensagem || "Erro ao estornar"}`);
+      }
+    } catch (error) {
+      console.error("Erro ao estornar:", error);
+      alert("❌ Erro ao conectar ao servidor");
+    }
+  };
+
   const formatarNumero = (numero) => {
     if (numero === undefined || numero === null) return "0,00";
     return Number(numero).toLocaleString("pt-AO", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -475,6 +499,10 @@ const LancamentosContabeis = () => {
         return <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-green-900 text-green-300 text-xs"><CheckCircle size={12} /> Contabilizado</span>;
       case "Pendente":
         return <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-yellow-900 text-yellow-300 text-xs"><AlertCircle size={12} /> Pendente</span>;
+      case "Estornado":
+        return <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-red-900 text-red-300 text-xs"><XCircle size={12} /> Estornado</span>;
+      case "Cancelado":
+        return <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-gray-900 text-gray-300 text-xs"><XCircle size={12} /> Cancelado</span>;
       default:
         return <span className="px-2 py-1 rounded-full bg-gray-700 text-gray-300 text-xs">{status}</span>;
     }
@@ -791,6 +819,14 @@ const LancamentosContabeis = () => {
               </div>
               
               <div className="flex justify-end gap-3 mt-6">
+                {lancamentoSelecionado.status === 'Contabilizado' && (
+                  <button
+                    onClick={estornarLancamento}
+                    className="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg text-white flex items-center gap-2"
+                  >
+                    <XCircle size={16} /> Estornar
+                  </button>
+                )}
                 <button
                   onClick={() => setShowDetalhes(false)}
                   className="bg-gray-600 hover:bg-gray-700 px-4 py-2 rounded-lg text-white"

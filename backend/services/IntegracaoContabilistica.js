@@ -94,14 +94,26 @@ class IntegracaoContabilistica {
         
         const vendas = await Venda.find({ empresaId, contabilizado: { $ne: true } });
         for (const venda of vendas) {
-            try { await this.integrarVenda(venda, empresaId, usuarioId); resultados.vendas++; }
-            catch (e) { resultados.erros.push(`Venda ${venda.numeroFactura}: ${e.message}`); }
+            try {
+                await this.integrarVenda(venda, empresaId, usuarioId);
+                venda.contabilizado = true;
+                await venda.save();
+                resultados.vendas++;
+            } catch (e) {
+                resultados.erros.push(`Venda ${venda.numeroFactura}: ${e.message}`);
+            }
         }
         
         const pagamentos = await Pagamento.find({ empresaId, contabilizado: { $ne: true } });
         for (const pagamento of pagamentos) {
-            try { await this.integrarPagamento(pagamento, empresaId, usuarioId); resultados.pagamentos++; }
-            catch (e) { resultados.erros.push(`Pagamento ${pagamento.referencia}: ${e.message}`); }
+            try {
+                await this.integrarPagamento(pagamento, empresaId, usuarioId);
+                pagamento.contabilizado = true;
+                await pagamento.save();
+                resultados.pagamentos++;
+            } catch (e) {
+                resultados.erros.push(`Pagamento ${pagamento.referencia}: ${e.message}`);
+            }
         }
         return resultados;
     }

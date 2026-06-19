@@ -667,6 +667,27 @@ const Vendas = () => {
     await gerarFacturaProfissional(venda, user, empresaAtual, contasBancarias);
   };
 
+  const cancelarVenda = async (venda) => {
+    if (!window.confirm(`Tem certeza que deseja cancelar a venda FT ${venda.numeroFactura}? Esta ação irá reverter o lançamento contabilístico.`)) return;
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch(`https://sirexa-api.onrender.com/api/vendas/${venda._id}`, {
+        method: "DELETE",
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+      const data = await response.json();
+      if (response.ok) {
+        mostrarMensagem(data.mensagem || "Venda cancelada com sucesso!", "sucesso");
+        carregarVendas();
+      } else {
+        mostrarMensagem(data.mensagem || "Erro ao cancelar venda", "erro");
+      }
+    } catch (error) {
+      console.error("Erro ao cancelar venda:", error);
+      mostrarMensagem("Erro ao conectar ao servidor", "erro");
+    }
+  };
+
   const handlePagamentoParcela = (parcela) => {
     setParcelaSelecionada(parcela);
     setModalPagamentoParcela(true);
@@ -827,10 +848,13 @@ const Vendas = () => {
                             </span>
                           </td>
                           <td className="p-4 text-center"><span className="px-2 py-1 rounded-lg text-xs bg-green-600/20 text-green-400">{v.status || "Finalizada"}</span></td>
-                          <td className="p-4 text-center">
+                           <td className="p-4 text-center">
                             <div className="flex justify-center gap-2">
                               <button onClick={() => verDetalhes(v)} className="p-2 bg-blue-600/20 hover:bg-blue-600/40 rounded-lg"><Eye size={16} className="text-blue-400" /></button>
                               <button onClick={() => imprimirFactura(v)} className="p-2 bg-purple-600/20 hover:bg-purple-600/40 rounded-lg"><Printer size={16} className="text-purple-400" /></button>
+                              {v.status !== 'cancelada' && (
+                                <button onClick={() => cancelarVenda(v)} className="p-2 bg-red-600/20 hover:bg-red-600/40 rounded-lg"><Trash2 size={16} className="text-red-400" /></button>
+                              )}
                             </div>
                            </td>
                          </tr>

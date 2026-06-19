@@ -102,6 +102,8 @@ router.post('/sincronizar', logMiddleware('sincronizacao'), async (req, res) => 
         for (const venda of vendasNaoContabilizadas) {
             try {
                 await IntegracaoContabilistica.integrarVenda(venda, empresaId, req.usuarioId);
+                venda.contabilizado = true;
+                await venda.save();
                 vendasProcessadas++;
             } catch (error) {
                 erros.push(`Venda ${venda.numeroFactura}: ${error.message}`);
@@ -112,6 +114,8 @@ router.post('/sincronizar', logMiddleware('sincronizacao'), async (req, res) => 
         for (const pagamento of pagamentosNaoContabilizados) {
             try {
                 await IntegracaoContabilistica.integrarPagamento(pagamento, empresaId, req.usuarioId);
+                pagamento.contabilizado = true;
+                await pagamento.save();
                 pagamentosProcessados++;
             } catch (error) {
                 erros.push(`Pagamento ${pagamento.referencia}: ${error.message}`);

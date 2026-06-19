@@ -67,6 +67,7 @@ const PagamentoSchema = new mongoose.Schema({
   projeto: { type: String, default: '' },
   
   // Campos de controle
+  contabilizado: { type: Boolean, default: false },
   criadoPor: { type: String },
   atualizadoPor: { type: String },
   createdAt: { type: Date, default: Date.now },

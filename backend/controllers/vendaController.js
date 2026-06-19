@@ -653,6 +653,8 @@ exports.emitirVenda = async (req, res) => {
         empresa._id,
         req.user?.id || req.user?._id || null
       );
+      novaVenda.contabilizado = true;
+      await novaVenda.save();
       console.log(`✅ Lançamento contabilístico criado para venda #${novaVenda.numeroFactura}`);
     } catch (err) {
       console.error('⚠️ Erro ao criar lançamento contabilístico da venda:', err.message);
@@ -903,7 +905,22 @@ exports.cancelarVenda = async (req, res) => {
       await factura.save();
     }
 
+    // Reverter lançamento contabilístico (estorno)
+    try {
+      const lancamento = await LancamentoContabilistico.findOne({
+        empresaId: venda.empresaId,
+        numeroLancamento: `VND-${venda.numeroFactura}`
+      });
+      if (lancamento && lancamento.status === 'Contabilizado') {
+        await lancamento.estornar(req.user?.id || req.user?._id, `Venda cancelada - ${venda.cliente}`);
+        console.log(`✅ Lançamento contabilístico estornado: VND-${venda.numeroFactura}`);
+      }
+    } catch (err) {
+      console.error('⚠️ Erro ao estornar lançamento contabilístico:', err.message);
+    }
+
     venda.status = 'cancelada';
+    venda.contabilizado = false;
     await venda.save();
 
     res.json({ 
