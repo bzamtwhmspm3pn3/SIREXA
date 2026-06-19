@@ -73,8 +73,18 @@ app.use(securityHeaders);
 app.use(requestLogger);
 
 // 3. CORS
+const allowedOrigins = [
+  "http://localhost:5173", "http://localhost:5174", "http://localhost:3000",
+  "https://sirexa.vercel.app", "https://sirexa-git-main-bzamtwhmspm3pn3s-projects.vercel.app",
+];
 app.use(cors({
-  origin: ["http://localhost:5173", "http://localhost:5174", "http://localhost:3000", "https://sirexa.vercel.app", "https://sirexa-git-main-bzamtwhmspm3pn3s-projects.vercel.app"],
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.includes(origin) || /\.vercel\.app$/.test(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization', 'Accept']
