@@ -273,8 +273,8 @@ router.post('/calcular', logMiddleware('folha-salarial-calcular'), async (req, r
     
     const avencas = await AvencaAdiantamento.find({
       empresaId,
-      dataVencimento: { $gte: dataInicio, $lte: dataFim },
-      status: { $in: ['Aprovado', 'EmPagamento', 'Pendente'] }
+      status: { $in: ['Aprovado', 'EmPagamento', 'Pendente'] },
+      saldoRestante: { $gt: 0 }
     });
 
     console.log(`📋 Total de avenças/adiantamentos encontrados: ${avencas.length}`);
