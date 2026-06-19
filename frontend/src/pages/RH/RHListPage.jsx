@@ -308,7 +308,7 @@ const RHListPage = ({ title, endpoint, columns, formFields, emptyMessage }) => {
                           >
                             <option value="">Seleccione um funcionário...</option>
                             {funcionarios.map(f => (
-                              <option key={f._id} value={f._id}>{f.nome} - {f.cargo || f.funcao || 'Sem cargo'}</option>
+                              <option key={f._id} value={f._id}>{f.nome}</option>
                             ))}
                           </select>
                         ) : field.key === 'cargoNovo' || field.key === 'cargoAnterior' ? (
