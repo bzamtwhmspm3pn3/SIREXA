@@ -269,7 +269,24 @@ const RHListPage = ({ title, endpoint, columns, formFields, emptyMessage }) => {
                             onChange={(e) => {
                               const id = e.target.value;
                               const func = funcionarios.find(f => f._id === id);
-                              setFormData({ ...formData, funcionarioId: id, funcionarioNome: func?.nome || "" });
+                              const extras = {};
+                              if (func) {
+                                extras.funcionarioNome = func.nome || '';
+                                extras.funcionarioId = id;
+                                const keys = formFields.map(f => f.key);
+                                if (keys.some(k => k === 'cargoAnterior' || k === 'cargoNovo')) {
+                                  extras.cargoAnterior = func.cargo || func.funcao || '';
+                                }
+                                if (keys.some(k => k.startsWith('salario'))) {
+                                  extras.salarioAnterior = func.salarioBase || 0;
+                                }
+                                if (keys.includes('departamento')) {
+                                  extras.departamento = func.departamento || '';
+                                }
+                              } else {
+                                extras.funcionarioId = id;
+                              }
+                              setFormData({ ...formData, ...extras });
                             }}
                           >
                             <option value="">Seleccione um funcionário...</option>

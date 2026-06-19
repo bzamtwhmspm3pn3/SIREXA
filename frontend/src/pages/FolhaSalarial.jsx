@@ -708,122 +708,201 @@ const FolhaSalarial = () => {
     setShowBancoModal(true);
   };
 
-  // ========== FUNÇÃO BASE PARA DESENHAR UM RECIBO (REUTILIZADA) ==========
-  const adicionarReciboAoDoc = async (doc, funcionario, dadosFolha, localPagamento) => {
+  // ========== DESENHA UM RECIBO NUMA POSIÇÃO Y DADA (REUTILIZADA) ==========
+  const desenharReciboNoDoc = async (doc, funcionario, dadosFolha, localPagamento, yStart, tipoVia) => {
+    const margem = 14;
+    const pageW = doc.internal.pageSize.getWidth();
+    const rMargem = pageW - margem;
+    const largUtil = rMargem - margem;
+
     const dataAtual = new Date();
-    const anoAtual = dataAtual.getFullYear();
     const totalAbonos = (funcionario.totalAbonosAlimentacao || 0) +
-                        (funcionario.totalAbonosTransporte || 0) +
-                        (funcionario.totalAbonosFerias || 0) +
-                        (funcionario.totalAbonosDecimoTerceiro || 0) +
-                        (funcionario.totalAbonosBonus || 0) +
-                        (funcionario.totalAbonosOutros || 0);
+      (funcionario.totalAbonosTransporte || 0) +
+      (funcionario.totalAbonosFerias || 0) +
+      (funcionario.totalAbonosDecimoTerceiro || 0) +
+      (funcionario.totalAbonosBonus || 0) +
+      (funcionario.totalAbonosOutros || 0);
     const totalAvencasDesconto = (funcionario.totalAvencas || 0) + (funcionario.totalAdiantamentos || 0);
     const salarioBruto = (funcionario.salarioBase || 0) + totalAbonos;
     const totalDescontos = (funcionario.valorFaltas || 0) +
-                           (funcionario.inssColaborador || 0) +
-                           (funcionario.irt || 0) +
-                           totalAvencasDesconto;
+      (funcionario.inssColaborador || 0) +
+      (funcionario.irt || 0) +
+      totalAvencasDesconto;
     const salarioLiquido = funcionario.salarioLiquido || (salarioBruto - totalDescontos);
-    
-    const logoReceipt = await carregarLogoBase64(dadosEmpresa);
-    let y = drawCabecalhoProfissional(doc, dadosEmpresa, logoReceipt, 10) + 5;
-    
-    doc.setFontSize(18);
-    doc.setFont("helvetica", "bold");
+
+    let y = yStart;
+
+    // Borda fina ao redor do recibo
+    doc.setDrawColor(200, 200, 200);
+    doc.setLineWidth(0.3);
+    doc.rect(margem, y, largUtil, 130, 'S');
+
+    // Tipo de via (ORIGINAL / CÓPIA)
+    doc.setFontSize(7);
+    doc.setFont('helvetica', 'bold');
+    const corVia = tipoVia === 'ORIGINAL' ? [37, 99, 235] : [220, 38, 38];
+    doc.setTextColor(corVia[0], corVia[1], corVia[2]);
+    doc.text(tipoVia || 'VIA', rMargem - 2, y + 4, { align: 'right' });
+    doc.setDrawColor(corVia[0], corVia[1], corVia[2]);
+    doc.setLineWidth(0.5);
+    doc.line(rMargem - 40, y + 5, rMargem - 2, y + 5);
+
+    // Título
+    doc.setFontSize(13);
+    doc.setFont('helvetica', 'bold');
     doc.setTextColor(37, 99, 235);
-    doc.text("RECIBO DE PAGAMENTO", 105, y, { align: "center" });
-    y += 10;
-    
-    doc.setFontSize(10);
-    doc.setFont("helvetica", "bold");
-    doc.setTextColor(0, 0, 0);
-    doc.text("Funcionário:", 15, y+5);
-    doc.setFont("helvetica", "normal");
-    doc.text(funcionario.nome || "---", 45, y+5);
-    doc.setFont("helvetica", "bold");
-    doc.text("Cargo:", 120, y+5);
-    doc.setFont("helvetica", "normal");
-    doc.text(funcionario.cargo || funcionario.funcao || "---", 140, y+5);
-    doc.setFont("helvetica", "bold");
-    doc.setFont("helvetica", "normal");
-    doc.setFont("helvetica", "bold");
-    doc.text("IBAN:", 120, y+12);
-    doc.setFont("helvetica", "normal");
-    doc.text(funcionario.iban || "---", 140, y+12);
-    doc.setFont("helvetica", "bold");
-    doc.text("Período:", 15, y+19);
-    doc.setFont("helvetica", "normal");
-    doc.text(`${meses[dadosFolha.mesReferencia - 1]} / ${dadosFolha.anoReferencia}`, 45, y+19);
-    doc.setFont("helvetica", "bold");
-    doc.text("Data Processamento:", 120, y+19);
-    doc.setFont("helvetica", "normal");
-    doc.text(dataAtual.toLocaleDateString("pt-AO"), 160, y+19);
-    
-    let tableY = y + 28;
-    doc.setFillColor(240, 248, 255);
-    doc.rect(15, tableY, 180, 5, 'F');
-    doc.setFontSize(9);
-    doc.setFont("helvetica", "bold");
+    doc.text('RECIBO DE PAGAMENTO', margem + 2, y + 12);
+
+    // Linha separadora
+    doc.setDrawColor(210, 210, 210);
+    doc.setLineWidth(0.3);
+    doc.line(margem + 2, y + 15, rMargem - 2, y + 15);
+
+    // Dados do funcionário (2 colunas)
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(80, 80, 80);
+    doc.text('Funcionário:', margem + 2, y + 22);
+    doc.setFont('helvetica', 'normal');
+    doc.text(String(funcionario.nome || '---'), margem + 2 + 30, y + 22);
+
+    doc.setFont('helvetica', 'bold');
+    doc.text('Período:', margem + 2, y + 28);
+    doc.setFont('helvetica', 'normal');
+    const mesNome = meses[dadosFolha.mesReferencia - 1] || '---';
+    doc.text(`${mesNome} / ${dadosFolha.anoReferencia || '---'}`, margem + 2 + 30, y + 28);
+
+    doc.setFont('helvetica', 'bold');
+    doc.text('Cargo:', margem + 2, y + 34);
+    doc.setFont('helvetica', 'normal');
+    doc.text(String(funcionario.cargo || funcionario.funcao || '---'), margem + 2 + 30, y + 34);
+
+    doc.setFont('helvetica', 'bold');
+    const col2X = margem + largUtil * 0.5;
+    doc.text('IBAN:', col2X, y + 22);
+    doc.setFont('helvetica', 'normal');
+    doc.text(String(funcionario.iban || '---'), col2X + 15, y + 22);
+
+    doc.setFont('helvetica', 'bold');
+    doc.text('Processamento:', col2X, y + 28);
+    doc.setFont('helvetica', 'normal');
+    doc.text(dataAtual.toLocaleDateString('pt-AO'), col2X + 30, y + 28);
+
+    doc.setFont('helvetica', 'bold');
+    doc.text('Local Pag.:', col2X, y + 34);
+    doc.setFont('helvetica', 'normal');
+    doc.text(String(localPagamento || '---'), col2X + 22, y + 34);
+
+    // Tabela de vencimentos
+    const tabelaY = y + 39;
+    doc.setFillColor(240, 245, 255);
+    doc.rect(margem + 2, tabelaY, largUtil - 4, 5, 'F');
+    doc.setFontSize(7.5);
+    doc.setFont('helvetica', 'bold');
     doc.setTextColor(37, 99, 235);
-    doc.text("DEMONSTRATIVO DE VENCIMENTO", 105, tableY+4, { align: "center" });
-    tableY += 8;
-    const tableData = [
-      ["Salário Base", `+ ${formatarNumero(funcionario.salarioBase)} Kz`],
-      ["Subsídio Alimentação", `+ ${formatarNumero(funcionario.totalAbonosAlimentacao)} Kz`],
-      ["Subsídio Transporte", `+ ${formatarNumero(funcionario.totalAbonosTransporte)} Kz`],
-      ["Subsídio Férias", `+ ${formatarNumero(funcionario.totalAbonosFerias)} Kz`],
-      ["Décimo Terceiro", `+ ${formatarNumero(funcionario.totalAbonosDecimoTerceiro || 0)} Kz`],
-      ["Bónus/Prémios", `+ ${formatarNumero(funcionario.totalAbonosBonus || 0)} Kz`],
-      ["Outros Abonos", `+ ${formatarNumero(funcionario.totalAbonosOutros || 0)} Kz`],
-      [(funcionario.totalAvencas > 0 ? "(-) Avenças" : ""), funcionario.totalAvencas > 0 ? `- ${formatarNumero(funcionario.totalAvencas)} Kz` : ""],
-      [(funcionario.totalAdiantamentos > 0 ? "(-) Adiantamentos" : ""), funcionario.totalAdiantamentos > 0 ? `- ${formatarNumero(funcionario.totalAdiantamentos)} Kz` : ""],
-      ["", ""],
-      ["SALÁRIO BRUTO", `+ ${formatarNumero(salarioBruto)} Kz`],
-      ["", ""],
-      ["Faltas", `- ${formatarNumero(funcionario.valorFaltas)} Kz`],
-      ["INSS (Colaborador)", `- ${formatarNumero(funcionario.inssColaborador)} Kz`],
-      ["IRT", `- ${formatarNumero(funcionario.irt)} Kz`],
-      ["", ""],
-      ["TOTAL DE DESCONTOS", `- ${formatarNumero(totalDescontos)} Kz`],
-      ["", ""],
-      ["TOTAL LÍQUIDO", `= ${formatarNumero(salarioLiquido)} Kz`]
+    doc.text('DISCRIMINAÇÃO', margem + 5, tabelaY + 3.5);
+    doc.text('VALOR (Kz)', rMargem - 5, tabelaY + 3.5, { align: 'right' });
+
+    const linhas = [
+      { label: 'Salário Base', valor: formatarNumero(funcionario.salarioBase) },
+      { label: 'Subsídio Alimentação', valor: formatarNumero(funcionario.totalAbonosAlimentacao) },
+      { label: 'Subsídio Transporte', valor: formatarNumero(funcionario.totalAbonosTransporte) },
+      { label: 'Subsídio Férias', valor: formatarNumero(funcionario.totalAbonosFerias) },
+      { label: 'Décimo Terceiro', valor: formatarNumero(funcionario.totalAbonosDecimoTerceiro || 0) },
+      { label: 'Bónus/Prémios', valor: formatarNumero(funcionario.totalAbonosBonus || 0) },
+      { label: 'Outros Abonos', valor: formatarNumero(funcionario.totalAbonosOutros || 0) },
     ];
-    autoTable(doc, {
-      startY: tableY,
-      body: tableData,
-      theme: "plain",
-      styles: { fontSize: 10, cellPadding: 2, halign: "left" },
-      columnStyles: { 0: { fontStyle: "bold", cellWidth: 70, halign: "left" }, 1: { halign: "right", cellWidth: 60, fontStyle: "bold" } },
-      margin: { left: 15 }
+    if (funcionario.totalAvencas > 0) linhas.push({ label: '(-) Avenças', valor: `- ${formatarNumero(funcionario.totalAvencas)}` });
+    if (funcionario.totalAdiantamentos > 0) linhas.push({ label: '(-) Adiantamentos', valor: `- ${formatarNumero(funcionario.totalAdiantamentos)}` });
+
+    let itemY = tabelaY + 7;
+    doc.setFontSize(7);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(60, 60, 60);
+    linhas.forEach((l, i) => {
+      if (itemY > y + 95) return;
+      const bg = i % 2 === 0 ? [248, 250, 252] : [255, 255, 255];
+      doc.setFillColor(bg[0], bg[1], bg[2]);
+      doc.rect(margem + 2, itemY - 1, largUtil - 4, 4.5, 'F');
+      doc.text(l.label, margem + 5, itemY + 1);
+      doc.text(l.valor, rMargem - 5, itemY + 1, { align: 'right' });
+      itemY += 5;
     });
-    let finalY = doc.lastAutoTable.finalY + 5;
+
+    // Subtotal Bruto
+    doc.setFillColor(235, 245, 255);
+    doc.rect(margem + 2, itemY - 1, largUtil - 4, 5, 'F');
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7.5);
+    doc.setTextColor(37, 99, 235);
+    doc.text('SALÁRIO BRUTO', margem + 5, itemY + 1.5);
+    doc.text(`+ ${formatarNumero(salarioBruto)}`, rMargem - 5, itemY + 1.5, { align: 'right' });
+    itemY += 6;
+
+    // Descontos
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7);
+    doc.setTextColor(180, 60, 60);
+    const descontos = [
+      { label: 'Faltas', valor: formatarNumero(funcionario.valorFaltas) },
+      { label: 'INSS (Colaborador)', valor: formatarNumero(funcionario.inssColaborador) },
+      { label: 'IRT', valor: formatarNumero(funcionario.irt) },
+    ];
+    descontos.forEach(d => {
+      doc.text(d.label, margem + 5, itemY + 1);
+      doc.text(`- ${d.valor}`, rMargem - 5, itemY + 1, { align: 'right' });
+      itemY += 5;
+    });
+
+    // Total Descontos
+    doc.setFillColor(255, 240, 240);
+    doc.rect(margem + 2, itemY - 1, largUtil - 4, 5, 'F');
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7.5);
+    doc.setTextColor(180, 60, 60);
+    doc.text('TOTAL DE DESCONTOS', margem + 5, itemY + 1.5);
+    doc.text(`- ${formatarNumero(totalDescontos)}`, rMargem - 5, itemY + 1.5, { align: 'right' });
+    itemY += 6;
+
+    // Líquido
+    doc.setFillColor(37, 99, 235);
+    doc.rect(margem + 2, itemY - 1, largUtil - 4, 6, 'F');
+    doc.setFont('helvetica', 'bold');
     doc.setFontSize(9);
-    doc.setFont("helvetica", "bold");
-    doc.text("Local do Pagamento:", 15, finalY);
-    doc.setFont("helvetica", "normal");
-    doc.text(localPagamento, 55, finalY);
-    finalY += 8;
+    doc.setTextColor(255, 255, 255);
+    doc.text('TOTAL LÍQUIDO', margem + 5, itemY + 2);
+    doc.text(`${formatarNumero(salarioLiquido)} Kz`, rMargem - 5, itemY + 2, { align: 'right' });
+    itemY += 8;
+
+    // QR Code + Assinaturas numa linha
     const qrData = JSON.stringify({
       funcionario: funcionario.nome,
       empresa: dadosEmpresa?.nome,
-      periodo: `${meses[dadosFolha.mesReferencia-1]}/${dadosFolha.anoReferencia}`,
+      periodo: `${mesNome}/${dadosFolha.anoReferencia}`,
       salarioBruto: formatarNumero(salarioBruto),
       totalDescontos: formatarNumero(totalDescontos),
       salarioLiquido: formatarNumero(salarioLiquido),
       dataPagamento: dataAtual.toISOString().split('T')[0]
     });
-    const qrBase64 = await QRCode.toDataURL(qrData, { width: 100, margin: 1 });
-    doc.addImage(qrBase64, 'PNG', 150, finalY-5, 30, 30);
-    const assY = Math.max(finalY + 28, 240);
-    doc.line(25, assY, 85, assY);
-    doc.setFontSize(8);
-    doc.text("Assinatura do Funcionário", 55, assY+4, { align: "center" });
-    doc.text("Data: ___/___/______", 55, assY+9, { align: "center" });
-    doc.line(110, assY, 170, assY);
-    doc.text("Assinatura do Empregador", 140, assY+4, { align: "center" });
-    doc.text("Carimbo da Empresa", 140, assY+9, { align: "center" });
-    // Footer is handled by the calling function
+    const qrBase64 = await QRCode.toDataURL(qrData, { width: 80, margin: 1 });
+    doc.addImage(qrBase64, 'PNG', rMargem - 22, itemY, 18, 18);
+
+    doc.setFontSize(7);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(120, 120, 120);
+    const assY = itemY + 8;
+    doc.line(margem + 5, assY, margem + 2 + 50, assY);
+    doc.text('Assinatura do Funcionário', margem + 2 + 25, assY + 3, { align: 'center' });
+    doc.line(margem + 2 + 55, assY, margem + 2 + 105, assY);
+    doc.text('Assinatura / Carimbo da Empresa', margem + 2 + 80, assY + 3, { align: 'center' });
+    doc.text(`Data: ${dataAtual.toLocaleDateString('pt-AO')}`, margem + 2, assY + 3);
+  };
+
+  const adicionarReciboAoDoc = async (doc, funcionario, dadosFolha, localPagamento) => {
+    const logoReceipt = await carregarLogoBase64(dadosEmpresa);
+    const yCab = drawCabecalhoProfissional(doc, dadosEmpresa, logoReceipt, 10);
+    await desenharReciboNoDoc(doc, funcionario, dadosFolha, localPagamento, yCab + 2, 'ORIGINAL');
+    await desenharReciboNoDoc(doc, funcionario, dadosFolha, localPagamento, yCab + 2 + 135, 'CÓPIA');
   };
 
   const gerarReciboIndividual = async (funcionario, dadosFolha) => {
@@ -834,7 +913,7 @@ const FolhaSalarial = () => {
     try {
       const doc = new jsPDF({ unit: 'mm', format: 'a4' });
       await adicionarReciboAoDoc(doc, funcionario, dadosFolha, localPagamento);
-      drawRodape(doc, dadosEmpresa?.nome || "Empresa", doc.internal.getNumberOfPages());
+      drawRodape(doc, dadosEmpresa?.nome || "Empresa", { numeroDocumento: `Recibo ${funcionario.nome}` });
       doc.save(`Recibo_${funcionario.nome.replace(/\s/g, "_")}_${dadosFolha.mesReferencia}_${dadosFolha.anoReferencia}.pdf`);
       mostrarMensagem(`Recibo de ${funcionario.nome} gerado com sucesso!`, "sucesso");
     } catch (error) {
@@ -862,7 +941,7 @@ const FolhaSalarial = () => {
         primeiro = false;
         await adicionarReciboAoDoc(doc, func, detalhes, localPagamento);
       }
-      drawRodape(doc, dadosEmpresa?.nome || "Empresa", doc.internal.getNumberOfPages());
+      drawRodape(doc, dadosEmpresa?.nome || "Empresa", { numeroDocumento: `Lote ${detalhes.funcionarios.length} recibos` });
       doc.save(`Recibos_Todos_${detalhes.empresaNome}_${meses[detalhes.mesReferencia-1]}_${detalhes.anoReferencia}.pdf`);
       mostrarMensagem(`${detalhes.funcionarios.length} recibos gerados com sucesso!`, "sucesso");
     } catch (error) {
