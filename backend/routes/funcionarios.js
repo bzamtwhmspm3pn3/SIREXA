@@ -146,6 +146,16 @@ router.post('/', validateEmpresaAccess, logMiddleware('funcionarios'), upload.si
     
     await funcionario.save();
     console.log('✅ Funcionário criado com sucesso:', funcionario._id);
+
+    // Integração automática: sincronizar com outras áreas do RH
+    try {
+      const IntegracaoRH = require('../services/integracaoRH');
+      IntegracaoRH.sincronizarFuncionario(funcionario).catch(err => {
+        console.error('⚠️ Erro na sincronização automática:', err.message);
+      });
+    } catch (err) {
+      console.error('⚠️ Erro ao iniciar sincronização:', err.message);
+    }
     
     // CRIAR TÉCNICO SE MARCADO
     let tecnicoCriado = null;
@@ -280,7 +290,17 @@ router.put('/:id', logMiddleware('funcionarios'), upload.single('foto'), async (
     }
     
     await funcionario.save();
-    
+
+    // Integração automática: sincronizar alterações com outras áreas do RH
+    try {
+      const IntegracaoRH = require('../services/integracaoRH');
+      IntegracaoRH.sincronizarFuncionario(funcionario).catch(err => {
+        console.error('⚠️ Erro na sincronização automática:', err.message);
+      });
+    } catch (err) {
+      console.error('⚠️ Erro ao iniciar sincronização:', err.message);
+    }
+
     // Gerenciar criação/atualização do técnico
     if (funcionario.isTecnico && !wasTecnico && tecnicoSenha) {
       const modulos = funcionario.modulos || {
@@ -337,6 +357,18 @@ router.put('/:id', logMiddleware('funcionarios'), upload.single('foto'), async (
       console.log('✅ Técnico removido');
     }
     
+    // Se o funcionário foi demitido ou inativado, executar fluxo de saída
+    if (status === 'Demitido' || status === 'Inativo') {
+      try {
+        const IntegracaoRH = require('../services/integracaoRH');
+        IntegracaoRH.finalizarFuncionario(funcionario._id, new Date(), `Status alterado para: ${status}`).catch(err => {
+          console.error('⚠️ Erro no fluxo de saída:', err.message);
+        });
+      } catch (err) {
+        console.error('⚠️ Erro ao iniciar fluxo de saída:', err.message);
+      }
+    }
+
     console.log('✅ Funcionário atualizado com sucesso:', funcionario._id);
     res.json(funcionario);
     

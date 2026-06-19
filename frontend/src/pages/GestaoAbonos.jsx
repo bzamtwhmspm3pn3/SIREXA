@@ -433,7 +433,7 @@ const GestaoAbonos = () => {
       )}
 
       <div className="space-y-6">
-        {/* Seletor de Empresa */}
+        {/* Seletor de Empresa - Gestão de Subsídios e Abonos */}
         <EmpresaSelector
           empresas={empresas}
           empresaSelecionada={empresaSelecionada}

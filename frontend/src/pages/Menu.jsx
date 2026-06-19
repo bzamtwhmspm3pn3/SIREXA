@@ -182,7 +182,7 @@ export default function Menu() {
                 {moduloAtivo('funcionarios') && <MenuCard to="/funcionarios" icon={<ClipboardList size={28} />} title="Funcionários" description="Cadastro de colaboradores" gradient="from-blue-500 to-cyan-500" />}
                 {moduloAtivo('folhaSalarial') && <MenuCard to="/folha-salarial" icon={<Wallet size={28} />} title="Folha Salarial" description="Cálculo de salários" gradient="from-green-500 to-emerald-500" />}
                 {moduloAtivo('gestaoFaltas') && <MenuCard to="/gestao-faltas" icon={<Calendar size={28} />} title="Gestão de Faltas" description="Registo de ausências" gradient="from-red-500 to-orange-500" />}
-                {moduloAtivo('gestaoAbonos') && <MenuCard to="/gestao-abonos" icon={<Gift size={28} />} title="Gestão de Abonos" description="Bónus e complementos" gradient="from-yellow-500 to-amber-500" />}
+                {moduloAtivo('gestaoAbonos') && <MenuCard to="/gestao-abonos" icon={<Gift size={28} />} title="Subsídios e Abonos" description="Gratificações e subsídios" gradient="from-yellow-500 to-amber-500" />}
                 {moduloAtivo('avaliacao') && <MenuCard to="/avaliacao-desempenho" icon={<BarChart3 size={28} />} title="Avaliação" description="Desempenho dos colaboradores" gradient="from-purple-500 to-pink-500" />}
                 {moduloAtivo('recrutamento') && <MenuCard to="/rh/recrutamento" icon={<UserPlus size={28} />} title="Vagas" description="Recrutamento e seleção" gradient="from-teal-500 to-green-500" />}
                 {moduloAtivo('formacao') && <MenuCard to="/rh/formacao" icon={<GraduationCap size={28} />} title="Formação" description="Cursos e treinamentos" gradient="from-indigo-500 to-purple-500" />}
@@ -412,7 +412,7 @@ export default function Menu() {
                 {modulos.funcionarios && <MenuCard to="/funcionarios" icon={<ClipboardList size={28} />} title="Funcionários" description="Cadastro" gradient="from-blue-500 to-cyan-500" />}
                 {modulos.folhaSalarial && <MenuCard to="/folha-salarial" icon={<Wallet size={28} />} title="Folha Salarial" description="Cálculo de salários" gradient="from-green-500 to-emerald-500" />}
                 {modulos.gestaoFaltas && <MenuCard to="/gestao-faltas" icon={<Calendar size={28} />} title="Gestão de Faltas" description="Registo de ausências" gradient="from-red-500 to-orange-500" />}
-                {modulos.gestaoAbonos && <MenuCard to="/gestao-abonos" icon={<Gift size={28} />} title="Gestão de Abonos" description="Bónus" gradient="from-yellow-500 to-amber-500" />}
+                {modulos.gestaoAbonos && <MenuCard to="/gestao-abonos" icon={<Gift size={28} />} title="Subsídios e Abonos" description="Gratificações e subsídios" gradient="from-yellow-500 to-amber-500" />}
                 {modulos.avaliacao && <MenuCard to="/avaliacao-desempenho" icon={<BarChart3 size={28} />} title="Avaliação" description="Desempenho" gradient="from-purple-500 to-pink-500" />}
               </div>
             </div>

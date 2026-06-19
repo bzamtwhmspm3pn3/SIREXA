@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const mongoose = require('mongoose');
 const { Vaga, Candidatura, Entrevista, Talento } = require('../models/Recrutamento');
 const { Curso, Inscricao, Certificacao } = require('../models/Formacao');
 const FeriasLicenca = require('../models/FeriasLicenca');
@@ -63,6 +64,57 @@ router.delete('/vagas/:id', async (req, res) => {
     await Vaga.findByIdAndDelete(req.params.id);
     res.json({ sucesso: true, mensagem: 'Vaga removida' });
   } catch (error) {
+    res.status(500).json({ sucesso: false, mensagem: error.message });
+  }
+});
+
+// Contratar candidato (integração automática)
+router.post('/candidaturas/:id/contratar', async (req, res) => {
+  try {
+    const candidatura = await Candidatura.findById(req.params.id);
+    if (!candidatura) {
+      return res.status(404).json({ sucesso: false, mensagem: 'Candidatura não encontrada' });
+    }
+    if (candidatura.status !== 'Aprovado') {
+      return res.status(400).json({ sucesso: false, mensagem: 'Candidatura deve estar com status "Aprovado" para ser contratada' });
+    }
+
+    const { salarioBase, funcao, departamento, dataAdmissao, tipoContrato } = req.body;
+
+    const IntegracaoRH = require('../services/integracaoRH');
+    const funcionario = await IntegracaoRH.contratarCandidato(candidatura, {
+      salarioBase,
+      funcao: funcao || candidatura.cargoPretendido,
+      departamento,
+      dataAdmissao,
+      tipoContrato
+    });
+
+    candidatura.status = 'Contratado';
+    candidatura.funcionarioId = funcionario._id;
+    await candidatura.save();
+
+    if (candidatura.vagaId) {
+      const vaga = await Vaga.findById(candidatura.vagaId);
+      if (vaga) {
+        vaga.vagasDisponiveis = Math.max(0, (vaga.vagasDisponiveis || 1) - 1);
+        if (vaga.vagasDisponiveis <= 0) {
+          vaga.status = 'Fechada';
+        }
+        await vaga.save();
+      }
+    }
+
+    res.status(201).json({
+      sucesso: true,
+      mensagem: `Candidato ${candidatura.nome} contratado com sucesso! Funcionário criado automaticamente.`,
+      dados: {
+        funcionario,
+        candidatura
+      }
+    });
+  } catch (error) {
+    console.error('Erro ao contratar candidato:', error);
     res.status(500).json({ sucesso: false, mensagem: error.message });
   }
 });

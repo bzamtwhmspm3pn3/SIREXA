@@ -44,6 +44,21 @@ const FolhaSalarial = () => {
   const [showBancoModal, setShowBancoModal] = useState(false);
   const [filtroFuncionario, setFiltroFuncionario] = useState(""); // filtro modal
   
+  // Abas: 'folhas' | 'avencas'
+  const [abaAtiva, setAbaAtiva] = useState("folhas");
+  const [avencas, setAvencas] = useState([]);
+  const [showModalAvenca, setShowModalAvenca] = useState(false);
+  const [editandoAvenca, setEditandoAvenca] = useState(null);
+  const [avencaForm, setAvencaForm] = useState({
+    funcionarioId: "", tipo: "AdiantamentoSalarial", valor: "",
+    motivo: "", dataVencimento: "", numeroParcelas: "1", valorParcela: "",
+    periodicidade: "Unico", status: "Pendente"
+  });
+  const [avencasResumo, setAvencasResumo] = useState({
+    totalAdiantamentos: 0, valorAdiantamentos: 0, valorAdiantamentosPago: 0,
+    totalAvencas: 0, valorAvencas: 0, valorAvencasPago: 0, valorPendente: 0
+  });
+  
   const { user, isTecnico, empresaId: userEmpresaId, empresaNome: userEmpresaNome } = useAuth();
 
   const meses = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", 
@@ -92,11 +107,14 @@ const FolhaSalarial = () => {
       carregarFolhas();
       carregarFuncionarios();
       carregarDadosEmpresa();
+      carregarAvencas();
+      carregarResumoAvencas();
     } else {
       setFolhas([]);
       setFuncionarios([]);
       setDadosEmpresa(null);
       setGestorEmpresa(null);
+      setAvencas([]);
     }
   }, [empresaSelecionada, periodo, statusFiltro]);
 
@@ -227,6 +245,128 @@ const FolhaSalarial = () => {
     } catch (error) {
       console.error("Erro ao carregar gestor:", error);
     }
+  };
+
+  const carregarAvencas = async () => {
+    if (!empresaSelecionada) { setAvencas([]); return; }
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch(`https://sirexa-api.onrender.com/api/avencas-adiantamentos?empresaId=${empresaSelecionada}`, {
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+      const data = await response.json();
+      if (data.sucesso) setAvencas(data.dados || []);
+    } catch (error) {
+      console.error("Erro ao carregar avenças:", error);
+    }
+  };
+
+  const carregarResumoAvencas = async () => {
+    if (!empresaSelecionada) return;
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch(`https://sirexa-api.onrender.com/api/avencas-adiantamentos/resumo?empresaId=${empresaSelecionada}`, {
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+      const data = await response.json();
+      if (data.sucesso) setAvencasResumo(data.dados);
+    } catch (error) {
+      console.error("Erro ao carregar resumo:", error);
+    }
+  };
+
+  const handleSalvarAvenca = async () => {
+    if (!avencaForm.funcionarioId || !avencaForm.valor) {
+      mostrarMensagem("Preencha todos os campos obrigatórios", "erro");
+      return;
+    }
+    setLoading(true);
+    try {
+      const token = localStorage.getItem("token");
+      const url = editandoAvenca
+        ? `https://sirexa-api.onrender.com/api/avencas-adiantamentos/${editandoAvenca}`
+        : "https://sirexa-api.onrender.com/api/avencas-adiantamentos";
+      const method = editandoAvenca ? "PUT" : "POST";
+      const payload = {
+        ...avencaForm, empresaId: empresaSelecionada,
+        valor: parseFloat(avencaForm.valor),
+        valorParcela: parseFloat(avencaForm.valorParcela) || (parseFloat(avencaForm.valor) / (parseInt(avencaForm.numeroParcelas) || 1)),
+        numeroParcelas: parseInt(avencaForm.numeroParcelas) || 1
+      };
+      const response = await fetch(url, {
+        method, headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+        body: JSON.stringify(payload)
+      });
+      const data = await response.json();
+      if (data.sucesso) {
+        mostrarMensagem(data.mensagem, "sucesso");
+        setShowModalAvenca(false);
+        setEditandoAvenca(null);
+        resetFormAvenca();
+        carregarAvencas();
+        carregarResumoAvencas();
+      } else {
+        mostrarMensagem(data.mensagem || "Erro ao salvar", "erro");
+      }
+    } catch (error) {
+      mostrarMensagem("Erro ao conectar: " + error.message, "erro");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const excluirAvenca = async (id) => {
+    if (!window.confirm("Tem certeza que deseja excluir este registo?")) return;
+    try {
+      const token = localStorage.getItem("token");
+      await fetch(`https://sirexa-api.onrender.com/api/avencas-adiantamentos/${id}`, {
+        method: "DELETE", headers: { "Authorization": `Bearer ${token}` }
+      });
+      mostrarMensagem("Registo excluído!", "sucesso");
+      carregarAvencas();
+      carregarResumoAvencas();
+    } catch (error) {
+      mostrarMensagem("Erro ao excluir", "erro");
+    }
+  };
+
+  const integrarAvencaFolha = async (id) => {
+    if (!window.confirm("Integrar parcela deste registo na folha salarial?")) return;
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch(`https://sirexa-api.onrender.com/api/avencas-adiantamentos/${id}/integrar`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+        body: JSON.stringify({ mesReferencia: periodo.mes, anoReferencia: periodo.ano })
+      });
+      const data = await response.json();
+      if (data.sucesso) {
+        mostrarMensagem(data.mensagem, "sucesso");
+        carregarAvencas();
+        carregarResumoAvencas();
+      }
+    } catch (error) {
+      mostrarMensagem("Erro ao integrar", "erro");
+    }
+  };
+
+  const resetFormAvenca = () => {
+    setAvencaForm({
+      funcionarioId: "", tipo: "AdiantamentoSalarial", valor: "",
+      motivo: "", dataVencimento: "", numeroParcelas: "1", valorParcela: "",
+      periodicidade: "Unico", status: "Pendente"
+    });
+  };
+
+  const getStatusAvencaColor = (status) => {
+    const cores = {
+      'Pendente': 'bg-yellow-600/20 text-yellow-400',
+      'Aprovado': 'bg-green-600/20 text-green-400',
+      'EmPagamento': 'bg-blue-600/20 text-blue-400',
+      'Pago': 'bg-gray-600/20 text-gray-400',
+      'Cancelado': 'bg-red-600/20 text-red-400'
+    };
+    return cores[status] || 'bg-gray-600/20 text-gray-400';
   };
 
   const calcularFolha = async () => {
@@ -421,6 +561,8 @@ const FolhaSalarial = () => {
         { label: "Décimo Terceiro:", valor: formatarNumero(totais.totalAbonosDecimoTerceiro) },
         { label: "Bónus/Prémios:", valor: formatarNumero(totais.totalAbonosBonus) },
         { label: "Outros Abonos:", valor: formatarNumero(totais.totalAbonosOutros) },
+        { label: "Avenças:", valor: formatarNumero(totais.totalAvencas) },
+        { label: "Adiantamentos:", valor: formatarNumero(totais.totalAdiantamentos) },
         { label: "INSS Colaborador:", valor: formatarNumero(totais.totalINSSColaborador) },
         { label: "INSS Empregador:", valor: formatarNumero(totais.totalINSSEmpregador) },
         { label: "Total IRT:", valor: formatarNumero(totais.totalIRT) }
@@ -576,10 +718,12 @@ const FolhaSalarial = () => {
                         (funcionario.totalAbonosDecimoTerceiro || 0) +
                         (funcionario.totalAbonosBonus || 0) +
                         (funcionario.totalAbonosOutros || 0);
+    const totalAvencasDesconto = (funcionario.totalAvencas || 0) + (funcionario.totalAdiantamentos || 0);
     const salarioBruto = (funcionario.salarioBase || 0) + totalAbonos;
     const totalDescontos = (funcionario.valorFaltas || 0) +
                            (funcionario.inssColaborador || 0) +
-                           (funcionario.irt || 0);
+                           (funcionario.irt || 0) +
+                           totalAvencasDesconto;
     const salarioLiquido = funcionario.salarioLiquido || (salarioBruto - totalDescontos);
     
     const logoReceipt = await carregarLogoBase64(dadosEmpresa);
@@ -632,6 +776,8 @@ const FolhaSalarial = () => {
       ["Décimo Terceiro", `+ ${formatarNumero(funcionario.totalAbonosDecimoTerceiro || 0)} Kz`],
       ["Bónus/Prémios", `+ ${formatarNumero(funcionario.totalAbonosBonus || 0)} Kz`],
       ["Outros Abonos", `+ ${formatarNumero(funcionario.totalAbonosOutros || 0)} Kz`],
+      [(funcionario.totalAvencas > 0 ? "(-) Avenças" : ""), funcionario.totalAvencas > 0 ? `- ${formatarNumero(funcionario.totalAvencas)} Kz` : ""],
+      [(funcionario.totalAdiantamentos > 0 ? "(-) Adiantamentos" : ""), funcionario.totalAdiantamentos > 0 ? `- ${formatarNumero(funcionario.totalAdiantamentos)} Kz` : ""],
       ["", ""],
       ["SALÁRIO BRUTO", `+ ${formatarNumero(salarioBruto)} Kz`],
       ["", ""],
@@ -857,7 +1003,171 @@ const FolhaSalarial = () => {
               </div>
             </div>
 
-            {loading ? (
+            {/* Abas: Folhas | Avenças e Adiantamentos */}
+            <div className="flex border-b border-gray-700">
+              <button onClick={() => setAbaAtiva("folhas")} className={`px-6 py-3 text-sm font-medium transition-all ${abaAtiva === "folhas" ? "border-b-2 border-blue-500 text-blue-400" : "text-gray-400 hover:text-white"}`}>
+                <FileText size={16} className="inline mr-2" />Folhas Salariais
+              </button>
+              <button onClick={() => setAbaAtiva("avencas")} className={`px-6 py-3 text-sm font-medium transition-all ${abaAtiva === "avencas" ? "border-b-2 border-green-500 text-green-400" : "text-gray-400 hover:text-white"}`}>
+                <CreditCard size={16} className="inline mr-2" />Avenças e Adiantamentos
+              </button>
+            </div>
+
+            {abaAtiva === "avencas" ? (
+              <div className="space-y-4">
+                {/* Cards Resumo */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <div className="bg-gradient-to-br from-blue-600/20 to-blue-800/20 rounded-xl p-4 border border-blue-500/30">
+                    <p className="text-blue-300 text-xs">Adiantamentos</p>
+                    <p className="text-xl font-bold text-white">{avencasResumo.totalAdiantamentos}</p>
+                    <p className="text-xs text-gray-400">Valor: {formatarNumero(avencasResumo.valorAdiantamentos)} Kz</p>
+                  </div>
+                  <div className="bg-gradient-to-br from-purple-600/20 to-purple-800/20 rounded-xl p-4 border border-purple-500/30">
+                    <p className="text-purple-300 text-xs">Avenças</p>
+                    <p className="text-xl font-bold text-white">{avencasResumo.totalAvencas}</p>
+                    <p className="text-xs text-gray-400">Valor: {formatarNumero(avencasResumo.valorAvencas)} Kz</p>
+                  </div>
+                  <div className="bg-gradient-to-br from-yellow-600/20 to-yellow-800/20 rounded-xl p-4 border border-yellow-500/30">
+                    <p className="text-yellow-300 text-xs">Valor Pendente</p>
+                    <p className="text-xl font-bold text-yellow-400">{formatarNumero(avencasResumo.valorPendente)} Kz</p>
+                  </div>
+                  <div className="bg-gradient-to-br from-green-600/20 to-green-800/20 rounded-xl p-4 border border-green-500/30">
+                    <p className="text-green-300 text-xs">Total Pago</p>
+                    <p className="text-xl font-bold text-green-400">{formatarNumero(avencasResumo.valorAdiantamentosPago + avencasResumo.valorAvencasPago)} Kz</p>
+                  </div>
+                </div>
+
+                {/* Botão Novo */}
+                <div className="flex justify-end">
+                  <button onClick={() => { resetFormAvenca(); setEditandoAvenca(null); setShowModalAvenca(true); }} className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 px-5 py-2.5 rounded-xl transition flex items-center gap-2 text-sm">
+                    <CreditCard size={16} /> Novo Adiantamento / Avença
+                  </button>
+                </div>
+
+                {/* Tabela */}
+                {avencas.length === 0 ? (
+                  <div className="bg-gray-800 rounded-2xl p-12 text-center">
+                    <CreditCard className="mx-auto mb-4 text-gray-500" size={48} />
+                    <p className="text-gray-400">Nenhum registo de avença ou adiantamento</p>
+                  </div>
+                ) : (
+                  <div className="bg-gray-800 rounded-2xl overflow-hidden border border-gray-700">
+                    <div className="overflow-x-auto">
+                      <table className="w-full">
+                        <thead className="bg-gray-700"><tr className="text-white text-sm">
+                          <th className="p-3 text-left">Data</th><th className="p-3 text-left">Funcionário</th>
+                          <th className="p-3 text-left">Tipo</th><th className="p-3 text-right">Valor</th>
+                          <th className="p-3 text-right">Pago</th><th className="p-3 text-right">Saldo</th>
+                          <th className="p-3 text-center">Parcelas</th><th className="p-3 text-center">Status</th>
+                          <th className="p-3 text-center">Ações</th>
+                        </tr></thead>
+                        <tbody>
+                          {avencas.map(a => (
+                            <tr key={a._id} className="border-t border-gray-700 hover:bg-gray-700/50">
+                              <td className="p-3 text-gray-300 text-sm">{new Date(a.dataSolicitacao).toLocaleDateString()}</td>
+                              <td className="p-3 text-white font-medium text-sm">{a.funcionarioNome}</td>
+                              <td className="p-3">
+                                <span className={`px-2 py-0.5 rounded text-xs ${a.tipo === 'AdiantamentoSalarial' ? 'bg-blue-600/20 text-blue-400' : 'bg-purple-600/20 text-purple-400'}`}>
+                                  {a.tipo === 'AdiantamentoSalarial' ? 'Adiantamento' : 'Avença'}
+                                </span>
+                              </td>
+                              <td className="p-3 text-right text-green-400 text-sm">{formatarNumero(a.valor)} Kz</td>
+                              <td className="p-3 text-right text-gray-300 text-sm">{formatarNumero(a.valorPago)} Kz</td>
+                              <td className="p-3 text-right text-yellow-400 text-sm">{formatarNumero(a.saldoRestante)} Kz</td>
+                              <td className="p-3 text-center text-gray-300 text-sm">{a.parcelaAtual}/{a.numeroParcelas}</td>
+                              <td className="p-3 text-center">
+                                <span className={`px-2 py-0.5 rounded text-xs ${getStatusAvencaColor(a.status)}`}>{a.status}</span>
+                              </td>
+                              <td className="p-3 text-center">
+                                <div className="flex justify-center gap-1">
+                                  <button onClick={() => { setEditandoAvenca(a._id); setAvencaForm({...a}); setShowModalAvenca(true); }} className="p-1.5 bg-yellow-600/20 hover:bg-yellow-600/40 rounded" title="Editar">
+                                    <Edit size={14} className="text-yellow-400" />
+                                  </button>
+                                  {a.status !== 'Pago' && a.status !== 'Cancelado' && (
+                                    <button onClick={() => integrarAvencaFolha(a._id)} className="p-1.5 bg-purple-600/20 hover:bg-purple-600/40 rounded" title="Integrar na folha">
+                                      <TrendingUp size={14} className="text-purple-400" />
+                                    </button>
+                                  )}
+                                  <button onClick={() => excluirAvenca(a._id)} className="p-1.5 bg-red-600/20 hover:bg-red-600/40 rounded" title="Excluir">
+                                    <Trash2 size={14} className="text-red-400" />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
+                {/* Modal Novo/Editar Avença */}
+                {showModalAvenca && (
+                  <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
+                    <div className="bg-gray-800 rounded-2xl w-full max-w-md">
+                      <div className="flex justify-between items-center p-4 border-b border-gray-700">
+                        <h2 className="text-xl font-bold text-blue-400">{editandoAvenca ? "Editar" : "Novo"} Adiantamento / Avença</h2>
+                        <button onClick={() => { setShowModalAvenca(false); setEditandoAvenca(null); }} className="text-gray-400 hover:text-white"><X size={24} /></button>
+                      </div>
+                      <div className="p-4 space-y-3 max-h-[70vh] overflow-y-auto">
+                        <div>
+                          <label className="block text-gray-300 mb-1">Funcionário *</label>
+                          <select className="w-full p-3 rounded-xl bg-gray-700/50 border border-gray-600 text-white" value={avencaForm.funcionarioId} onChange={(e) => setAvencaForm({...avencaForm, funcionarioId: e.target.value})} disabled={!!editandoAvenca}>
+                            <option value="">Selecione</option>
+                            {funcionarios.map(f => <option key={f._id} value={f._id}>{f.nome}</option>)}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-gray-300 mb-1">Tipo *</label>
+                          <select className="w-full p-3 rounded-xl bg-gray-700/50 border border-gray-600 text-white" value={avencaForm.tipo} onChange={(e) => setAvencaForm({...avencaForm, tipo: e.target.value})}>
+                            <option value="AdiantamentoSalarial">Adiantamento Salarial</option>
+                            <option value="Avenca">Avença</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-gray-300 mb-1">Valor (Kz) *</label>
+                          <input type="number" className="w-full p-3 rounded-xl bg-gray-700/50 border border-gray-600 text-white" value={avencaForm.valor} onChange={(e) => {
+                            const val = e.target.value;
+                            setAvencaForm({...avencaForm, valor: val, valorParcela: parseFloat(val) / (parseInt(avencaForm.numeroParcelas) || 1)});
+                          }} />
+                          {avencaForm.tipo === 'AdiantamentoSalarial' && avencaForm.funcionarioId && (
+                            <p className="text-xs text-yellow-400 mt-1">Limite: 70% do salário base</p>
+                          )}
+                        </div>
+                        <div>
+                          <label className="block text-gray-300 mb-1">Motivo / Descrição</label>
+                          <textarea rows={2} className="w-full p-3 rounded-xl bg-gray-700/50 border border-gray-600 text-white resize-none" value={avencaForm.motivo} onChange={(e) => setAvencaForm({...avencaForm, motivo: e.target.value})} placeholder="Justificativa..." />
+                        </div>
+                        <div>
+                          <label className="block text-gray-300 mb-1">Data de Vencimento</label>
+                          <input type="date" className="w-full p-3 rounded-xl bg-gray-700/50 border border-gray-600 text-white" value={avencaForm.dataVencimento} onChange={(e) => setAvencaForm({...avencaForm, dataVencimento: e.target.value})} />
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className="block text-gray-300 mb-1">Parcelas</label>
+                            <input type="number" min="1" className="w-full p-3 rounded-xl bg-gray-700/50 border border-gray-600 text-white" value={avencaForm.numeroParcelas} onChange={(e) => {
+                              const parcelas = parseInt(e.target.value) || 1;
+                              setAvencaForm({...avencaForm, numeroParcelas: parcelas, valorParcela: parseFloat(avencaForm.valor || 0) / parcelas});
+                            }} />
+                          </div>
+                          <div>
+                            <label className="block text-gray-300 mb-1">Periodicidade</label>
+                            <select className="w-full p-3 rounded-xl bg-gray-700/50 border border-gray-600 text-white" value={avencaForm.periodicidade} onChange={(e) => setAvencaForm({...avencaForm, periodicidade: e.target.value})}>
+                              <option value="Unico">Único</option>
+                              <option value="Mensal">Mensal</option>
+                              <option value="Semanal">Semanal</option>
+                            </select>
+                          </div>
+                        </div>
+                        <button onClick={handleSalvarAvenca} disabled={loading} className="w-full bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 py-3 rounded-xl transition disabled:opacity-50">
+                          {loading ? <Loader2 className="animate-spin mx-auto" size={20} /> : (editandoAvenca ? "Atualizar" : "Registrar")}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : loading ? (
               <div className="text-center py-12"><Loader2 className="animate-spin mx-auto text-blue-400" size={40} /></div>
             ) : folhas.length === 0 ? (
               <div className="bg-gray-800 rounded-2xl p-12 text-center"><Calendar className="mx-auto mb-4 text-gray-500" size={48} /><p className="text-gray-400">Nenhuma folha encontrada</p></div>
@@ -932,6 +1242,12 @@ const FolhaSalarial = () => {
                   <div className="p-2 bg-gray-800/50 rounded"><p className="text-xs text-gray-400">INSS Colaborador</p><p className="text-sm font-bold text-orange-400">{formatarNumero(detalhes.totais?.totalINSSColaborador)} Kz</p></div>
                   <div className="p-2 bg-gray-800/50 rounded"><p className="text-xs text-gray-400">INSS Empregador</p><p className="text-sm font-bold text-blue-400">{formatarNumero(detalhes.totais?.totalINSSEmpregador)} Kz</p></div>
                   <div className="p-2 bg-gray-800/50 rounded"><p className="text-xs text-gray-400">Total IRT</p><p className="text-sm font-bold text-red-400">{formatarNumero(detalhes.totais?.totalIRT)} Kz</p></div>
+                  {(detalhes.totais?.totalAvencas > 0 || detalhes.totais?.totalAdiantamentos > 0) && (
+                    <>
+                      <div className="p-2 bg-gray-800/50 rounded"><p className="text-xs text-gray-400">(-) Avenças</p><p className="text-sm font-bold text-yellow-400">-{formatarNumero(detalhes.totais?.totalAvencas)} Kz</p></div>
+                      <div className="p-2 bg-gray-800/50 rounded"><p className="text-xs text-gray-400">(-) Adiantamentos</p><p className="text-sm font-bold text-orange-400">-{formatarNumero(detalhes.totais?.totalAdiantamentos)} Kz</p></div>
+                    </>
+                  )}
                   <div className="p-2 bg-gradient-to-r from-green-600/20 to-emerald-600/20 rounded col-span-2 md:col-span-3"><p className="text-xs text-gray-400">Total Líquido</p><p className="text-lg font-bold text-green-400">{formatarNumero(detalhes.totais?.totalLiquido)} Kz</p></div>
                 </div>
               </div>
@@ -956,6 +1272,7 @@ const FolhaSalarial = () => {
                     <thead className="bg-gray-700 sticky top-0"><tr className="text-white">
                       <th className="p-2 text-left">Nome</th><th className="p-2 text-left">Função</th><th className="p-2 text-right">Salário</th>
                       <th className="p-2 text-right">Alim</th><th className="p-2 text-right">Transp</th><th className="p-2 text-right">Férias</th>
+                      <th className="p-2 text-right">Avenças</th><th className="p-2 text-right">Adiant</th>
                       <th className="p-2 text-right">Faltas</th><th className="p-2 text-right">INSS</th><th className="p-2 text-right">IRT</th>
                       <th className="p-2 text-right">Líquido</th><th className="p-2 text-left">IBAN</th><th className="p-2 text-center">Ações</th>
                     </tr></thead>
@@ -971,6 +1288,8 @@ const FolhaSalarial = () => {
                           <td className="p-2 text-right text-blue-400">{formatarNumero(f.totalAbonosAlimentacao)}</td>
                           <td className="p-2 text-right text-cyan-400">{formatarNumero(f.totalAbonosTransporte)}</td>
                           <td className="p-2 text-right text-indigo-400">{formatarNumero(f.totalAbonosFerias)}</td>
+                          <td className="p-2 text-right text-yellow-400">{formatarNumero(f.totalAvencas)}</td>
+                          <td className="p-2 text-right text-orange-400">{formatarNumero(f.totalAdiantamentos)}</td>
                           <td className="p-2 text-right text-red-400">{formatarNumero(f.valorFaltas)}</td>
                           <td className="p-2 text-right text-orange-400">{formatarNumero(f.inssColaborador)}</td>
                           <td className="p-2 text-right text-purple-400">{formatarNumero(f.irt)}</td>

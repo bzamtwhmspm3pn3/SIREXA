@@ -162,6 +162,7 @@ app.use('/api/funcionarios', verifyToken, require('./routes/funcionarios'));
 app.use('/api/folha-salarial', verifyToken, folhaSalarialRoutes); 
 app.use('/api/faltas', verifyToken, require('./routes/faltas'));
 app.use('/api/abonos', verifyToken, require('./routes/abonos'));
+app.use('/api/avencas-adiantamentos', verifyToken, require('./routes/avencasAdiantamentos'));
 app.use('/api/avaliacoes', verifyToken, require('./routes/avaliacoes'));
 app.use('/api/rh', verifyToken, require('./routes/rh'));
 app.use('/api/importacao', verifyToken, require('./routes/importacao'));

@@ -8,6 +8,7 @@ const Falta = require('../models/Falta');
 const Empresa = require('../models/Empresa');
 const Gestor = require('../models/Gestor');
 const Pagamento = require('../models/Pagamento');
+const AvencaAdiantamento = require('../models/AvencaAdiantamento');
 const FolhaService = require('../services/folhaService');
 const { verifyToken } = require('../middlewares/auth');
 const { logMiddleware } = require('../middlewares/logger');
@@ -270,6 +271,14 @@ router.post('/calcular', logMiddleware('folha-salarial-calcular'), async (req, r
     
     console.log(`📋 Total de faltas encontradas: ${faltas.length}`);
     
+    const avencas = await AvencaAdiantamento.find({
+      empresaId,
+      dataVencimento: { $gte: dataInicio, $lte: dataFim },
+      status: { $in: ['Aprovado', 'EmPagamento', 'Pendente'] }
+    });
+
+    console.log(`📋 Total de avenças/adiantamentos encontrados: ${avencas.length}`);
+
     const empresa = await Empresa.findById(empresaId);
     
     const funcionariosFolha = [];
@@ -285,6 +294,8 @@ router.post('/calcular', logMiddleware('folha-salarial-calcular'), async (req, r
       totalAbonosDecimoTerceiro: 0,
       totalAbonosBonus: 0,
       totalAbonosOutros: 0,
+      totalAvencas: 0,
+      totalAdiantamentos: 0,
       totalLiquido: 0
     };
     
@@ -305,6 +316,10 @@ router.post('/calcular', logMiddleware('folha-salarial-calcular'), async (req, r
       const totalAbonosBonus = abonosBonus.reduce((acc, a) => acc + (a.valor || 0), 0);
       const totalAbonosOutros = abonosOutros.reduce((acc, a) => acc + (a.valor || 0), 0);
       
+      const avencasFunc = avencas.filter(a => a.funcionarioId?.toString() === func._id.toString());
+      const totalAvencas = avencasFunc.filter(a => a.tipo === 'Avenca').reduce((acc, a) => acc + (a.saldoRestante > 0 ? a.valorParcela : 0), 0);
+      const totalAdiantamentos = avencasFunc.filter(a => a.tipo === 'AdiantamentoSalarial').reduce((acc, a) => acc + (a.saldoRestante > 0 ? a.valorParcela : 0), 0);
+
       const faltasFunc = faltas.filter(f => f.funcionarioId?.toString() === func._id.toString());
       
       // Calcular dias de falta e horas de atraso
@@ -377,7 +392,10 @@ router.post('/calcular', logMiddleware('folha-salarial-calcular'), async (req, r
         inssColaborador: calculo.inss,
         inssEmpregador: inssEmpregador,
         irt: calculo.irt,
-        salarioLiquido: calculo.salarioLiquido,
+        salarioLiquido: calculo.salarioLiquido - totalAvencas - totalAdiantamentos,
+        totalAvencas,
+        totalAdiantamentos,
+        avencas: avencasFunc.map(a => ({ tipo: a.tipo, valor: a.valorParcela || a.valor, saldoRestante: a.saldoRestante })),
         iban: func.iban || '',
         tipoIRT: calculo.tipoIRT,
         taxaINSS: calculo.taxaINSS 
@@ -394,7 +412,9 @@ router.post('/calcular', logMiddleware('folha-salarial-calcular'), async (req, r
       totais.totalAbonosDecimoTerceiro += totalAbonosDecimoTerceiro;
       totais.totalAbonosBonus += totalAbonosBonus;
       totais.totalAbonosOutros += totalAbonosOutros;
-      totais.totalLiquido += calculo.salarioLiquido;
+      totais.totalAvencas += totalAvencas;
+      totais.totalAdiantamentos += totalAdiantamentos;
+      totais.totalLiquido += calculo.salarioLiquido - totalAvencas - totalAdiantamentos;
     }
     
     let nomeGestor = '';
