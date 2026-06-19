@@ -474,17 +474,17 @@ const FolhaSalarial = () => {
         margin: { top: 5, right: 15, bottom: 15, left: 15 },
         tableWidth: 'auto',
         columnStyles: {
-          0: { halign: "left", cellWidth: 35 },
-          1: { halign: "left", cellWidth: 25 },
-          2: { halign: "right", cellWidth: 18 },
-          3: { halign: "right", cellWidth: 13 },
-          4: { halign: "right", cellWidth: 13 },
-          5: { halign: "right", cellWidth: 13 },
-          6: { halign: "right", cellWidth: 13 },
-          7: { halign: "right", cellWidth: 15 },
-          8: { halign: "right", cellWidth: 15 },
-          9: { halign: "right", cellWidth: 18 },
-          10: { halign: "left", cellWidth: 35 }
+          0: { halign: "left", cellWidth: 48 },
+          1: { halign: "left", cellWidth: 32 },
+          2: { halign: "right", cellWidth: 20 },
+          3: { halign: "right", cellWidth: 15 },
+          4: { halign: "right", cellWidth: 15 },
+          5: { halign: "right", cellWidth: 14 },
+          6: { halign: "right", cellWidth: 14 },
+          7: { halign: "right", cellWidth: 17 },
+          8: { halign: "right", cellWidth: 17 },
+          9: { halign: "right", cellWidth: 20 },
+          10: { halign: "left", cellWidth: 50 }
         },
         didDrawPage: function() {},
       });
