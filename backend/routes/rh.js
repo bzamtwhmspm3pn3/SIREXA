@@ -589,10 +589,21 @@ router.get('/disciplinar', async (req, res) => {
 
 router.post('/disciplinar', async (req, res) => {
   try {
-    const registro = await Disciplinar.create(req.body);
+    const dados = { ...req.body };
+    ['dataOcorrencia', 'dataSancao', 'dataInicioCumprimento', 'dataFimCumprimento'].forEach(k => {
+      if (!dados[k] || dados[k] === '') delete dados[k];
+    });
+    if (dados.funcionarioId && !mongoose.Types.ObjectId.isValid(dados.funcionarioId)) {
+      return res.status(400).json({ sucesso: false, mensagem: 'funcionarioId inválido' });
+    }
+    if (!dados.descricao) return res.status(400).json({ sucesso: false, mensagem: 'Descrição é obrigatória' });
+    if (!dados.tipo) return res.status(400).json({ sucesso: false, mensagem: 'Tipo é obrigatório' });
+    if (!dados.dataOcorrencia) return res.status(400).json({ sucesso: false, mensagem: 'Data da ocorrência é obrigatória' });
+    const registro = await Disciplinar.create(dados);
     res.status(201).json({ sucesso: true, dados: registro });
   } catch (error) {
-    res.status(500).json({ sucesso: false, mensagem: error.message });
+    const status = error.name === 'ValidationError' || error.name === 'CastError' ? 400 : 500;
+    res.status(status).json({ sucesso: false, mensagem: error.message });
   }
 });
 

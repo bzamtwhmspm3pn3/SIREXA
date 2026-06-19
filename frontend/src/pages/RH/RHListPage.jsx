@@ -101,13 +101,15 @@ const RHListPage = ({ title, endpoint, columns, formFields, emptyMessage }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSalvando(true);
+    const payload = { ...formData, empresaId: empresaSelecionada };
+    Object.keys(payload).forEach(k => { if (payload[k] === '' || payload[k] === null || payload[k] === undefined) delete payload[k]; });
     try {
       const method = editando ? "PUT" : "POST";
       const url = editando ? `${API_URL}/rh/${endpoint}/${editando}` : `${API_URL}/rh/${endpoint}`;
       const response = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ ...formData, empresaId: empresaSelecionada })
+        body: JSON.stringify(payload)
       });
       const result = await response.json();
       if (response.ok) {
@@ -294,6 +296,11 @@ const RHListPage = ({ title, endpoint, columns, formFields, emptyMessage }) => {
                           <input type="number" className="w-full p-3 rounded-xl bg-gray-700/50 border border-gray-600 text-white"
                             value={formData[field.key] || ""}
                             onChange={(e) => setFormData({ ...formData, [field.key]: e.target.value ? parseFloat(e.target.value) : "" })}
+                          />
+                        ) : field.type === 'date' || field.key.startsWith('data') ? (
+                          <input type="date" className="w-full p-3 rounded-xl bg-gray-700/50 border border-gray-600 text-white"
+                            value={formData[field.key] || ""}
+                            onChange={(e) => setFormData({ ...formData, [field.key]: e.target.value })}
                           />
                         ) : (
                           <input type="text" className="w-full p-3 rounded-xl bg-gray-700/50 border border-gray-600 text-white"
