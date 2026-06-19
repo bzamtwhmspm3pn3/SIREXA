@@ -117,29 +117,56 @@ const RelatorioStock = ({ produtos = [], servicos = [], onClose, empresaId }) =>
       const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
       const dataAtual = new Date();
       const nomeEmpresa = limparTexto(empresa?.nome || localStorage.getItem("empresaNome") || "Empresa");
+
+      // CARREGAR LOGO
+      let logoTentativa = null;
+      if (empresa?.logotipo) {
+        try {
+          const logoUrl = `${API_URL.replace('/api', '')}/uploads/${empresa.logotipo}`;
+          const logoResponse = await fetch(logoUrl);
+          const logoBlob = await logoResponse.blob();
+          logoTentativa = await new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result);
+            reader.onerror = () => resolve(null);
+            reader.readAsDataURL(logoBlob);
+          });
+        } catch (e) { logoTentativa = null; }
+      }
       
-      // CABECALHO
-      doc.setFillColor(37, 99, 235);
-      doc.rect(14, 10, 40, 40, 'F');
-      doc.setTextColor(255, 255, 255);
-      doc.setFontSize(20);
+      // CABECALHO CORPORATIVO
+      if (logoTentativa) {
+        doc.addImage(logoTentativa, "PNG", 14, 8, 35, 35);
+      } else {
+        doc.setFillColor(37, 99, 235);
+        doc.rect(14, 10, 40, 40, 'F');
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(20);
+        doc.setFont("helvetica", "bold");
+        doc.text("S", 30, 33);
+        doc.setFontSize(14);
+        doc.text("G", 36, 33);
+      }
+      
+      doc.setTextColor(0, 0, 0);
+      doc.setFontSize(14);
       doc.setFont("helvetica", "bold");
-      doc.text("S", 30, 33);
-      doc.setFontSize(14);
-      doc.text("G", 36, 33);
-      
-      doc.setTextColor(37, 99, 235);
-      doc.setFontSize(14);
       doc.text(nomeEmpresa, 60, 20);
       
       doc.setTextColor(100, 100, 100);
       doc.setFontSize(9);
-      doc.text(`NIF: ${empresa?.nif || "---"}`, 60, 28);
-      doc.text(`Data: ${dataAtual.toLocaleDateString('pt-PT')}`, 60, 34);
+      doc.setFont("helvetica", "normal");
+      doc.text(`NIF: ${empresa?.nif || "---"}`, 60, 26);
+      doc.text(`Data: ${dataAtual.toLocaleDateString('pt-PT')}`, 60, 32);
+      
+      doc.setDrawColor(37, 99, 235);
+      doc.setLineWidth(0.3);
+      doc.line(14, 48, 196, 48);
       
       doc.setFontSize(18);
+      doc.setFont("helvetica", "bold");
       doc.setTextColor(0, 0, 0);
-      doc.text("RELATORIO DE STOCK", 14, 55);
+      doc.text("RELATORIO DE STOCK", 14, 58);
       
       // RESUMO EM TEXTO (sem cards com contorno)
       let yPos = 70;

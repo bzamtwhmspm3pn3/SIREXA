@@ -23,6 +23,7 @@ const Relatorios = () => {
   const [mostrarHistorico, setMostrarHistorico] = useState(false);
   const [anosDisponiveis, setAnosDisponiveis] = useState([]);
   const [loadingEmpresas, setLoadingEmpresas] = useState(true);
+  const [empresaLogo, setEmpresaLogo] = useState(null);
 
   const BASE_URL = "https://sirexa-api.onrender.com";
 
@@ -52,11 +53,39 @@ const Relatorios = () => {
   useEffect(() => {
     if (empresaSelecionada) {
       carregarHistorico();
+      carregarLogoEmpresa();
     } else {
       setHistorico([]);
       setRelatorio(null);
+      setEmpresaLogo(null);
     }
   }, [empresaSelecionada]);
+
+  const carregarLogoEmpresa = async () => {
+    if (!empresaSelecionada) return;
+    try {
+      const response = await fetch(`${BASE_URL}/api/empresa/${empresaSelecionada}`, {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        const emp = data.dados || data;
+        if (emp?.logotipo) {
+          const logoRes = await fetch(`${BASE_URL}/uploads/${emp.logotipo}`);
+          const blob = await logoRes.blob();
+          const logoBase64 = await new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result);
+            reader.onerror = () => resolve(null);
+            reader.readAsDataURL(blob);
+          });
+          setEmpresaLogo(logoBase64);
+        } else {
+          setEmpresaLogo(null);
+        }
+      }
+    } catch (e) { setEmpresaLogo(null); }
+  };
 
   const gerarAnos = () => {
     const anoAtual = new Date().getFullYear();
@@ -269,12 +298,17 @@ const Relatorios = () => {
     doc.setFillColor(37, 99, 235);
     doc.rect(0, 0, pageWidth, 5, 'F');
     
-    doc.setFillColor(37, 99, 235);
-    doc.circle(pageWidth / 2, 50, 18, 'F');
-    doc.setFillColor(255, 255, 255);
-    doc.circle(pageWidth / 2, 50, 12, 'F');
-    doc.setFillColor(37, 99, 235);
-    doc.circle(pageWidth / 2, 50, 5, 'F');
+    // LOGO DA EMPRESA NA CAPA
+    if (empresaLogo) {
+      doc.addImage(empresaLogo, "PNG", pageWidth / 2 - 20, 30, 40, 40);
+    } else {
+      doc.setFillColor(37, 99, 235);
+      doc.circle(pageWidth / 2, 50, 18, 'F');
+      doc.setFillColor(255, 255, 255);
+      doc.circle(pageWidth / 2, 50, 12, 'F');
+      doc.setFillColor(37, 99, 235);
+      doc.circle(pageWidth / 2, 50, 5, 'F');
+    }
     
     doc.setFontSize(26);
     doc.setFont("helvetica", "bold");

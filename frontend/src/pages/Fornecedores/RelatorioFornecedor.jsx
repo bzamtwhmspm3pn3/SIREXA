@@ -200,40 +200,57 @@ const RelatorioFornecedor = () => {
       
       let yPos = 20;
 
-      // CABECALHO
-      doc.setFillColor(37, 99, 235);
-      doc.rect(14, 10, 40, 40, 'F');
-      doc.setTextColor(255, 255, 255);
-      doc.setFontSize(24);
-      doc.setFont("helvetica", "bold");
-      doc.text("S", 30, 35);
-      doc.setFontSize(10);
-      doc.text("I", 38, 35);
-      doc.setFontSize(8);
-      doc.text("REXA", 28, 42);
-      
-      doc.setTextColor(37, 99, 235);
-      doc.setFontSize(12);
-      doc.setFont("helvetica", "bold");
-      doc.text(NOME_SISTEMA_COMPLETO, 60, 20);
+      // CARREGAR LOGO
+      let logoTentativa = null;
+      if (empresa?.logotipo) {
+        try {
+          const logoUrl = `https://sirexa-api.onrender.com/uploads/${empresa.logotipo}`;
+          const logoResponse = await fetch(logoUrl);
+          const logoBlob = await logoResponse.blob();
+          logoTentativa = await new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result);
+            reader.onerror = () => resolve(null);
+            reader.readAsDataURL(logoBlob);
+          });
+        } catch (e) { logoTentativa = null; }
+      }
+
+      // CABECALHO CORPORATIVO
+      if (logoTentativa) {
+        doc.addImage(logoTentativa, "PNG", 14, 8, 35, 35);
+      } else {
+        doc.setFillColor(37, 99, 235);
+        doc.rect(14, 10, 40, 40, 'F');
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(24);
+        doc.setFont("helvetica", "bold");
+        doc.text("S", 30, 35);
+        doc.setFontSize(14);
+        doc.text("G", 38, 35);
+      }
       
       doc.setTextColor(0, 0, 0);
-      doc.setFontSize(11);
+      doc.setFontSize(14);
       doc.setFont("helvetica", "bold");
-      doc.text(nomeEmpresa.substring(0, 50), 60, 28);
+      doc.text(nomeEmpresa.substring(0, 50), 60, 20);
       
       doc.setTextColor(100, 100, 100);
       doc.setFontSize(8);
       doc.setFont("helvetica", "normal");
-      doc.text(`NIF: ${nifEmpresa}`, 60, 34);
-      doc.text(`Email: ${emailEmpresa.substring(0, 40)}`, 60, 39);
-      doc.text(`Tel: ${telefoneEmpresa}`, 60, 44);
+      doc.text(`NIF: ${nifEmpresa}`, 60, 26);
+      doc.text(`Email: ${emailEmpresa.substring(0, 40)}`, 60, 31);
+      doc.text(`Tel: ${telefoneEmpresa}`, 60, 36);
+      
+      doc.setDrawColor(37, 99, 235);
+      doc.setLineWidth(0.3);
+      doc.line(14, 48, 196, 48);
       
       doc.setFontSize(9);
       doc.setTextColor(37, 99, 235);
-      doc.text(`N: ${numeroRelatorio}`, 195, 20, { align: "right" });
-      doc.text(`Data: ${dataAtual.toLocaleDateString("pt-PT")}`, 195, 26, { align: "right" });
-      doc.text(`Hora: ${dataAtual.toLocaleTimeString("pt-PT")}`, 195, 32, { align: "right" });
+      doc.text(`N: ${numeroRelatorio}`, 195, 14, { align: "right" });
+      doc.text(`Data: ${dataAtual.toLocaleDateString("pt-PT")}`, 195, 20, { align: "right" });
+      doc.text(`Hora: ${dataAtual.toLocaleTimeString("pt-PT")}`, 195, 26, { align: "right" });
 
       yPos = 58;
 
