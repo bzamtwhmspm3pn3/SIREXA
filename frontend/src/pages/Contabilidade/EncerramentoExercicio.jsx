@@ -264,6 +264,7 @@ const EncerramentoExercicio = () => {
           ],
           theme: "striped",
           styles: { fontSize: 10, cellPadding: 4 },
+          columnStyles: { 1: { halign: 'right' } },
           alternateRowStyles: { fillColor: [240, 240, 240] }
         });
         

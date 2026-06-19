@@ -617,6 +617,7 @@ function Orcamento() {
         theme: "striped",
         headStyles: { fillColor: [37, 99, 235], textColor: [255, 255, 255], fontSize: 9, fontStyle: 'bold' },
         bodyStyles: { fontSize: 8 },
+        columnStyles: { 3: { halign: 'right' } },
         margin: { left: 15, right: 15 }
       });
       

@@ -503,7 +503,8 @@ const DiarioGeral = () => {
         body: dadosTabela,
         theme: "striped",
         headStyles: { fillColor: [41, 128, 185], textColor: [255, 255, 255], fontStyle: "bold" },
-        styles: { fontSize: 7, cellPadding: 2 }
+        styles: { fontSize: 7, cellPadding: 2 },
+        columnStyles: { 4: { halign: 'right' }, 5: { halign: 'right' } }
       });
       
       const pageCount = doc.internal.getNumberOfPages();

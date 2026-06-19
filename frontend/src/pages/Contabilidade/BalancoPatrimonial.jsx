@@ -562,7 +562,7 @@ const BalancoPatrimonial = () => {
         ["TOTAL DO ATIVO", "", formatarNumero(balanco.totalAtivo)]
       ];
       
-      autoTable(doc, { startY: yPos + 5, head: [["Descrição", "", "Valor (Kz)"]], body: dadosAtivo, theme: "striped", headStyles: { fillColor: [41, 128, 185] }, styles: { fontSize: 8, cellPadding: 2 } });
+      autoTable(doc, { startY: yPos + 5, head: [["Descrição", "", "Valor (Kz)"]], body: dadosAtivo, theme: "striped", headStyles: { fillColor: [41, 128, 185] }, styles: { fontSize: 8, cellPadding: 2 }, columnStyles: { 2: { halign: 'right' } } });
       
       let finalY = doc.lastAutoTable.finalY + 10;
       
@@ -575,7 +575,7 @@ const BalancoPatrimonial = () => {
         ["TOTAL DO PASSIVO", "", formatarNumero(balanco.totalPassivo)]
       ];
       
-      autoTable(doc, { startY: finalY + 5, head: [["Descrição", "", "Valor (Kz)"]], body: dadosPassivo, theme: "striped", headStyles: { fillColor: [41, 128, 185] }, styles: { fontSize: 8, cellPadding: 2 } });
+      autoTable(doc, { startY: finalY + 5, head: [["Descrição", "", "Valor (Kz)"]], body: dadosPassivo, theme: "striped", headStyles: { fillColor: [41, 128, 185] }, styles: { fontSize: 8, cellPadding: 2 }, columnStyles: { 2: { halign: 'right' } } });
       
       finalY = doc.lastAutoTable.finalY + 10;
       
@@ -587,7 +587,7 @@ const BalancoPatrimonial = () => {
         ["TOTAL DO PASSIVO + PL", formatarNumero(balanco.totalPassivo + balanco.totalPatrimonio)]
       ];
       
-      autoTable(doc, { startY: finalY + 5, head: [["Descrição", "Valor (Kz)"]], body: dadosPL, theme: "striped", headStyles: { fillColor: [41, 128, 185] }, styles: { fontSize: 8, cellPadding: 2 } });
+      autoTable(doc, { startY: finalY + 5, head: [["Descrição", "Valor (Kz)"]], body: dadosPL, theme: "striped", headStyles: { fillColor: [41, 128, 185] }, styles: { fontSize: 8, cellPadding: 2 }, columnStyles: { 1: { halign: 'right' } } });
       
       const pageCount = doc.internal.getNumberOfPages();
       drawRodape(doc, empresaNome, pageCount);

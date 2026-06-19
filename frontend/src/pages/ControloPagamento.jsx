@@ -577,9 +577,7 @@ const ControloPagamento = () => {
       const imgWidth = 190;
       const imgHeight = (canvas.height * imgWidth) / canvas.width;
       
-      drawCabecalhoProfissional(pdf, empresa, logo, 10);
-      
-      const headerBottom = 55;
+      const headerBottom = drawCabecalhoProfissional(pdf, empresa, logo, 10) + 5;
       pdf.addImage(imgData, 'PNG', 10, headerBottom, imgWidth, imgHeight);
       
       const pageCount = pdf.internal.getNumberOfPages();

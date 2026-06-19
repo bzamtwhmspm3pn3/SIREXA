@@ -16,7 +16,7 @@ export async function carregarLogoBase64(empresa) {
 }
 
 export async function carregarDadosEmpresa(empresaId) {
-  if (!empresaId) return { nome: 'Empresa', nif: '---' };
+  if (!empresaId) return { nome: 'Empresa', nif: '---', telefone: '', email: '', endereco: '' };
   try {
     const response = await fetch(`${API_URL}/empresa/${empresaId}`, {
       headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
@@ -29,60 +29,74 @@ export async function carregarDadosEmpresa(empresaId) {
   return { nome: 'Empresa', nif: '---' };
 }
 
-export function drawCabecalhoProfissional(doc, empresa, logoBase64, yStart = 10) {
+export function drawCabecalhoProfissional(doc, empresa, logoBase64, yStart = 15) {
   const margin = 14;
-  let logoHeight = 0;
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const rMargin = pageWidth - margin;
+
+  doc.setFillColor(37, 99, 235);
+  doc.rect(0, 0, pageWidth, 2, 'F');
 
   if (empresa) {
     const nomeEmpresa = empresa.nome || 'Empresa';
     const nif = empresa.nif || '---';
+    const telefone = empresa.telefone || empresa.contactos?.telefone || '';
+    const email = empresa.email || empresa.contactos?.email || '';
+    const endereco = empresa.endereco?.cidade || empresa.endereco || '';
 
     if (logoBase64) {
-      doc.addImage(logoBase64, 'PNG', margin, yStart, 35, 35);
-      logoHeight = 35;
+      doc.addImage(logoBase64, 'PNG', margin, yStart, 16, 16);
     } else {
       doc.setFillColor(37, 99, 235);
-      doc.rect(margin, yStart, 35, 35, 'F');
+      doc.rect(margin, yStart, 16, 16, 'F');
       doc.setTextColor(255, 255, 255);
-      doc.setFontSize(20);
+      doc.setFontSize(10);
       doc.setFont('helvetica', 'bold');
-      doc.text('S', margin + 12, yStart + 22);
-      doc.setFontSize(14);
-      doc.text('G', margin + 20, yStart + 22);
-      logoHeight = 35;
+      doc.text('SG', margin + 3, yStart + 11);
     }
 
     doc.setTextColor(0, 0, 0);
-    doc.setFontSize(13);
+    doc.setFontSize(10);
     doc.setFont('helvetica', 'bold');
-    doc.text(nomeEmpresa.substring(0, 55), margin + 42, yStart + 12);
+    doc.text(nomeEmpresa.substring(0, 50), margin + 20, yStart + 7);
+
+    const extras = [];
+    if (nif) extras.push(`NIF: ${nif}`);
+    if (telefone) extras.push(`Tel: ${telefone}`);
+    if (email) extras.push(email);
+    if (endereco && extras.length < 3) extras.push(endereco);
 
     doc.setTextColor(100, 100, 100);
-    doc.setFontSize(8);
+    doc.setFontSize(7);
     doc.setFont('helvetica', 'normal');
-    doc.text(`NIF: ${nif}`, margin + 42, yStart + 19);
+    if (extras.length > 0) {
+      doc.text(extras.join(' | ').substring(0, 120), margin + 20, yStart + 14);
+    }
 
-    doc.setDrawColor(37, 99, 235);
+    doc.setDrawColor(200, 200, 210);
     doc.setLineWidth(0.3);
-    doc.line(margin, yStart + logoHeight + 5, 196, yStart + logoHeight + 5);
+    doc.line(margin, yStart + 22, rMargin, yStart + 22);
   }
 
-  return yStart + logoHeight + 10;
+  return yStart + 26;
 }
 
 export function drawRodape(doc, empresaNome, pageCount) {
   const pageHeight = doc.internal.pageSize.height;
   const margin = 14;
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const rMargin = pageWidth - margin;
 
   for (let i = 1; i <= pageCount; i++) {
     doc.setPage(i);
     doc.setDrawColor(200, 200, 210);
     doc.setLineWidth(0.3);
-    doc.line(margin, pageHeight - 12, 196, pageHeight - 12);
-    doc.setFontSize(7);
+    doc.line(margin, pageHeight - 11, rMargin, pageHeight - 11);
+    doc.setFontSize(6);
     doc.setFont('helvetica', 'normal');
-    doc.setTextColor(120, 120, 140);
-    doc.text(`${empresaNome || 'Empresa'} | Pagina ${i} de ${pageCount}`, margin, pageHeight - 5);
-    doc.text(`Gerado em ${new Date().toLocaleString('pt-PT')}`, 196, pageHeight - 5, { align: 'right' });
+    doc.setTextColor(130, 130, 140);
+    const nome = (empresaNome || 'Sistema').substring(0, 35);
+    doc.text(`${nome} | Pag ${i}/${pageCount}`, margin, pageHeight - 5);
+    doc.text(new Date().toLocaleString('pt-PT'), rMargin, pageHeight - 5, { align: 'right' });
   }
 }

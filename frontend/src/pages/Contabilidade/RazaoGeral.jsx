@@ -527,7 +527,8 @@ const RazaoGeral = () => {
         body: dadosTabela,
         theme: "striped",
         headStyles: { fillColor: [41, 128, 185], textColor: [255, 255, 255] },
-        styles: { fontSize: 8, cellPadding: 2 }
+        styles: { fontSize: 8, cellPadding: 2 },
+        columnStyles: { 3: { halign: 'right' }, 4: { halign: 'right' }, 5: { halign: 'right' } }
       });
       
       const pageCount = doc.internal.getNumberOfPages();

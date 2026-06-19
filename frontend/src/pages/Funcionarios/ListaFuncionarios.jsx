@@ -395,6 +395,7 @@ const ListaFuncionarios = () => {
         theme: "striped",
         styles: { fontSize: 9, cellPadding: 3 },
         headStyles: { fillColor: [37, 99, 235], textColor: [255, 255, 255], fontStyle: "bold" },
+        columnStyles: { 5: { halign: 'right' } },
         alternateRowStyles: { fillColor: [240, 248, 255] },
       });
       

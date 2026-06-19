@@ -469,7 +469,7 @@ const Balancete = () => {
       doc.text(`Período: ${periodo.dataInicio} a ${periodo.dataFim}`, 14, yPos);
       
       const dadosTabela = balancete.map(item => [item.contaCodigo, item.contaDescricao?.substring(0, 40), item.classe, formatarNumero(item.debito), formatarNumero(item.credito), `${formatarNumero(Math.abs(item.saldo))} ${item.saldo >= 0 ? 'D' : 'C'}`]);
-      autoTable(doc, { startY: yPos + 6, head: [["Código", "Conta", "Cls", "Débito", "Crédito", "Saldo"]], body: dadosTabela, theme: "striped", headStyles: { fillColor: [41, 128, 185] }, styles: { fontSize: 7, cellPadding: 2 } });
+      autoTable(doc, { startY: yPos + 6, head: [["Código", "Conta", "Cls", "Débito", "Crédito", "Saldo"]], body: dadosTabela, theme: "striped", headStyles: { fillColor: [41, 128, 185] }, styles: { fontSize: 7, cellPadding: 2 }, columnStyles: { 3: { halign: 'right' }, 4: { halign: 'right' }, 5: { halign: 'right' } } });
       
       const pageCount = doc.internal.getNumberOfPages();
       drawRodape(doc, empresaNome, pageCount);
