@@ -707,8 +707,27 @@ const FolhaSalarial = () => {
     setShowBancoModal(true);
   };
 
-  // ========== DESENHA UM RECIBO COMPACTO (2 cabem numa página A4) ==========
-  const desenharReciboNoDoc = async (doc, funcionario, dadosFolha, localPagamento, yStart, tipoVia) => {
+  // ========== MINI-CABEÇALHO DENTRO DE CADA VIA ==========
+  const desenharMiniCabecalho = (doc, empresa, logoBase64, y, margem, rMargem) => {
+    const nomeEmpresa = empresa?.nome || 'Empresa';
+    const nif = empresa?.nif || '---';
+    if (logoBase64) {
+      const formato = /\.jpe?g$/i.test(empresa?.logotipo || '') ? 'JPEG' : 'PNG';
+      doc.addImage(logoBase64, formato, margem + 2, y + 1, 10, 10);
+    }
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(30, 58, 138);
+    doc.text(nomeEmpresa.substring(0, 40), margem + 14, y + 5);
+    doc.setFontSize(6);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(100, 100, 100);
+    doc.text(`NIF: ${nif}`, margem + 14, y + 9);
+    return y + 12;
+  };
+
+  // ========== DESENHA UM RECIBO AUTO-SUFICIENTE (com mini-cabeçalho + QR) ==========
+  const desenharReciboNoDoc = async (doc, funcionario, dadosFolha, localPagamento, yStart, tipoVia, logoReceipt) => {
     const margem = 14;
     const pageW = doc.internal.pageSize.getWidth();
     const rMargem = pageW - margem;
@@ -732,127 +751,7 @@ const FolhaSalarial = () => {
 
     let y = yStart;
 
-    // Borda externa (altura calculada dinamicamente no fim)
-    doc.setDrawColor(200, 200, 200);
-    doc.setLineWidth(0.3);
-
-    const corVia = tipoVia === 'ORIGINAL' ? [37, 99, 235] : [220, 38, 38];
-    doc.setFontSize(6);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(corVia[0], corVia[1], corVia[2]);
-    doc.text(tipoVia || 'VIA', rMargem - 2, y + 3, { align: 'right' });
-    doc.setDrawColor(corVia[0], corVia[1], corVia[2]);
-    doc.setLineWidth(0.4);
-    doc.line(rMargem - 35, y + 4, rMargem - 2, y + 4);
-
-    doc.setFontSize(11);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(37, 99, 235);
-    doc.text('RECIBO DE PAGAMENTO', margem + 2, y + 10);
-
-    doc.setDrawColor(210, 210, 210);
-    doc.setLineWidth(0.3);
-    doc.line(margem + 2, y + 12, rMargem - 2, y + 12);
-
-    // Dados compactos (2 colunas, tamanho reduzido)
-    doc.setFontSize(7);
-    const fontNormal = () => { doc.setFont('helvetica', 'normal'); doc.setTextColor(80, 80, 80); };
-    const fontBold = () => { doc.setFont('helvetica', 'bold'); doc.setTextColor(60, 60, 60); };
-
-    fontBold(); doc.text('Funcionário:', margem + 2, y + 18);
-    fontNormal(); doc.text(String(funcionario.nome || '---'), margem + 2 + 28, y + 18);
-    fontBold(); doc.text('Período:', margem + 2, y + 23);
-    fontNormal(); doc.text(`${mesNome} / ${dadosFolha.anoReferencia || '---'}`, margem + 2 + 28, y + 23);
-    fontBold(); doc.text('Cargo:', margem + 2, y + 28);
-    fontNormal(); doc.text(String(funcionario.cargo || funcionario.funcao || '---'), margem + 2 + 28, y + 28);
-
-    const col2X = margem + largUtil * 0.48;
-    fontBold(); doc.text('IBAN:', col2X, y + 18);
-    fontNormal(); doc.text(String(funcionario.iban || '---'), col2X + 14, y + 18);
-    fontBold(); doc.text('Processamento:', col2X, y + 23);
-    fontNormal(); doc.text(dataAtual.toLocaleDateString('pt-AO'), col2X + 28, y + 23);
-    fontBold(); doc.text('Local:', col2X, y + 28);
-    fontNormal(); doc.text(String(localPagamento || '---'), col2X + 16, y + 28);
-
-    // Tabela de vencimentos (mais compacta)
-    const tabelaY = y + 32;
-    doc.setFillColor(240, 245, 255);
-    doc.rect(margem + 2, tabelaY, largUtil - 4, 4, 'F');
-    doc.setFontSize(6.5);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(37, 99, 235);
-    doc.text('DISCRIMINAÇÃO', margem + 5, tabelaY + 2.8);
-    doc.text('VALOR (Kz)', rMargem - 5, tabelaY + 2.8, { align: 'right' });
-
-    const linhas = [
-      { label: 'Salário Base', valor: formatarNumero(funcionario.salarioBase) },
-      { label: 'Subsídio Alimentação', valor: formatarNumero(funcionario.totalAbonosAlimentacao) },
-      { label: 'Subsídio Transporte', valor: formatarNumero(funcionario.totalAbonosTransporte) },
-      { label: 'Subsídio Férias', valor: formatarNumero(funcionario.totalAbonosFerias) },
-      { label: 'Décimo Terceiro', valor: formatarNumero(funcionario.totalAbonosDecimoTerceiro || 0) },
-      { label: 'Bónus/Prémios', valor: formatarNumero(funcionario.totalAbonosBonus || 0) },
-      { label: 'Outros Abonos', valor: formatarNumero(funcionario.totalAbonosOutros || 0) },
-    ];
-    if (funcionario.totalAvencas > 0) linhas.push({ label: '(-) Avenças', valor: `- ${formatarNumero(funcionario.totalAvencas)}` });
-    if (funcionario.totalAdiantamentos > 0) linhas.push({ label: '(-) Adiantamentos', valor: `- ${formatarNumero(funcionario.totalAdiantamentos)}` });
-
-    let itemY = tabelaY + 5.5;
-    doc.setFontSize(6);
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(60, 60, 60);
-    linhas.forEach((l, i) => {
-      const bg = i % 2 === 0 ? [248, 250, 252] : [255, 255, 255];
-      doc.setFillColor(bg[0], bg[1], bg[2]);
-      doc.rect(margem + 2, itemY - 0.5, largUtil - 4, 3.8, 'F');
-      doc.text(l.label, margem + 5, itemY + 1);
-      doc.text(l.valor, rMargem - 5, itemY + 1, { align: 'right' });
-      itemY += 4;
-    });
-
-    // Subtotal Bruto
-    doc.setFillColor(235, 245, 255);
-    doc.rect(margem + 2, itemY - 0.5, largUtil - 4, 4, 'F');
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(6.5);
-    doc.setTextColor(37, 99, 235);
-    doc.text('SALÁRIO BRUTO', margem + 5, itemY + 1.2);
-    doc.text(`+ ${formatarNumero(salarioBruto)}`, rMargem - 5, itemY + 1.2, { align: 'right' });
-    itemY += 5;
-
-    // Descontos
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(6);
-    doc.setTextColor(180, 60, 60);
-    [{ label: 'Faltas', valor: formatarNumero(funcionario.valorFaltas) },
-     { label: 'INSS (Colaborador)', valor: formatarNumero(funcionario.inssColaborador) },
-     { label: 'IRT', valor: formatarNumero(funcionario.irt) },
-    ].forEach(d => {
-      doc.text(d.label, margem + 5, itemY + 1);
-      doc.text(`- ${d.valor}`, rMargem - 5, itemY + 1, { align: 'right' });
-      itemY += 4;
-    });
-
-    // Total Descontos
-    doc.setFillColor(255, 240, 240);
-    doc.rect(margem + 2, itemY - 0.5, largUtil - 4, 4, 'F');
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(6.5);
-    doc.setTextColor(180, 60, 60);
-    doc.text('TOTAL DE DESCONTOS', margem + 5, itemY + 1.2);
-    doc.text(`- ${formatarNumero(totalDescontos)}`, rMargem - 5, itemY + 1.2, { align: 'right' });
-    itemY += 5;
-
-    // Líquido
-    doc.setFillColor(37, 99, 235);
-    doc.rect(margem + 2, itemY - 0.5, largUtil - 4, 5, 'F');
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(8);
-    doc.setTextColor(255, 255, 255);
-    doc.text('TOTAL LÍQUIDO', margem + 5, itemY + 1.8);
-    doc.text(`${formatarNumero(salarioLiquido)} Kz`, rMargem - 5, itemY + 1.8, { align: 'right' });
-    itemY += 7;
-
-    // QR Code pequeno + assinaturas
+    // QR Code no cabeçalho de cada via
     const qrData = JSON.stringify({
       funcionario: funcionario.nome, empresa: dadosEmpresa?.nome,
       periodo: `${mesNome}/${dadosFolha.anoReferencia}`,
@@ -861,33 +760,162 @@ const FolhaSalarial = () => {
       salarioLiquido: formatarNumero(salarioLiquido),
       dataPagamento: dataAtual.toISOString().split('T')[0]
     });
-    const qrBase64 = await QRCode.toDataURL(qrData, { width: 60, margin: 1 });
-    doc.addImage(qrBase64, 'PNG', rMargem - 18, itemY, 14, 14);
+    const qrBase64 = await QRCode.toDataURL(qrData, { width: 50, margin: 1 });
 
+    // Borda fina ao redor do recibo
+    doc.setDrawColor(200, 200, 200);
+    doc.setLineWidth(0.3);
+    doc.rect(margem, y, largUtil, 118, 'S');
+
+    // Mini-cabeçalho da empresa + QR
+    const _y = desenharMiniCabecalho(doc, dadosEmpresa, logoReceipt, y + 1, margem, rMargem);
+    doc.addImage(qrBase64, 'PNG', rMargem - 16, y + 2, 12, 12);
+
+    // Tipo de via
+    const corVia = tipoVia === 'ORIGINAL' ? [37, 99, 235] : [220, 38, 38];
+    doc.setFontSize(5.5);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(corVia[0], corVia[1], corVia[2]);
+    const textoVia = tipoVia === 'ORIGINAL' ? 'VIA ORIGINAL - COLABORADOR' : 'VIA CÓPIA - EMPRESA';
+    doc.text(textoVia, margem + 2, y + 3.5);
+    doc.setDrawColor(corVia[0], corVia[1], corVia[2]);
+    doc.setLineWidth(0.3);
+    doc.line(margem + 2, y + 4, margem + 45, y + 4);
+
+    // Linha separadora após mini-cabeçalho
+    doc.setDrawColor(210, 210, 210);
+    doc.setLineWidth(0.3);
+    doc.line(margem + 2, _y + 1, rMargem - 2, _y + 1);
+
+    // Título
+    y = _y + 4;
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(37, 99, 235);
+    doc.text('RECIBO DE PAGAMENTO', margem + 2, y);
+
+    // Dados (2 colunas)
+    doc.setFontSize(6.5);
+    const fn = () => { doc.setFont('helvetica', 'normal'); doc.setTextColor(80, 80, 80); };
+    const fb = () => { doc.setFont('helvetica', 'bold'); doc.setTextColor(60, 60, 60); };
+
+    const row1 = y + 4;
+    fb(); doc.text('Funcionário:', margem + 2, row1);
+    fn(); doc.text(String(funcionario.nome || '---'), margem + 26, row1);
+    fb(); doc.text('Período:', margem + 2, row1 + 4.5);
+    fn(); doc.text(`${mesNome} / ${dadosFolha.anoReferencia || '---'}`, margem + 26, row1 + 4.5);
+    fb(); doc.text('Cargo:', margem + 2, row1 + 9);
+    fn(); doc.text(String(funcionario.cargo || funcionario.funcao || '---'), margem + 26, row1 + 9);
+
+    const c2 = margem + largUtil * 0.45;
+    fb(); doc.text('IBAN:', c2, row1);
+    fn(); doc.text(String(funcionario.iban || '---'), c2 + 14, row1);
+    fb(); doc.text('Processamento:', c2, row1 + 4.5);
+    fn(); doc.text(dataAtual.toLocaleDateString('pt-AO'), c2 + 28, row1 + 4.5);
+    fb(); doc.text('Local:', c2, row1 + 9);
+    fn(); doc.text(String(localPagamento || '---'), c2 + 16, row1 + 9);
+
+    // Tabela de vencimentos
+    const tabY = row1 + 13;
+    doc.setFillColor(240, 245, 255);
+    doc.rect(margem + 2, tabY, largUtil - 4, 3.5, 'F');
     doc.setFontSize(6);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(37, 99, 235);
+    doc.text('DISCRIMINAÇÃO', margem + 5, tabY + 2.5);
+    doc.text('VALOR (Kz)', rMargem - 5, tabY + 2.5, { align: 'right' });
+
+    const linhas = [
+      { l: 'Salário Base', v: formatarNumero(funcionario.salarioBase) },
+      { l: 'Subsídio Alimentação', v: formatarNumero(funcionario.totalAbonosAlimentacao) },
+      { l: 'Subsídio Transporte', v: formatarNumero(funcionario.totalAbonosTransporte) },
+      { l: 'Subsídio Férias', v: formatarNumero(funcionario.totalAbonosFerias) },
+      { l: 'Décimo Terceiro', v: formatarNumero(funcionario.totalAbonosDecimoTerceiro || 0) },
+      { l: 'Bónus/Prémios', v: formatarNumero(funcionario.totalAbonosBonus || 0) },
+      { l: 'Outros Abonos', v: formatarNumero(funcionario.totalAbonosOutros || 0) },
+    ];
+    if (funcionario.totalAvencas > 0) linhas.push({ l: '(-) Avenças', v: `- ${formatarNumero(funcionario.totalAvencas)}` });
+    if (funcionario.totalAdiantamentos > 0) linhas.push({ l: '(-) Adiantamentos', v: `- ${formatarNumero(funcionario.totalAdiantamentos)}` });
+
+    let iy = tabY + 5;
+    doc.setFontSize(5.5);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(60, 60, 60);
+    linhas.forEach((l, i) => {
+      const bg = i % 2 === 0 ? [248, 250, 252] : [255, 255, 255];
+      doc.setFillColor(bg[0], bg[1], bg[2]);
+      doc.rect(margem + 2, iy - 0.5, largUtil - 4, 3.5, 'F');
+      doc.text(l.l, margem + 5, iy + 0.8);
+      doc.text(l.v, rMargem - 5, iy + 0.8, { align: 'right' });
+      iy += 3.7;
+    });
+
+    // Salário Bruto
+    doc.setFillColor(235, 245, 255);
+    doc.rect(margem + 2, iy - 0.5, largUtil - 4, 3.8, 'F');
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(6);
+    doc.setTextColor(37, 99, 235);
+    doc.text('SALÁRIO BRUTO', margem + 5, iy + 1);
+    doc.text(`+ ${formatarNumero(salarioBruto)}`, rMargem - 5, iy + 1, { align: 'right' });
+    iy += 4.5;
+
+    // Descontos
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(5.5);
+    doc.setTextColor(180, 60, 60);
+    [{ l: 'Faltas', v: formatarNumero(funcionario.valorFaltas) },
+     { l: 'INSS (Colaborador)', v: formatarNumero(funcionario.inssColaborador) },
+     { l: 'IRT', v: formatarNumero(funcionario.irt) },
+    ].forEach(d => {
+      doc.text(d.l, margem + 5, iy + 0.8);
+      doc.text(`- ${d.v}`, rMargem - 5, iy + 0.8, { align: 'right' });
+      iy += 3.7;
+    });
+
+    // Total Descontos
+    doc.setFillColor(255, 240, 240);
+    doc.rect(margem + 2, iy - 0.5, largUtil - 4, 3.8, 'F');
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(6);
+    doc.setTextColor(180, 60, 60);
+    doc.text('TOTAL DE DESCONTOS', margem + 5, iy + 1);
+    doc.text(`- ${formatarNumero(totalDescontos)}`, rMargem - 5, iy + 1, { align: 'right' });
+    iy += 4.5;
+
+    // Líquido
+    doc.setFillColor(37, 99, 235);
+    doc.rect(margem + 2, iy - 0.5, largUtil - 4, 4.5, 'F');
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7);
+    doc.setTextColor(255, 255, 255);
+    doc.text('TOTAL LÍQUIDO', margem + 5, iy + 1.5);
+    doc.text(`${formatarNumero(salarioLiquido)} Kz`, rMargem - 5, iy + 1.5, { align: 'right' });
+    iy += 6;
+
+    // Assinaturas
+    doc.setFontSize(5.5);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(120, 120, 120);
-    const assY = itemY + 5;
+    const assY = iy + 4;
     doc.line(margem + 3, assY, margem + 50, assY);
     doc.text('Assinatura do Funcionário', margem + 26, assY + 2.5, { align: 'center' });
     doc.line(margem + 55, assY, margem + 102, assY);
     doc.text('Assinatura / Carimbo da Empresa', margem + 78, assY + 2.5, { align: 'center' });
     doc.text(`Data: ${dataAtual.toLocaleDateString('pt-AO')}`, margem + 3, assY + 2.5);
 
-    // Borda ao redor do recibo
+    // Borda final com altura dinâmica
     const alturaReal = assY + 5 - yStart;
     doc.setDrawColor(200, 200, 200);
     doc.setLineWidth(0.3);
     doc.rect(margem, yStart, largUtil, alturaReal, 'S');
+    return alturaReal;
   };
 
   const adicionarReciboAoDoc = async (doc, funcionario, dadosFolha, localPagamento) => {
     const logoReceipt = await carregarLogoBase64(dadosEmpresa);
-    const yCab = drawCabecalhoProfissional(doc, dadosEmpresa, logoReceipt, 6);
-    const yOrig = yCab + 1;
-    await desenharReciboNoDoc(doc, funcionario, dadosFolha, localPagamento, yOrig, 'ORIGINAL');
-    const altura = 115;
-    await desenharReciboNoDoc(doc, funcionario, dadosFolha, localPagamento, yOrig + altura + 3, 'CÓPIA');
+    const altura = await desenharReciboNoDoc(doc, funcionario, dadosFolha, localPagamento, 8, 'ORIGINAL', logoReceipt);
+    await desenharReciboNoDoc(doc, funcionario, dadosFolha, localPagamento, 8 + altura + 4, 'CÓPIA', logoReceipt);
   };
 
   const gerarReciboIndividual = async (funcionario, dadosFolha) => {
