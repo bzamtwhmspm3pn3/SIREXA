@@ -1,7 +1,8 @@
-// src/services/documentoService.js - VERSÃO CORRIGIDA (FONTE NORMAL)
+// src/services/documentoService.js
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import QRCode from 'qrcode';
+import { carregarLogoBase64, drawCabecalhoProfissional, drawRodape } from '../utils/pdfUtils';
 
 export const gerarDocumentoProfissional = async (documento, usuario, empresa, contasBancarias = []) => {
   try {
@@ -88,80 +89,43 @@ export const gerarDocumentoProfissional = async (documento, usuario, empresa, co
     const valorPago = documento.valorPago || total;
     const troco = valorPago > total ? valorPago - total : 0;
     
-    let yPos = 15;
+    const logoBase64 = await carregarLogoBase64(empresa);
 
-    // CABEÇALHO
-    doc.setTextColor(corPrimaria[0], corPrimaria[1], corPrimaria[2]);
-    doc.setFontSize(12);
-    doc.setFont("helvetica", "bold");
-    
-    const nomeEmpresa = empresa?.nome || "AnDioGest";
-    doc.text(nomeEmpresa, 14, yPos + 5);
-    
-    doc.setTextColor(corCinza[0], corCinza[1], corCinza[2]);
-    doc.setFontSize(7);
-    doc.setFont("helvetica", "normal");
-    doc.text(`NIF: ${empresa?.nif || '---'}`, 14, yPos + 11);
-    doc.text(`Email: ${empresa?.email || '---'}`, 14, yPos + 16);
-    doc.text(`Telefone: ${empresa?.telefone || '---'}`, 14, yPos + 21);
-    
-    const enderecoStr = typeof empresa?.endereco === 'string' 
-      ? empresa.endereco 
-      : (empresa?.endereco?.rua || empresa?.endereco?.endereco || 'Luanda, Angola');
-    
-    if (doc.getTextWidth(enderecoStr) > 70) {
-      const parte1 = enderecoStr.substring(0, 45);
-      const parte2 = enderecoStr.substring(45);
-      doc.text(`Endereço: ${parte1}`, 14, yPos + 26);
-      doc.text(`${parte2}`, 18, yPos + 31);
-      yPos = 52;
-    } else {
-      doc.text(`Endereço: ${enderecoStr}`, 14, yPos + 26);
-      yPos = 48;
+    drawCabecalhoProfissional(doc, empresa, logoBase64, 12);
+
+    let tituloFontSize = 14;
+    let tituloWidth = doc.getTextWidth(titulo);
+
+    if (titulo === "FACTURA PROFORMA" || titulo === "NOTA DE CRÉDITO" || titulo === "ORÇAMENTO") {
+      tituloFontSize = 11;
+      doc.setFontSize(tituloFontSize);
+      tituloWidth = doc.getTextWidth(titulo);
+    }
+    if (tituloWidth > 65) {
+      tituloFontSize = 10;
+      doc.setFontSize(tituloFontSize);
+      tituloWidth = doc.getTextWidth(titulo);
     }
 
-    // TÍTULO
-let tituloFontSize = 14;
-let tituloWidth = doc.getTextWidth(titulo);
-
-// Reduzir fonte para títulos longos
-if (titulo === "FACTURA PROFORMA" || titulo === "NOTA DE CRÉDITO" || titulo === "ORÇAMENTO") {
-  tituloFontSize = 11;
-  doc.setFontSize(tituloFontSize);
-  tituloWidth = doc.getTextWidth(titulo);
-}
-
-// Se ainda for muito largo, reduzir mais
-if (tituloWidth > 65) {
-  tituloFontSize = 10;
-  doc.setFontSize(tituloFontSize);
-  tituloWidth = doc.getTextWidth(titulo);
-}
-    
     doc.setFontSize(tituloFontSize);
     doc.setFont("helvetica", "bold");
     doc.setTextColor(corTitulo[0], corTitulo[1], corTitulo[2]);
-    
     const tituloX = 200 - tituloWidth - 5;
-    doc.text(titulo, tituloX, yPos - 8);
-    
+    doc.text(titulo, tituloX, 17);
+
     doc.setFontSize(7);
     doc.setTextColor(corCinza[0], corCinza[1], corCinza[2]);
     doc.setFont("helvetica", "normal");
-    
-    const numWidth = doc.getTextWidth(`Nº: ${numeroDocumento}`);
-    doc.text(`Nº: ${numeroDocumento}`, 200 - numWidth - 5, yPos - 2);
-    
-    const dataWidth = doc.getTextWidth(`Data: ${dataAgora.toLocaleDateString('pt-PT')}`);
-    doc.text(`Data: ${dataAgora.toLocaleDateString('pt-PT')}`, 200 - dataWidth - 5, yPos + 4);
-    
-    const horaWidth = doc.getTextWidth(`Hora: ${dataAgora.toLocaleTimeString('pt-PT')}`);
-    doc.text(`Hora: ${dataAgora.toLocaleTimeString('pt-PT')}`, 200 - horaWidth - 5, yPos + 10);
-    
+
+    doc.text(`Nº: ${numeroDocumento}`, 200 - doc.getTextWidth(`Nº: ${numeroDocumento}`) - 5, 24);
+    doc.text(`Data: ${dataAgora.toLocaleDateString('pt-PT')}`, 200 - doc.getTextWidth(`Data: ${dataAgora.toLocaleDateString('pt-PT')}`) - 5, 31);
+    doc.text(`Hora: ${dataAgora.toLocaleTimeString('pt-PT')}`, 200 - doc.getTextWidth(`Hora: ${dataAgora.toLocaleTimeString('pt-PT')}`) - 5, 38);
+
     if (documento.dataVencimento) {
-      const vencWidth = doc.getTextWidth(`Vencimento: ${new Date(documento.dataVencimento).toLocaleDateString('pt-PT')}`);
-      doc.text(`Vencimento: ${new Date(documento.dataVencimento).toLocaleDateString('pt-PT')}`, 200 - vencWidth - 5, yPos + 16);
+      doc.text(`Vencimento: ${new Date(documento.dataVencimento).toLocaleDateString('pt-PT')}`, 200 - doc.getTextWidth(`Vencimento: ${new Date(documento.dataVencimento).toLocaleDateString('pt-PT')}`) - 5, 45);
     }
+
+    let yPos = 50;
 
     // DADOS DO CLIENTE
     doc.setFillColor(245, 248, 250);
@@ -223,10 +187,9 @@ if (tituloWidth > 65) {
       theme: 'grid',
       styles: { 
         fontSize: 7, 
-        cellPadding: 3, 
+        cellPadding: 2, 
         valign: 'middle',
-        textColor: [50, 50, 50],
-        cellWidth: 'wrap'
+        textColor: [50, 50, 50]
       },
       headStyles: { 
         fillColor: corPrimaria, 
@@ -245,7 +208,6 @@ if (tituloWidth > 65) {
         4: { cellWidth: 30, halign: 'right' }
       },
       margin: { left: 14, right: 14 },
-      overflow: 'linebreak'
     });
 
     const finalY = doc.lastAutoTable.finalY + 5;
@@ -487,14 +449,8 @@ if (tituloWidth > 65) {
       console.error("Erro ao gerar QR Code:", qrError);
     }
     
-    // ==================== RODAPÉ ====================
-    doc.setFontSize(5);
-    doc.setFont("helvetica", "normal");
-    doc.setTextColor(150, 150, 150);
-    doc.text(`Documento gerado eletronicamente em ${dataAgora.toLocaleString('pt-PT')}`, 14, pageHeight - 10);
-    doc.text(`por: ${usuario?.nome || 'Sistema'}`, 14, pageHeight - 6);
-    doc.text(numeroDocumento, 200, pageHeight - 8, { align: 'right' });
-    doc.text(`www.andiogest.com`, 200, pageHeight - 4, { align: 'right' });
+    const pageCount = doc.internal.getNumberOfPages();
+    drawRodape(doc, empresa?.nome, pageCount);
 
     const nomeArquivo = `${documento.tipo.replace(/\s/g, '_')}_${numeroDocumento.replace(/\//g, '_')}.pdf`;
     doc.save(nomeArquivo);

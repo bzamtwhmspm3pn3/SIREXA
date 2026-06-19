@@ -2,6 +2,7 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import QRCode from 'qrcode';
+import { carregarLogoBase64, drawCabecalhoProfissional, drawRodape } from '../utils/pdfUtils';
 
 export const gerarFacturaProfissional = async (venda, usuario, empresa, contasBancarias = []) => {
   try {
@@ -53,39 +54,22 @@ export const gerarFacturaProfissional = async (venda, usuario, empresa, contasBa
       taxaRetencao = Math.round(taxaRetencao * 10) / 10;
     }
     
-    let yPos = 15; // Reduzido o Y inicial
+    const logoBase64 = await carregarLogoBase64(empresa);
 
-    // ==================== CABEÇALHO ====================
-    doc.setTextColor(corPrimaria[0], corPrimaria[1], corPrimaria[2]);
-    doc.setFontSize(14); // Reduzido
-    doc.setFont("helvetica", "bold");
-    doc.text(empresa?.nome || "AnDioGest - Gestão Corporativa", 14, yPos + 5);
-    
-    doc.setTextColor(corCinza[0], corCinza[1], corCinza[2]);
-    doc.setFontSize(8); // Reduzido
-    doc.setFont("helvetica", "normal");
-    doc.text(`NIF: ${empresa?.nif || '---'}`, 14, yPos + 11);
-    doc.text(`Email: ${empresa?.email || '---'}`, 14, yPos + 16);
-    doc.text(`Telefone: ${empresa?.telefone || '---'}`, 14, yPos + 21);
-    
-    const enderecoStr = typeof empresa?.endereco === 'string' 
-      ? empresa.endereco 
-      : (empresa?.endereco?.rua || empresa?.endereco?.endereco || 'Luanda, Angola');
-    doc.text(`Endereço: ${enderecoStr}`, 14, yPos + 26);
-    
-    // Título FACTURA
-    doc.setFontSize(20); // Reduzido
+    drawCabecalhoProfissional(doc, empresa, logoBase64, 12);
+
+    doc.setFontSize(20);
     doc.setFont("helvetica", "bold");
     doc.setTextColor(corPrimaria[0], corPrimaria[1], corPrimaria[2]);
-    doc.text("FACTURA", 155, yPos + 12);
-    
+    doc.text("FACTURA", 155, 18);
+
     doc.setFontSize(8);
     doc.setTextColor(corCinza[0], corCinza[1], corCinza[2]);
-    doc.text(`Nº: ${numeroFactura}`, 155, yPos + 20);
-    doc.text(`Data: ${dataAgora.toLocaleDateString('pt-PT')}`, 155, yPos + 26);
-    doc.text(`Hora: ${dataAgora.toLocaleTimeString('pt-PT')}`, 155, yPos + 32);
-    
-    yPos = 50; // Reduzido
+    doc.text(`Nº: ${numeroFactura}`, 155, 25);
+    doc.text(`Data: ${dataAgora.toLocaleDateString('pt-PT')}`, 155, 31);
+    doc.text(`Hora: ${dataAgora.toLocaleTimeString('pt-PT')}`, 155, 37);
+
+    let yPos = 50;
 
     // ==================== DADOS DO CLIENTE ====================
     doc.setFillColor(245, 248, 250);
@@ -127,8 +111,8 @@ export const gerarFacturaProfissional = async (venda, usuario, empresa, contasBa
       body: produtosTabela,
       theme: 'grid',
       styles: { 
-        fontSize: 7, // Reduzido
-        cellPadding: 3, // Reduzido
+        fontSize: 7,
+        cellPadding: 2,
         valign: 'middle',
         textColor: [50, 50, 50]
       },
@@ -142,11 +126,11 @@ export const gerarFacturaProfissional = async (venda, usuario, empresa, contasBa
       },
       alternateRowStyles: { fillColor: [248, 249, 250] },
       columnStyles: {
-        0: { cellWidth: 10, halign: 'center' },
-        1: { cellWidth: 85 },
-        2: { cellWidth: 35, halign: 'right' },
-        3: { cellWidth: 15, halign: 'center' },
-        4: { cellWidth: 35, halign: 'right' }
+        0: { cellWidth: 8, halign: 'center' },
+        1: { cellWidth: 90 },
+        2: { cellWidth: 30, halign: 'right' },
+        3: { cellWidth: 12, halign: 'center' },
+        4: { cellWidth: 30, halign: 'right' }
       },
       margin: { left: 14, right: 14 }
     });
@@ -305,13 +289,8 @@ export const gerarFacturaProfissional = async (venda, usuario, empresa, contasBa
       console.error("Erro ao gerar QR Code:", qrError);
     }
     
-    // ==================== RODAPÉ ====================
-    doc.setFontSize(5);
-    doc.setFont("helvetica", "normal");
-    doc.setTextColor(150, 150, 150);
-    doc.text(`Gerado em ${dataAgora.toLocaleString('pt-PT')} por ${usuario?.nome || 'Sistema'}`, 14, pageHeight - 8);
-    doc.text(`Documento processado por AnDioGest - Gestão Corporativa v1.0`, 14, pageHeight - 4);
-    doc.text(`${numeroFactura}`, 200, pageHeight - 8, { align: 'right' });
+    const pageCount = doc.internal.getNumberOfPages();
+    drawRodape(doc, empresa?.nome, pageCount);
 
     doc.save(`Factura_${numeroFactura.replace(/\//g, '_')}.pdf`);
     
