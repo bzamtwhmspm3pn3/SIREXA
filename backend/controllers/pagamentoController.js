@@ -5,6 +5,7 @@ const Banco = require('../models/Banco');
 const Empresa = require('../models/Empresa');
 const RegistoBancario = require('../models/RegistoBancario');
 const Transferencia = require('../models/Transferencia');
+const ContaCorrente = require('../models/ContaCorrente');
 const contaCorrenteController = require('./contaCorrenteController');
 const integracaoPagamentos = require('../services/integracaoPagamentos');
 const IntegracaoContabilistica = require('../services/IntegracaoContabilistica');
@@ -15,7 +16,7 @@ const meses = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
 // ==================== FUNÇÕES AUXILIARES ====================
 
 // Função para criar registo bancário do pagamento (SAÍDA)
-async function criarRegistoBancarioPagamento(pagamento, empresa, contaDebito) {
+async function criarRegistoBancarioPagamento(pagamento, empresa, contaDebito, ehEntrada = false) {
   try {
     const dataPagamento = new Date(pagamento.dataPagamento || pagamento.dataVencimento || new Date());
     const ano = dataPagamento.getFullYear();
@@ -23,35 +24,43 @@ async function criarRegistoBancarioPagamento(pagamento, empresa, contaDebito) {
     
     const banco = await Banco.findOne({ codNome: contaDebito, empresaId: empresa._id });
     
-    let tipoRegisto = 'Despesa - Outros';
-    const categoria = pagamento.categoria || pagamento.tipo || '';
+    let tipoRegisto;
+    let descricao;
     
-    if (categoria === 'Fornecedor' || categoria === 'Fornecedores') {
-      tipoRegisto = 'Despesa - Fornecedor';
-    } else if (categoria === 'Folha Salarial') {
-      tipoRegisto = 'Despesa - Salário';
-    } else if (categoria === 'Imposto') {
-      tipoRegisto = 'Despesa - Imposto';
-    } else if (categoria === 'Manutenção') {
-      tipoRegisto = 'Despesa - Manutenção';
-    } else if (categoria === 'Abastecimento') {
-      tipoRegisto = 'Despesa - Abastecimento';
-    } else if (categoria === 'Investimento') {
-      tipoRegisto = 'Despesa - Investimento';
-    } else if (categoria === 'Financiamento') {
-      tipoRegisto = 'Despesa - Financiamento';
-    } else if (pagamento.formaPagamento === 'Transferência Bancária') {
-      tipoRegisto = 'Despesa - Transferência';
+    if (ehEntrada) {
+      tipoRegisto = 'Receita - Parcela';
+      descricao = `RECEBIMENTO: ${pagamento.referencia} - ${pagamento.beneficiario}`;
+    } else {
+      tipoRegisto = 'Despesa - Outros';
+      descricao = `PAGAMENTO: ${pagamento.referencia} - ${pagamento.beneficiario}`;
+      const categoria = pagamento.categoria || pagamento.tipo || '';
+      if (categoria === 'Fornecedor' || categoria === 'Fornecedores') {
+        tipoRegisto = 'Despesa - Fornecedor';
+      } else if (categoria === 'Folha Salarial') {
+        tipoRegisto = 'Despesa - Salário';
+      } else if (categoria === 'Imposto') {
+        tipoRegisto = 'Despesa - Imposto';
+      } else if (categoria === 'Manutenção') {
+        tipoRegisto = 'Despesa - Manutenção';
+      } else if (categoria === 'Abastecimento') {
+        tipoRegisto = 'Despesa - Abastecimento';
+      } else if (categoria === 'Investimento') {
+        tipoRegisto = 'Despesa - Investimento';
+      } else if (categoria === 'Financiamento') {
+        tipoRegisto = 'Despesa - Financiamento';
+      } else if (pagamento.formaPagamento === 'Transferência Bancária') {
+        tipoRegisto = 'Despesa - Transferência';
+      }
     }
     
     const registo = new RegistoBancario({
       data: dataPagamento,
       conta: contaDebito,
       contaId: banco?._id,
-      descricao: `PAGAMENTO: ${pagamento.referencia} - ${pagamento.beneficiario}`,
+      descricao,
       tipo: tipoRegisto,
       valor: pagamento.valor,
-      entradaSaida: 'saida',
+      entradaSaida: ehEntrada ? 'entrada' : 'saida',
       ano,
       mes,
       documentoReferencia: pagamento._id.toString(),
@@ -60,7 +69,7 @@ async function criarRegistoBancarioPagamento(pagamento, empresa, contaDebito) {
     });
     
     await registo.save();
-    console.log(`✅ Registo bancário criado para pagamento ${pagamento._id}: ${pagamento.valor} Kz na conta ${contaDebito}`);
+    console.log(`✅ Registo bancário criado para ${ehEntrada ? 'recebimento' : 'pagamento'} ${pagamento._id}: ${pagamento.valor} Kz na conta ${contaDebito}`);
     return registo;
   } catch (error) {
     console.error('Erro ao criar registo bancário:', error);
@@ -878,7 +887,7 @@ exports.processarPagamento = async (req, res) => {
     if (!contaDebito) {
       return res.status(400).json({ 
         sucesso: false, 
-        mensagem: 'Selecione a conta bancária para débito' 
+        mensagem: 'Selecione a conta bancária' 
       });
     }
     
@@ -899,15 +908,19 @@ exports.processarPagamento = async (req, res) => {
       return res.status(404).json({ sucesso: false, mensagem: 'Empresa não encontrada' });
     }
     
-    const saldoConta = await calcularSaldoConta(contaDebito, empresaId);
-    if (saldoConta < pagamento.valor) {
-      const banco = await Banco.findOne({ codNome: contaDebito, empresaId });
-      return res.status(400).json({ 
-        sucesso: false, 
-        mensagem: `Saldo insuficiente na conta ${banco?.nome || contaDebito}. Disponível: ${saldoConta.toLocaleString()} Kz, Necessário: ${pagamento.valor.toLocaleString()} Kz`,
-        saldoDisponivel: saldoConta,
-        valorNecessario: pagamento.valor
-      });
+    const ehRecebimento = pagamento.tipo === 'Conta a Receber';
+    
+    if (!ehRecebimento) {
+      const saldoConta = await calcularSaldoConta(contaDebito, empresaId);
+      if (saldoConta < pagamento.valor) {
+        const banco = await Banco.findOne({ codNome: contaDebito, empresaId });
+        return res.status(400).json({ 
+          sucesso: false, 
+          mensagem: `Saldo insuficiente na conta ${banco?.nome || contaDebito}. Disponível: ${saldoConta.toLocaleString()} Kz, Necessário: ${pagamento.valor.toLocaleString()} Kz`,
+          saldoDisponivel: saldoConta,
+          valorNecessario: pagamento.valor
+        });
+      }
     }
     
     const statusAnterior = pagamento.status;
@@ -927,19 +940,65 @@ exports.processarPagamento = async (req, res) => {
     
     await pagamento.save();
     
-    await criarRegistoBancarioPagamento(pagamento, empresa, contaDebito);
-    
-    // 🔥 ATUALIZA CONTA CORRENTE
-    await contaCorrenteController.atualizarContaAposPagamento(pagamento, empresaId);
-    
-    console.log(`✅ Pagamento ${pagamento.referencia} processado: ${statusAnterior} → Pago via conta ${contaDebito}`);
+    if (ehRecebimento) {
+      // 🔁 RECEBIMENTO - entrada no banco + crédito na conta corrente do cliente
+      await criarRegistoBancarioPagamento(pagamento, empresa, contaDebito, true);
+      
+      const contaCorrente = await ContaCorrente.findOne({
+        empresaId, beneficiario: pagamento.beneficiario, tipo: 'Cliente'
+      });
+      if (contaCorrente) {
+        const saldoAnterior = contaCorrente.saldo;
+        const novoSaldo = saldoAnterior + pagamento.valor;
+        contaCorrente.movimentos.push({
+          tipo: 'Recebimento', valor: pagamento.valor,
+          descricao: `Recebimento: ${pagamento.descricao || pagamento.referencia}`,
+          data: pagamento.dataPagamento, referencia: pagamento.referencia,
+          origemId: pagamento._id, origemModel: 'Pagamento', status: 'Pago',
+          saldoAnterior, saldoAtual: novoSaldo
+        });
+        contaCorrente.saldo = novoSaldo;
+        contaCorrente.dataUltimaMovimentacao = new Date();
+        await contaCorrente.save();
+      } else {
+        console.log(`⚠️ Conta corrente não encontrada para cliente: ${pagamento.beneficiario}`);
+        const Cliente = require('../models/Cliente');
+        const clienteData = await Cliente.findOne({ nome: pagamento.beneficiario, empresaId });
+        if (clienteData) {
+          const novaCC = new ContaCorrente({
+            empresaId, beneficiario: pagamento.beneficiario,
+            beneficiarioDocumento: clienteData.nif, tipo: 'Cliente',
+            contato: clienteData.telefone || '', email: clienteData.email || '',
+            telefone: clienteData.telefone || '', saldo: pagamento.valor, status: 'Ativo'
+          });
+          novaCC.movimentos.push({
+            tipo: 'Recebimento', valor: pagamento.valor,
+            descricao: `Recebimento: ${pagamento.descricao || pagamento.referencia}`,
+            data: pagamento.dataPagamento, referencia: pagamento.referencia,
+            origemId: pagamento._id, origemModel: 'Pagamento', status: 'Pago',
+            saldoAnterior: 0, saldoAtual: pagamento.valor
+          });
+          novaCC.dataUltimaMovimentacao = new Date();
+          await novaCC.save();
+        }
+      }
+      
+      console.log(`✅ Recebimento ${pagamento.referencia} processado: ${statusAnterior} → Recebido na conta ${contaDebito}`);
+    } else {
+      // 🔁 PAGAMENTO - saída no banco + débito na conta corrente do fornecedor
+      await criarRegistoBancarioPagamento(pagamento, empresa, contaDebito, false);
+      await contaCorrenteController.atualizarContaAposPagamento(pagamento, empresaId);
+      console.log(`✅ Pagamento ${pagamento.referencia} processado: ${statusAnterior} → Pago via conta ${contaDebito}`);
+    }
     
     const novosaldoConta = await calcularSaldoConta(contaDebito, empresaId);
     const saldoTotal = await calcularSaldoTotalEmpresa(empresaId);
     
     res.json({
       sucesso: true,
-      mensagem: `Pagamento ${pagamento.referencia} efetuado com sucesso!`,
+      mensagem: ehRecebimento
+        ? `Recebimento ${pagamento.referencia} efetuado com sucesso!`
+        : `Pagamento ${pagamento.referencia} efetuado com sucesso!`,
       dados: pagamento,
       saldoConta: novosaldoConta,
       saldoContaFormatado: novosaldoConta.toLocaleString('pt-AO', { style: 'currency', currency: 'AOA' }),

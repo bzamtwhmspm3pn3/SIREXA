@@ -819,16 +819,10 @@ const ControloPagamento = () => {
                           )}
                           
                           {/* 🔥 BOTÃO PAGAR/RECEBER */}
-                          {pagamento.status === "Pendente" && pagamento.tipo === 'Conta a Receber' && (
-                            <button onClick={(e) => { e.stopPropagation(); alert('Processe o recebimento na página de Vendas.'); }}
-                              className="flex-1 bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded text-xs transition flex items-center justify-center gap-1">
-                              <CheckCircle size={12} /> Receber
-                            </button>
-                          )}
-                          {pagamento.status === "Pendente" && pagamento.tipo !== 'Conta a Receber' && (
+                          {pagamento.status === "Pendente" && (
                             <button onClick={(e) => { e.stopPropagation(); prepararPagamento(pagamento); }}
                               className="flex-1 bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded text-xs transition flex items-center justify-center gap-1">
-                              <CheckCircle size={12} /> Pagar
+                              <CheckCircle size={12} /> {pagamento.tipo === 'Conta a Receber' ? 'Receber' : 'Pagar'}
                             </button>
                           )}
                           
@@ -1003,16 +997,10 @@ const ControloPagamento = () => {
                   </button>
                 )}
                 {/* 🔥 BOTÃO PAGAR/RECEBER NO MODAL */}
-                {pagamentoSelecionado.status === "Pendente" && pagamentoSelecionado.tipo === 'Conta a Receber' && (
-                  <button onClick={() => { alert('Processe o recebimento na página de Vendas.'); setMostrarModal(false); }}
-                    className="flex-1 bg-green-600 hover:bg-green-700 py-2 rounded-lg font-semibold flex items-center justify-center gap-2">
-                    <CheckCircle size={18} /> Receber
-                  </button>
-                )}
-                {pagamentoSelecionado.status === "Pendente" && pagamentoSelecionado.tipo !== 'Conta a Receber' && (
+                {pagamentoSelecionado.status === "Pendente" && (
                   <button onClick={() => { prepararPagamento(pagamentoSelecionado); setMostrarModal(false); }}
                     className="flex-1 bg-green-600 hover:bg-green-700 py-2 rounded-lg font-semibold flex items-center justify-center gap-2">
-                    <CheckCircle size={18} /> Pagar
+                    <CheckCircle size={18} /> {pagamentoSelecionado.tipo === 'Conta a Receber' ? 'Receber' : 'Pagar'}
                   </button>
                 )}
                 {isGestor() && pagamentoSelecionado.status === "Pendente" && (
