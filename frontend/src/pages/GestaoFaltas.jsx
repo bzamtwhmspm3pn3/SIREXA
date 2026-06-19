@@ -890,7 +890,7 @@ const GestaoFaltas = () => {
                         <option value="">Selecione</option>
                         {funcionarios.map(f => (
                           <option key={f._id} value={f._id}>
-                            {f.nome} - {f.cargo || 'Sem cargo'}
+                            {f.nome} - {f.cargo || f.funcao || 'Sem cargo'}
                           </option>
                         ))}
                       </select>

@@ -15,7 +15,7 @@ const columns = [
 ];
 
 const formFields = [
-  { key: "funcionarioId", label: "ID do Funcionário" },
+  { key: "funcionarioId", label: "Funcionário" },
   { key: "funcionarioNome", label: "Nome do Funcionário" },
   { key: "tipo", label: "Tipo", type: "select", options: [
     { value: "Admissional", label: "Admissional" }, { value: "Periodico", label: "Periódico" },

@@ -16,7 +16,7 @@ const columns = [
 ];
 
 const formFields = [
-  { key: "funcionarioId", label: "ID do Funcionário" },
+  { key: "funcionarioId", label: "Funcionário" },
   { key: "funcionarioNome", label: "Nome do Funcionário" },
   { key: "cargoAnterior", label: "Cargo Anterior" },
   { key: "cargoNovo", label: "Cargo Novo" },

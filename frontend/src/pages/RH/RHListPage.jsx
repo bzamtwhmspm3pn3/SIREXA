@@ -19,6 +19,7 @@ const RHListPage = ({ title, endpoint, columns, formFields, emptyMessage }) => {
   const [empresas, setEmpresas] = useState([]);
   const [empresaSelecionada, setEmpresaSelecionada] = useState("");
   const [loadingEmpresas, setLoadingEmpresas] = useState(true);
+  const [funcionarios, setFuncionarios] = useState([]);
 
   const token = localStorage.getItem("token");
 
@@ -33,11 +34,28 @@ const RHListPage = ({ title, endpoint, columns, formFields, emptyMessage }) => {
   useEffect(() => {
     if (empresaSelecionada) {
       carregar();
+      carregarFuncionarios();
     } else {
       setItems([]);
+      setFuncionarios([]);
       setLoading(false);
     }
   }, [empresaSelecionada]);
+
+  const carregarFuncionarios = async () => {
+    if (!empresaSelecionada) { setFuncionarios([]); return; }
+    try {
+      const response = await fetch(`${API_URL}/funcionarios?empresaId=${empresaSelecionada}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (response.status === 403) { setFuncionarios([]); return; }
+      const data = await response.json();
+      setFuncionarios(Array.isArray(data) ? data : (data.dados || []));
+    } catch (error) {
+      console.error("Erro ao carregar funcionários:", error);
+      setFuncionarios([]);
+    }
+  };
 
   const carregarEmpresas = async () => {
     if (isTecnico()) { setLoadingEmpresas(false); return; }
@@ -214,7 +232,7 @@ const RHListPage = ({ title, endpoint, columns, formFields, emptyMessage }) => {
                           ))}
                           <td className="p-4">
                             <div className="flex justify-center gap-2">
-                              <button onClick={() => { setEditando(item._id); setFormData(item); setModalOpen(true); }} className="p-2 bg-yellow-600/20 rounded-lg">
+                              <button onClick={() => { setEditando(item._id); setFormData({ ...item, funcionarioId: item.funcionarioId?._id || item.funcionarioId || "" }); setModalOpen(true); }} className="p-2 bg-yellow-600/20 rounded-lg">
                                 <Edit size={16} className="text-yellow-400" />
                               </button>
                               <button onClick={() => excluir(item._id)} className="p-2 bg-red-600/20 rounded-lg">
@@ -243,7 +261,21 @@ const RHListPage = ({ title, endpoint, columns, formFields, emptyMessage }) => {
                     {formFields.map(field => (
                       <div key={field.key}>
                         <label className="block text-sm font-medium text-gray-300 mb-2">{field.label}</label>
-                        {field.type === 'select' ? (
+                        {field.key === 'funcionarioId' ? (
+                          <select className="w-full p-3 rounded-xl bg-gray-700/50 border border-gray-600 text-white"
+                            value={formData[field.key] || ""}
+                            onChange={(e) => {
+                              const id = e.target.value;
+                              const func = funcionarios.find(f => f._id === id);
+                              setFormData({ ...formData, funcionarioId: id, funcionarioNome: func?.nome || "" });
+                            }}
+                          >
+                            <option value="">Seleccione um funcionário...</option>
+                            {funcionarios.map(f => (
+                              <option key={f._id} value={f._id}>{f.nome} - {f.cargo || f.funcao || 'Sem cargo'}</option>
+                            ))}
+                          </select>
+                        ) : field.type === 'select' ? (
                           <select className="w-full p-3 rounded-xl bg-gray-700/50 border border-gray-600 text-white"
                             value={formData[field.key] || ""}
                             onChange={(e) => setFormData({ ...formData, [field.key]: e.target.value })}

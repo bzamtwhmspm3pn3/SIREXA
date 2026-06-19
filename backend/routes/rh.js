@@ -251,6 +251,9 @@ router.delete('/talentos/:id', async (req, res) => {
 router.get('/cursos', async (req, res) => {
   try {
     const { empresaId, status, categoria } = req.query;
+    if (!empresaId || !mongoose.Types.ObjectId.isValid(empresaId)) {
+      return res.status(400).json({ sucesso: false, mensagem: "empresaId inválido" });
+    }
     const filtro = { empresaId };
     if (status) filtro.status = status;
     if (categoria) filtro.categoria = categoria;

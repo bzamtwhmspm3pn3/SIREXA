@@ -684,7 +684,7 @@ const GestaoAbonos = () => {
                       <label className="block text-gray-300 mb-1">Funcionário *</label>
                       <select className="w-full p-3 rounded-xl bg-gray-700/50 border border-gray-600 text-white" value={formData.funcionarioId} onChange={(e) => setFormData({...formData, funcionarioId: e.target.value})}>
                         <option value="">Selecione</option>
-                        {funcionarios.map(f => <option key={f._id} value={f._id}>{f.nome} - {f.cargo || 'Sem cargo'}</option>)}
+                        {funcionarios.map(f => <option key={f._id} value={f._id}>{f.nome} - {f.cargo || f.funcao || 'Sem cargo'}</option>)}
                       </select>
                     </div>
 
