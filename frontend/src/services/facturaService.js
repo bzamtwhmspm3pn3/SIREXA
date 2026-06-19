@@ -44,12 +44,12 @@ export const gerarFacturaProfissional = async (venda, usuario, empresa, contasBa
 
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(11);
-    doc.setTextColor(COR_ESCURA);
+    doc.setTextColor(...COR_ESCURA);
     doc.text('FACTURA', margin + 3, yPos + 6.5);
 
     doc.setFontSize(6.5);
     doc.setFont('helvetica', 'normal');
-    doc.setTextColor(COR_TEXTO);
+    doc.setTextColor(...COR_TEXTO);
     doc.text(`Nº: ${numeroFactura}`, rMargin - 3, yPos + 4, { align: 'right' });
     doc.text(`Data: ${dataAgora.toLocaleDateString('pt-PT')}`, rMargin - 3, yPos + 9, { align: 'right' });
 
@@ -57,7 +57,7 @@ export const gerarFacturaProfissional = async (venda, usuario, empresa, contasBa
 
     if (venda.atcud) {
       doc.setFontSize(5.5);
-      doc.setTextColor(COR_CINZA_MEDIO);
+      doc.setTextColor(...COR_CINZA_MEDIO);
       doc.text(`ATCUD: ${venda.atcud.substring(0, 25)}...`, margin + 3, yPos + 1);
     }
     yPos += 5;
@@ -142,12 +142,12 @@ export const gerarFacturaProfissional = async (venda, usuario, empresa, contasBa
       yPos += 4;
       doc.setFontSize(6.5);
       doc.setFont('helvetica', 'bold');
-      doc.setTextColor(COR_PRIMARIA);
+      doc.setTextColor(...COR_PRIMARIA);
       doc.text('INFORMAÇÕES DE PAGAMENTO', margin, yPos);
       yPos += 4;
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(7);
-      doc.setTextColor(COR_TEXTO);
+      doc.setTextColor(...COR_TEXTO);
       doc.text(`Forma de Pagamento: ${venda.formaPagamento}`, margin, yPos);
       yPos += 4;
 
@@ -184,7 +184,7 @@ export const gerarFacturaProfissional = async (venda, usuario, empresa, contasBa
 
       doc.setFontSize(5);
       doc.setFont('helvetica', 'italic');
-      doc.setTextColor(COR_CINZA_MEDIO);
+      doc.setTextColor(...COR_CINZA_MEDIO);
       doc.text('QR Code', rMargin - 27, pageHeight - 48, { align: 'center' });
       doc.text('AGT', rMargin - 27, pageHeight - 44, { align: 'center' });
     } catch (qrError) {
@@ -194,7 +194,7 @@ export const gerarFacturaProfissional = async (venda, usuario, empresa, contasBa
     if (yPos < pageHeight - 55) {
       doc.setFontSize(6);
       doc.setFont('helvetica', 'italic');
-      doc.setTextColor(COR_CINZA_MEDIO);
+      doc.setTextColor(...COR_CINZA_MEDIO);
       doc.text(`Total por extenso: ${numeroPorExtenso(total)}`, margin, pageHeight - 52);
     }
 

@@ -14,13 +14,14 @@ export async function gerarDocumentoPDF(documento, items, config = {}) {
 
   let yPos = drawCabecalhoProfissional(doc, empresa, logoBase64);
 
-  doc.setDrawColor(getCorTitulo(tipo));
+  const corTitulo = getCorTitulo(tipo);
+  doc.setDrawColor(corTitulo[0], corTitulo[1], corTitulo[2]);
   doc.setLineWidth(0.5);
   doc.rect(margin, yPos, rMargin - margin, 9, 'S');
 
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(11);
-  doc.setTextColor(getCorTitulo(tipo));
+  doc.setTextColor(corTitulo[0], corTitulo[1], corTitulo[2]);
   doc.text(tipo.toUpperCase(), margin + 3, yPos + 6.5);
 
   const doisCampos = [];

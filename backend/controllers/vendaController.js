@@ -1318,7 +1318,7 @@ exports.registrarPagamentoParcela = async (req, res) => {
       }
 
       const saldoAnterior = contaCorrente.saldo;
-      const novoSaldo = saldoAnterior - valorPago;
+      const novoSaldo = saldoAnterior + valorPago;
 
       const movimento = {
         tipo: 'Recebimento',
