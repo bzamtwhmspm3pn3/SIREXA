@@ -1,47 +1,13 @@
 // backend/routes/funcionarios.js
 const express = require('express');
 const router = express.Router();
-const multer = require('multer');
-const path = require('path');
-const fs = require('fs');
 const Funcionario = require('../models/Funcionario');
 const Tecnico = require('../models/Tecnico');
 const Empresa = require('../models/Empresa');
 const { verifyToken } = require('../middlewares/auth');
 const { validateEmpresaAccess } = require('../middlewares/security');
 const { logMiddleware } = require('../middlewares/logger');
-
-// Garantir que a pasta uploads/funcionarios existe
-const uploadDir = path.join(__dirname, '../uploads/funcionarios');
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
-}
-
-// Configurar multer para upload de fotos
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, uploadDir);
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, 'func-' + uniqueSuffix + path.extname(file.originalname));
-  }
-});
-
-const upload = multer({ 
-  storage,
-  limits: { fileSize: 10 * 1024 * 1024 },
-  fileFilter: (req, file, cb) => {
-    const allowedTypes = /jpeg|jpg|png|gif/;
-    const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
-    const mimetype = allowedTypes.test(file.mimetype);
-    if (mimetype && extname) {
-      return cb(null, true);
-    } else {
-      cb(new Error('Apenas imagens são permitidas (jpg, jpeg, png, gif)'));
-    }
-  }
-});
+const upload = require('../middlewares/uploadCloudinary');
 
 // 🔒 TODAS AS ROTAS REQUEREM AUTENTICAÇÃO
 router.use(verifyToken);
@@ -153,7 +119,7 @@ router.post('/', validateEmpresaAccess, logMiddleware('funcionarios'), upload.si
       genero: genero || null,
       estadoCivil: estadoCivil || null,
       nacionalidade: nacionalidade || 'Angolana',
-      foto: req.file ? `/uploads/funcionarios/${req.file.filename}` : null,
+      foto: req.file ? req.file.path : null,
       email: email || '',
       telefone: telefone || '',
       endereco: endereco || '',
@@ -272,15 +238,8 @@ router.put('/:id', logMiddleware('funcionarios'), upload.single('foto'), async (
       }
     }
     
-    // Se houver nova foto, remover a antiga
     if (req.file) {
-      if (funcionario.foto) {
-        const oldPhotoPath = path.join(__dirname, '..', funcionario.foto);
-        if (fs.existsSync(oldPhotoPath)) {
-          fs.unlinkSync(oldPhotoPath);
-        }
-      }
-      funcionario.foto = `/uploads/funcionarios/${req.file.filename}`;
+      funcionario.foto = req.file.path;
     }
     
     // Atualizar todos os campos
@@ -407,13 +366,6 @@ router.delete('/:id', logMiddleware('funcionarios'), async (req, res) => {
     if (funcionario.usuarioId) {
       await Tecnico.findByIdAndDelete(funcionario.usuarioId);
       console.log('✅ Técnico associado removido');
-    }
-    
-    if (funcionario.foto) {
-      const photoPath = path.join(__dirname, '..', funcionario.foto);
-      if (fs.existsSync(photoPath)) {
-        fs.unlinkSync(photoPath);
-      }
     }
     
     await Funcionario.findByIdAndDelete(req.params.id);

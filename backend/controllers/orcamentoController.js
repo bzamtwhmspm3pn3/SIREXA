@@ -626,7 +626,9 @@ exports.exportarPDF = async (req, res) => {
     const totalGeral = orcamentos.reduce((sum, o) => sum + o.valor, 0);
     
     // HTML para o PDF
-    const logotipoUrl = empresa?.logotipo ? `${req.protocol}://${req.get('host')}/uploads/${empresa.logotipo}` : null;
+    const logotipoUrl = empresa?.logotipo
+      ? (empresa.logotipo.startsWith('http') ? empresa.logotipo : `${req.protocol}://${req.get('host')}/uploads/${empresa.logotipo}`)
+      : null;
 
     const html = `
       <!DOCTYPE html>

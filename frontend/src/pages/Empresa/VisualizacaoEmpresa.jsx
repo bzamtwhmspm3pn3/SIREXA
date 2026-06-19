@@ -38,6 +38,7 @@ import {
   Shield,
   TrendingUp
 } from 'lucide-react';
+import { getImageUrl } from '../../utils/pdfUtils';
 
 const VisualizacaoEmpresa = () => {
   const [empresa, setEmpresa] = useState(null);
@@ -218,7 +219,7 @@ const VisualizacaoEmpresa = () => {
               <div className="flex items-center gap-4">
                 {empresa.logotipo ? (
                   <img 
-                    src={`https://sirexa-api.onrender.com/uploads/${empresa.logotipo}`}
+                    src={getImageUrl(empresa.logotipo)}
                     alt={empresa.nome}
                     className="w-20 h-20 rounded-2xl object-cover border-2 border-blue-500 shadow-lg"
                   />

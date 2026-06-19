@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { getImageUrl } from '../utils/pdfUtils';
 
 const Relatorios = () => {
   const navigate = useNavigate();
@@ -71,7 +72,9 @@ const Relatorios = () => {
         const data = await response.json();
         const emp = data.dados || data;
         if (emp?.logotipo) {
-          const logoRes = await fetch(`${BASE_URL}/uploads/${emp.logotipo}`);
+          const logoUrl = getImageUrl(emp.logotipo);
+          if (!logoUrl) return;
+          const logoRes = await fetch(logoUrl);
           const blob = await logoRes.blob();
           const logoBase64 = await new Promise((resolve) => {
             const reader = new FileReader();

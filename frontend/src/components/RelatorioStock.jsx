@@ -8,6 +8,7 @@ import {
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import API_URL from "../config/api";
+import { getImageUrl } from '../utils/pdfUtils';
 
 // Função para limpar caracteres especiais
 const limparTexto = (texto) => {
@@ -122,7 +123,7 @@ const RelatorioStock = ({ produtos = [], servicos = [], onClose, empresaId }) =>
       let logoTentativa = null;
       if (empresa?.logotipo) {
         try {
-          const logoUrl = `${API_URL.replace('/api', '')}/uploads/${empresa.logotipo}`;
+          const logoUrl = getImageUrl(empresa.logotipo);
           const logoResponse = await fetch(logoUrl);
           const logoBlob = await logoResponse.blob();
           logoTentativa = await new Promise((resolve) => {

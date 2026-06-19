@@ -34,6 +34,7 @@ import {
 } from "lucide-react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { getImageUrl } from '../../utils/pdfUtils';
 
 // Helper para escapar caracteres especiais e garantir UTF-8
 const sanitizeText = (text) => {
@@ -204,7 +205,7 @@ const RelatorioFornecedor = () => {
       let logoTentativa = null;
       if (empresa?.logotipo) {
         try {
-          const logoUrl = `https://sirexa-api.onrender.com/uploads/${empresa.logotipo}`;
+          const logoUrl = getImageUrl(empresa.logotipo);
           const logoResponse = await fetch(logoUrl);
           const logoBlob = await logoResponse.blob();
           logoTentativa = await new Promise((resolve) => {

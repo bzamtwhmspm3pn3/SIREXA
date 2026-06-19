@@ -1,10 +1,17 @@
 const API_URL = import.meta.env.VITE_API_URL || 'https://sirexa-api.onrender.com/api';
 const BASE_URL = API_URL.replace('/api', '');
 
+export function getImageUrl(logotipo) {
+  if (!logotipo) return null;
+  if (logotipo.startsWith('http')) return logotipo;
+  return `${BASE_URL}/uploads/${logotipo}`;
+}
+
 export async function carregarLogoBase64(empresa) {
   if (!empresa?.logotipo) return null;
   try {
-    const response = await fetch(`${BASE_URL}/uploads/${empresa.logotipo}`);
+    const url = empresa.logotipo.startsWith('http') ? empresa.logotipo : `${BASE_URL}/uploads/${empresa.logotipo}`;
+    const response = await fetch(url);
     if (!response.ok) return null;
     const blob = await response.blob();
     return await new Promise((resolve) => {

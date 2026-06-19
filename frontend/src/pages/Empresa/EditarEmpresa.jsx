@@ -29,6 +29,7 @@ import {
   Percent,
   Shield
 } from "lucide-react";
+import { getImageUrl } from '../../utils/pdfUtils';
 
 const EditarEmpresa = () => {
   const [activeTab, setActiveTab] = useState("basico");
@@ -147,7 +148,7 @@ const EditarEmpresa = () => {
       });
       
       if (data.logotipo) {
-        setLogoPreview(`https://sirexa-api.onrender.com/uploads/${data.logotipo}`);
+        setLogoPreview(getImageUrl(data.logotipo));
       }
     } catch (error) {
       console.error("Erro:", error);

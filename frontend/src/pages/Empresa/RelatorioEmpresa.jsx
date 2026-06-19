@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { carregarLogoBase64, getImageUrl } from '../../utils/pdfUtils';
 
 const RelatorioEmpresa = () => {
   const [empresa, setEmpresa] = useState(null);
@@ -105,23 +106,6 @@ const RelatorioEmpresa = () => {
     });
   };
 
-  const carregarLogoBase64 = async (url) => {
-    if (!url) return null;
-    try {
-      const response = await fetch(url);
-      const blob = await response.blob();
-      return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result);
-        reader.onerror = reject;
-        reader.readAsDataURL(blob);
-      });
-    } catch (error) {
-      console.error("Erro ao carregar logo:", error);
-      return null;
-    }
-  };
-
   const exportarPDFProfissional = async () => {
     if (!empresa) return;
     
@@ -139,7 +123,7 @@ const RelatorioEmpresa = () => {
       // ==================== CABEÇALHO ====================
       if (empresa.logotipo) {
         try {
-          const logoBase64 = await carregarLogoBase64(`https://sirexa-api.onrender.com/uploads/${empresa.logotipo}`);
+          const logoBase64 = await carregarLogoBase64(empresa);
           if (logoBase64) {
             doc.addImage(logoBase64, "PNG", 14, 8, 25, 25);
           }
@@ -532,7 +516,7 @@ const RelatorioEmpresa = () => {
             <div className="flex items-center gap-4">
               {empresa.logotipo ? (
                 <img 
-                  src={`https://sirexa-api.onrender.com/uploads/${empresa.logotipo}`}
+                  src={getImageUrl(empresa.logotipo)}
                   alt={empresa.nome}
                   className="w-20 h-20 rounded-xl object-cover border-2 border-white/20"
                 />

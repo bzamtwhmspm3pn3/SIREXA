@@ -3,6 +3,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Layout from "../../components/Layout";
 import { Plus, Building2, Eye, Edit, Trash2, RefreshCw } from "lucide-react";
+import { getImageUrl } from '../../utils/pdfUtils';
 
 const ListaEmpresas = () => {
   const [empresas, setEmpresas] = useState([]);
@@ -104,7 +105,7 @@ const ListaEmpresas = () => {
                     <div className="flex items-center gap-3">
                       {emp.logotipo ? (
                         <img
-                          src={`https://sirexa-api.onrender.com/uploads/${emp.logotipo}`}
+                          src={getImageUrl(emp.logotipo)}
                           alt={emp.nome}
                           className="w-12 h-12 rounded-xl object-cover"
                         />

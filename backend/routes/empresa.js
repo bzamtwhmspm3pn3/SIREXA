@@ -1,46 +1,12 @@
 // backend/routes/empresa.js
 const express = require('express');
 const router = express.Router();
-const multer = require('multer');
-const path = require('path');
-const fs = require('fs');
 const jwt = require('jsonwebtoken');
 const Empresa = require('../models/Empresa');
 const Gestor = require('../models/Gestor');
 const { verifyToken } = require('../middlewares/auth');
-const { logMiddleware } = require('../middlewares/logger'); // <-- ADICIONADO
-
-// Garantir que a pasta uploads existe
-const uploadDir = path.join(__dirname, '../uploads');
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
-}
-
-// Configurar multer para upload de imagens
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, uploadDir);
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, uniqueSuffix + path.extname(file.originalname));
-  }
-});
-
-const upload = multer({ 
-  storage,
-  limits: { fileSize: 5 * 1024 * 1024 },
-  fileFilter: (req, file, cb) => {
-    const allowedTypes = /jpeg|jpg|png|gif|webp/;
-    const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
-    const mimetype = allowedTypes.test(file.mimetype);
-    if (mimetype && extname) {
-      return cb(null, true);
-    } else {
-      cb(new Error('Apenas imagens são permitidas'));
-    }
-  }
-});
+const { logMiddleware } = require('../middlewares/logger');
+const upload = require('../middlewares/uploadCloudinary');
 
 // ============================================
 // ROTA PÚBLICA PARA TÉCNICOS - Buscar empresa por ID (sem validação de gestor)
@@ -250,7 +216,7 @@ router.post('/', logMiddleware('empresa'), upload.single('logotipo'), async (req
       swift: swift || '',
       caed: caed || '',
       regimeTributario: regimeTributario || '',
-      logotipo: req.file ? req.file.filename : null,
+      logotipo: req.file ? req.file.path : null,
       ativo: true,
       isBaixosRendimentos: isBaixos,
       regimeINSS: isBaixos ? 'baixos_rendimentos' : 'normal',
@@ -325,7 +291,7 @@ router.put('/:id', logMiddleware('empresa'), upload.single('logotipo'), async (r
     const updateData = { ...dados, updatedAt: new Date() };
     
     if (req.file) {
-      updateData.logotipo = req.file.filename;
+      updateData.logotipo = req.file.path;
     }
     
     const empresa = await Empresa.findByIdAndUpdate(
