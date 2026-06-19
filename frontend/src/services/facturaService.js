@@ -112,9 +112,10 @@ export const gerarFacturaProfissional = async (venda, usuario, empresa, contasBa
       theme: 'grid',
       styles: { 
         fontSize: 7,
-        cellPadding: 2,
+        cellPadding: 1,
         valign: 'middle',
-        textColor: [50, 50, 50]
+        textColor: [50, 50, 50],
+        overflow: 'linebreak'
       },
       headStyles: { 
         fillColor: corPrimaria, 
@@ -127,10 +128,10 @@ export const gerarFacturaProfissional = async (venda, usuario, empresa, contasBa
       alternateRowStyles: { fillColor: [248, 249, 250] },
       columnStyles: {
         0: { cellWidth: 8, halign: 'center' },
-        1: { cellWidth: 90 },
-        2: { cellWidth: 30, halign: 'right' },
-        3: { cellWidth: 12, halign: 'center' },
-        4: { cellWidth: 30, halign: 'right' }
+        1: { cellWidth: 82 },
+        2: { cellWidth: 28, halign: 'right' },
+        3: { cellWidth: 10, halign: 'center' },
+        4: { cellWidth: 28, halign: 'right' }
       },
       margin: { left: 14, right: 14 }
     });

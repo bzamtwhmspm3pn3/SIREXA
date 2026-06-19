@@ -187,9 +187,10 @@ export const gerarDocumentoProfissional = async (documento, usuario, empresa, co
       theme: 'grid',
       styles: { 
         fontSize: 7, 
-        cellPadding: 2, 
+        cellPadding: 1,
         valign: 'middle',
-        textColor: [50, 50, 50]
+        textColor: [50, 50, 50],
+        overflow: 'linebreak'
       },
       headStyles: { 
         fillColor: corPrimaria, 
@@ -203,9 +204,9 @@ export const gerarDocumentoProfissional = async (documento, usuario, empresa, co
       columnStyles: {
         0: { cellWidth: 8, halign: 'center' },
         1: { cellWidth: 'auto' },
-        2: { cellWidth: 30, halign: 'right' },
-        3: { cellWidth: 12, halign: 'center' },
-        4: { cellWidth: 30, halign: 'right' }
+        2: { cellWidth: 28, halign: 'right' },
+        3: { cellWidth: 10, halign: 'center' },
+        4: { cellWidth: 28, halign: 'right' }
       },
       margin: { left: 14, right: 14 },
     });
