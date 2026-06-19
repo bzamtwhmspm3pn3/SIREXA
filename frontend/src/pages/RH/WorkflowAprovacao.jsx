@@ -63,7 +63,7 @@ const WorkflowAprovacao = () => {
   const carregar = async () => {
     if (!empresaSelecionada) return;
     try {
-      const response = await fetch(`${API_URL}/rh/workflow?empresaId=${empresaSelecionada}`, {
+      const response = await fetch(`${API_URL}/rh/workflows?empresaId=${empresaSelecionada}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       const data = await response.json();
@@ -85,7 +85,7 @@ const WorkflowAprovacao = () => {
     setSalvando(true);
     try {
       const method = editando ? "PUT" : "POST";
-      const url = editando ? `${API_URL}/rh/workflow/${editando}` : `${API_URL}/rh/workflow`;
+      const url = editando ? `${API_URL}/rh/workflows/${editando}` : `${API_URL}/rh/workflows`;
       const response = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
@@ -110,7 +110,7 @@ const WorkflowAprovacao = () => {
   const excluir = async (id) => {
     if (!window.confirm("Tem certeza?")) return;
     try {
-      const response = await fetch(`${API_URL}/rh/workflow/${id}`, {
+      const response = await fetch(`${API_URL}/rh/workflows/${id}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` }
       });
