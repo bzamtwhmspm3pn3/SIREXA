@@ -179,6 +179,16 @@ const FacturaSchema = new mongoose.Schema({
   usuario: { type: String },
   usuarioId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   hashDocumento: { type: String },
+
+  // ============================================
+  // CAMPOS AGT (Administração Geral Tributária)
+  // ============================================
+  atcud: { type: String },
+  hash: { type: String },
+  hashAnterior: { type: String },
+  codigoValidacao: { type: String },
+  numeroDocumentoEletronico: { type: String },
+
   observacoes: { type: String },
   
   // ============================================

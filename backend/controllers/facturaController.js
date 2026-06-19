@@ -4,6 +4,33 @@ const Stock = require('../models/Stock');
 const Empresa = require('../models/Empresa');
 const crypto = require('crypto');
 
+// ==================== HELPERS AGT ====================
+
+const gerarATCUD = (empresaNif, serie, numero, data) => {
+  const anoMes = data.toISOString().slice(0, 7).replace('-', '');
+  const numStr = String(numero).padStart(6, '0');
+  return `ATCUD-${empresaNif}-${serie}-${numStr}-${anoMes}`;
+};
+
+const gerarHashAGT = (dadosDocumento, hashAnterior = '') => {
+  const payload = JSON.stringify({
+    ...dadosDocumento,
+    hashAnterior: hashAnterior || null,
+  });
+  return crypto.createHash('sha256').update(payload).digest('hex');
+};
+
+const buscarUltimoHash = async (empresaNif, serie) => {
+  const ultimoDoc = await Factura.findOne({ empresaNif, serie, hash: { $exists: true, $ne: null } })
+    .sort({ numeroFactura: -1 });
+  return ultimoDoc?.hash || null;
+};
+
+const gerarCodigoValidacao = (atcud, hash) => {
+  const str = `${atcud}|${hash}`;
+  return crypto.createHash('md5').update(str).digest('hex').substring(0, 8).toUpperCase();
+};
+
 // ==================== HELPERS CORRIGIDOS ====================
 
 // Helper genérico para próximo número
@@ -450,16 +477,30 @@ exports.emitirFactura = async (req, res) => {
 
     const { subtotal, totalIva, totalFinal } = calcularTotais(itensProcessados, dados.desconto || 0, incluiIVA);
 
-    const hashString = `${empresaNif}|${numeroValido}|${new Date().toISOString()}|${totalFinal}`;
+    const dataEmissao = new Date();
+    const serie = "FT";
+
+    const atcud = gerarATCUD(empresaNif, serie, numeroValido, dataEmissao);
+    const hashAnterior = await buscarUltimoHash(empresaNif, serie);
+
+    const dadosHash = {
+      empresaNif, numero: numeroValido, serie, data: dataEmissao.toISOString(),
+      cliente: dados.cliente, nifCliente: dados.nifCliente, subtotal, totalIva,
+      desconto: dados.desconto || 0, total: totalFinal,
+      itens: itensProcessados.map(i => ({ produto: i.produtoOuServico, qtd: i.quantidade, preco: i.precoUnitario, iva: i.taxaIVA }))
+    };
+    const hashAGT = gerarHashAGT(dadosHash, hashAnterior);
+    const codigoValidacao = gerarCodigoValidacao(atcud, hashAGT);
+
+    const hashString = `${empresaNif}|${numeroValido}|${dataEmissao.toISOString()}|${totalFinal}`;
     const hashDocumento = crypto.createHash('sha256').update(hashString).digest('hex');
 
-    // Verificar se tem serviços
     const temServicos = itensProcessados.some(item => item.tipo === 'servico');
     const tipoActividade = temServicos ? "Prestação de Serviço" : (dados.tipoActividade || "Venda");
 
     const novaFactura = new Factura({
       numeroFactura: numeroValido,
-      serie: "FT",
+      serie,
       tipo: "Factura",
       tipoVenda: dados.tipoVenda || 'avista',
       empresaNif,
@@ -492,7 +533,12 @@ exports.emitirFactura = async (req, res) => {
       status: "emitido",
       usuario: usuario,
       hashDocumento: hashDocumento,
-      dataEmissao: new Date(),
+      atcud,
+      hash: hashAGT,
+      hashAnterior,
+      codigoValidacao,
+      numeroDocumentoEletronico: `${serie} ${String(numeroValido).padStart(6, '0')}`,
+      dataEmissao,
       dataVencimento: dados.dataVencimento || new Date(Date.now() + 30 * 86400000),
       observacoes: dados.observacoes || "",
       impressoes: 1
@@ -576,9 +622,21 @@ exports.emitirFacturaRecibo = async (req, res) => {
 
     const { subtotal, totalIva, totalFinal } = calcularTotais(itensProcessados, dados.desconto || 0, incluiIVA);
 
+    const dataEmissao = new Date();
+    const serie = "FR";
+    const atcud = gerarATCUD(empresaNif, serie, numeroValido, dataEmissao);
+    const hashAnterior = await buscarUltimoHash(empresaNif, serie);
+    const dadosHash = {
+      empresaNif, numero: numeroValido, serie, data: dataEmissao.toISOString(),
+      cliente: dados.cliente, nifCliente: dados.nifCliente, subtotal, totalIva,
+      desconto: dados.desconto || 0, total: totalFinal,
+    };
+    const hashAGT = gerarHashAGT(dadosHash, hashAnterior);
+    const codigoValidacao = gerarCodigoValidacao(atcud, hashAGT);
+
     const facturaRecibo = new Factura({
       numeroFactura: numeroValido,
-      serie: "FR",
+      serie,
       tipo: "Factura Recibo",
       empresaNif,
       empresaId: empresa._id,
@@ -602,7 +660,12 @@ exports.emitirFacturaRecibo = async (req, res) => {
       status: "pago",
       valorPago: totalFinal,
       usuario: usuario,
-      dataEmissao: new Date(),
+      atcud,
+      hash: hashAGT,
+      hashAnterior,
+      codigoValidacao,
+      numeroDocumentoEletronico: `${serie} ${String(numeroValido).padStart(6, '0')}`,
+      dataEmissao,
       observacoes: dados.observacoes || "",
       impressoes: 1
     });
@@ -652,10 +715,21 @@ exports.gerarRecibo = async (req, res) => {
 
     const valorPago = dados?.valorPago || facturaOriginal.total;
     const troco = dados?.troco || 0;
+    const dataEmissao = new Date();
+    const serie = "RC";
+    const atcud = gerarATCUD(facturaOriginal.empresaNif, serie, numeroValido, dataEmissao);
+    const hashAnterior = await buscarUltimoHash(facturaOriginal.empresaNif, serie);
+    const dadosHash = {
+      empresaNif: facturaOriginal.empresaNif, numero: numeroValido, serie, data: dataEmissao.toISOString(),
+      cliente: facturaOriginal.cliente, nifCliente: facturaOriginal.nifCliente,
+      subtotal: facturaOriginal.subtotal, total: facturaOriginal.total,
+    };
+    const hashAGT = gerarHashAGT(dadosHash, hashAnterior);
+    const codigoValidacao = gerarCodigoValidacao(atcud, hashAGT);
 
     const recibo = new Factura({
       numeroFactura: numeroValido,
-      serie: "RC",
+      serie,
       tipo: "Recibo",
       empresaNif: facturaOriginal.empresaNif,
       empresaId: facturaOriginal.empresaId,
@@ -683,7 +757,12 @@ exports.gerarRecibo = async (req, res) => {
       troco: troco,
       usuario: req.user?.nome || "Sistema",
       documentoOriginalId: facturaOriginal._id,
-      dataEmissao: new Date(),
+      atcud,
+      hash: hashAGT,
+      hashAnterior,
+      codigoValidacao,
+      numeroDocumentoEletronico: `${serie} ${String(numeroValido).padStart(6, '0')}`,
+      dataEmissao,
       impressoes: 1
     });
 
@@ -763,9 +842,21 @@ exports.gerarNotaCredito = async (req, res) => {
     const totalIvaNC = -Math.abs(facturaOriginal.totalIva);
     const totalNC = -Math.abs(facturaOriginal.total);
     
+    const dataEmissao = new Date();
+    const serie = "NC";
+    const atcud = gerarATCUD(facturaOriginal.empresaNif, serie, numeroValido, dataEmissao);
+    const hashAnterior = await buscarUltimoHash(facturaOriginal.empresaNif, serie);
+    const dadosHash = {
+      empresaNif: facturaOriginal.empresaNif, numero: numeroValido, serie, data: dataEmissao.toISOString(),
+      cliente: facturaOriginal.cliente, nifCliente: facturaOriginal.nifCliente,
+      subtotal: subtotalNC, total: totalNC,
+    };
+    const hashAGT = gerarHashAGT(dadosHash, hashAnterior);
+    const codigoValidacao = gerarCodigoValidacao(atcud, hashAGT);
+
     const notaCredito = new Factura({
       numeroFactura: numeroValido,
-      serie: "NC",
+      serie,
       tipo: "Nota Credito",
       empresaNif: facturaOriginal.empresaNif,
       empresaId: facturaOriginal.empresaId,
@@ -786,10 +877,15 @@ exports.gerarNotaCredito = async (req, res) => {
       formaPagamento: facturaOriginal.formaPagamento,
       status: "emitido",
       usuario: req.user?.nome || "Sistema",
+      atcud,
+      hash: hashAGT,
+      hashAnterior,
+      codigoValidacao,
+      numeroDocumentoEletronico: `${serie} ${String(numeroValido).padStart(6, '0')}`,
       hashDocumento: crypto.createHash('sha256')
-        .update(`${facturaOriginal.empresaNif}|NC${numeroValido}|${new Date().toISOString()}|${totalNC}`)
+        .update(`${facturaOriginal.empresaNif}|NC${numeroValido}|${dataEmissao.toISOString()}|${totalNC}`)
         .digest('hex'),
-      dataEmissao: new Date(),
+      dataEmissao,
       notaCreditoOriginalId: facturaOriginal._id,
       motivoNotaCredito: motivo || "Anulação de factura",
       observacoes: observacoes || `Nota de crédito referente à factura ${facturaOriginal.serie} ${facturaOriginal.numeroFactura}`,

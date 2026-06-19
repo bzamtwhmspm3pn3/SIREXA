@@ -410,10 +410,11 @@ router.post("/login", async (req, res) => {
     const primeiraEmpresaId = empresasIds.length > 0 ? empresasIds[0] : null;
     
     let modulosAtivos = ['stock', 'fornecedores'];
+    let primeiraEmpresa = null;
     if (primeiraEmpresaId) {
-      const empresa = await Empresa.findById(primeiraEmpresaId);
-      if (empresa && empresa.modulosAtivos) {
-        modulosAtivos = empresa.modulosAtivos;
+      primeiraEmpresa = await Empresa.findById(primeiraEmpresaId);
+      if (primeiraEmpresa && primeiraEmpresa.modulosAtivos) {
+        modulosAtivos = primeiraEmpresa.modulosAtivos;
       }
     }
     
@@ -441,7 +442,13 @@ router.post("/login", async (req, res) => {
         email: gestor.email,
         role: role,
         empresas: gestor.empresas,
+        empresaId: primeiraEmpresaId,
         empresaAtual: primeiraEmpresaId,
+        empresaNome: primeiraEmpresa?.nome || '',
+        empresaNif: primeiraEmpresa?.nif || '',
+        empresaEmail: primeiraEmpresa?.contactos?.email || '',
+        empresaTelefone: primeiraEmpresa?.contactos?.telefone || '',
+        empresaEndereco: primeiraEmpresa?.endereco || null,
         modulosAtivos: modulosAtivos
       }
     });

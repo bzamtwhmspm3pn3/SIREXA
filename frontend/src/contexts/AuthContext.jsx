@@ -31,14 +31,15 @@ export const AuthProvider = ({ children }) => {
           setUser(userData);
           axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
           
-          // Definir empresaId e dados da empresa baseado no usuário
-          if (userData.empresaId) {
-            setEmpresaId(userData.empresaId);
-            setEmpresaNome(userData.empresaNome || "Empresa Designada");
-            setEmpresaNif(userData.empresaNif);
-            setEmpresaEmail(userData.empresaEmail);
-            setEmpresaTelefone(userData.empresaTelefone);
-            setEmpresaEndereco(userData.empresaEndereco);
+          const primeiraEmpresaArr = Array.isArray(userData.empresas) ? userData.empresas[0] : null;
+          const empresaIdLoad = userData.empresaId || userData.empresaAtual || primeiraEmpresaArr?._id || null;
+          if (empresaIdLoad) {
+            setEmpresaId(empresaIdLoad);
+            setEmpresaNome(userData.empresaNome || primeiraEmpresaArr?.nome || "Empresa Designada");
+            setEmpresaNif(userData.empresaNif || primeiraEmpresaArr?.nif || '');
+            setEmpresaEmail(userData.empresaEmail || primeiraEmpresaArr?.contactos?.email || '');
+            setEmpresaTelefone(userData.empresaTelefone || primeiraEmpresaArr?.contactos?.telefone || '');
+            setEmpresaEndereco(userData.empresaEndereco || primeiraEmpresaArr?.endereco || null);
           }
           
           // 🔥 CARREGAR MÓDULOS E PLANO DO USUÁRIO
@@ -127,18 +128,25 @@ export const AuthProvider = ({ children }) => {
         }
       }
       
+      const primeiraEmpresaArray = Array.isArray(userData.empresas) ? userData.empresas[0] : null;
+      const empresaIdFinal = userData.empresaId || userData.empresaAtual || primeiraEmpresaArray?._id || null;
+      const empresaNomeFinal = empresaCompleta?.nome || userData.empresaNome || primeiraEmpresaArray?.nome || '';
+      const empresaNifFinal = empresaCompleta?.nif || userData.empresaNif || primeiraEmpresaArray?.nif || '';
+      const empresaEmailFinal = empresaCompleta?.email || userData.empresaEmail || primeiraEmpresaArray?.contactos?.email || '';
+      const empresaTelefoneFinal = empresaCompleta?.telefone || userData.empresaTelefone || primeiraEmpresaArray?.contactos?.telefone || '';
+      const empresaEnderecoFinal = empresaCompleta?.endereco || userData.empresaEndereco || primeiraEmpresaArray?.endereco || null;
+
       const finalUserData = {
         ...userData,
         role: userData.role || tipo,
         nome: userData.nome || userData.name,
-        empresaId: userData.empresaId,
-        empresaNome: empresaCompleta?.nome || userData.empresaNome,
-        empresaNif: empresaCompleta?.nif || userData.empresaNif,
-        empresaEmail: empresaCompleta?.email || userData.empresaEmail,
-        empresaTelefone: empresaCompleta?.telefone || userData.empresaTelefone,
-        empresaEndereco: empresaCompleta?.endereco || userData.empresaEndereco,
+        empresaId: empresaIdFinal,
+        empresaNome: empresaNomeFinal,
+        empresaNif: empresaNifFinal,
+        empresaEmail: empresaEmailFinal,
+        empresaTelefone: empresaTelefoneFinal,
+        empresaEndereco: empresaEnderecoFinal,
         modulos: userData.modulos || {},
-        // 🔥 ADICIONAR MÓDULOS E PLANO
         modulosAtivos: modulosAtivos,
         plano: plano
       };

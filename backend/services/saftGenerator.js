@@ -1,4 +1,3 @@
-// services/saftGenerator.js
 const xml2js = require('xml2js');
 const { v4: uuidv4 } = require('uuid');
 
@@ -9,7 +8,7 @@ class SAFTGenerator {
       renderOpts: { pretty: true, indent: '  ' }
     });
   }
-  
+
   gerarSAFT(empresa, vendas, periodoInicio, periodoFim) {
     const saft = {
       'AuditFile': {
@@ -19,10 +18,10 @@ class SAFTGenerator {
         'SourceDocuments': this.gerarSourceDocuments(vendas)
       }
     };
-    
+
     return this.builder.buildObject(saft);
   }
-  
+
   gerarHeader(empresa, periodoInicio, periodoFim) {
     return {
       'AuditFileVersion': '1.04_01',
@@ -45,9 +44,8 @@ class SAFTGenerator {
       'PrimaryUser': empresa.contacto || 'Sistema'
     };
   }
-  
+
   gerarMasterFiles(empresa, vendas) {
-    // Agrupar clientes únicos
     const clientesMap = new Map();
     vendas.forEach(venda => {
       if (!clientesMap.has(venda.nifCliente)) {
@@ -61,32 +59,32 @@ class SAFTGenerator {
         });
       }
     });
-    
+
     const clientes = Array.from(clientesMap.values());
-    
+
     return {
       'Customer': clientes.map(cliente => ({ 'Customer': cliente }))
     };
   }
-  
+
   gerarSourceDocuments(vendas) {
     const salesInvoices = vendas.map(venda => ({
       'Invoice': {
         'InvoiceNo': `${venda.serie || 'FT'} ${venda.numeroFactura}`,
-        'InvoiceDate': new Date(venda.data).toISOString().split('T')[0],
-        'InvoiceType': 'FT',
-        'SystemEntryDate': venda.dataAtualizacao || venda.data,
+        'InvoiceDate': new Date(venda.dataEmissao || venda.data).toISOString().split('T')[0],
+        'InvoiceType': this._mapTipoAGT(venda.tipo),
+        'SystemEntryDate': venda.updatedAt || venda.createdAt || venda.data || new Date().toISOString(),
         'Customer': {
           'CustomerTaxID': venda.nifCliente,
           'CompanyName': venda.cliente
         },
-        'Line': venda.itens.map((item, idx) => ({
+        'Line': (venda.itens || []).map((item, idx) => ({
           'LineNumber': idx + 1,
           'ProductCode': item.codigoProduto || item.produtoOuServico,
           'ProductDescription': item.produtoOuServico,
           'Quantity': item.quantidade,
           'UnitPrice': item.precoUnitario,
-          'TaxPointDate': new Date(venda.data).toISOString().split('T')[0],
+          'TaxPointDate': new Date(venda.dataEmissao || venda.data).toISOString().split('T')[0],
           'Description': item.produtoOuServico,
           'Amount': item.total,
           'Tax': {
@@ -94,20 +92,37 @@ class SAFTGenerator {
             'TaxCountryRegion': 'AO',
             'TaxCode': 'NOR',
             'TaxPercentage': item.taxaIVA || 14,
-            'TaxAmount': item.iva || (item.total * 0.14)
+            'TaxAmount': item.iva || (item.total * ((item.taxaIVA || 14) / 100))
           }
         })),
         'DocumentTotals': {
-          'TaxPayable': venda.totalIva,
-          'NetTotal': venda.subtotal - venda.desconto,
-          'GrossTotal': venda.total
-        }
+          'TaxPayable': venda.totalIva || 0,
+          'NetTotal': (venda.subtotal || 0) - (venda.desconto || 0),
+          'GrossTotal': venda.total || 0
+        },
+        ...(venda.atcud ? { 'ATCUD': venda.atcud } : {}),
+        ...(venda.hash ? { 'Hash': venda.hash } : {}),
+        ...(venda.hashAnterior ? { 'HashPrevious': venda.hashAnterior } : {}),
       }
     }));
-    
+
     return {
       'SalesInvoices': salesInvoices
     };
+  }
+
+  _mapTipoAGT(tipo) {
+    const map = {
+      'Factura': 'FT',
+      'Factura Simplificada': 'FS',
+      'Factura Recibo': 'FR',
+      'Nota Credito': 'NC',
+      'Nota Debito': 'ND',
+      'Factura Proforma': 'FP',
+      'Recibo': 'RC',
+      'Orcamento': 'OR',
+    };
+    return map[tipo] || 'FT';
   }
 }
 

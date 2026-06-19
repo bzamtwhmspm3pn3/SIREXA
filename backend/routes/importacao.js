@@ -4,6 +4,7 @@ const multer = require('multer');
 const path = require('path');
 const Empresa = require('../models/Empresa');
 const ImportService = require('../services/importService');
+const SAFTImportService = require('../services/saftImportService');
 const { verifyToken } = require('../middlewares/auth');
 const { logMiddleware } = require('../middlewares/logger');
 
@@ -14,7 +15,7 @@ const upload = multer({
   limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
   fileFilter: (req, file, cb) => {
     // Lista de extensões permitidas
-    const allowedExtensions = ['.xlsx', '.xls', '.csv', '.json'];
+    const allowedExtensions = ['.xlsx', '.xls', '.csv', '.json', '.xml'];
     const ext = path.extname(file.originalname).toLowerCase();
     
     // Lista de MIME types permitidos
@@ -23,7 +24,9 @@ const upload = multer({
       'application/vnd.ms-excel', // .xls
       'text/csv', // .csv
       'application/json', // .json
-      'text/plain' // alguns CSVs podem vir como text/plain
+      'text/plain', // alguns CSVs podem vir como text/plain
+      'application/xml', // .xml
+      'text/xml', // .xml
     ];
     
     const isExtAllowed = allowedExtensions.includes(ext);
@@ -39,7 +42,9 @@ const upload = multer({
     if (isExtAllowed && isMimeAllowed) {
       cb(null, true);
     } else {
-      cb(new Error(`Formato de arquivo não suportado. Use: ${allowedExtensions.join(', ')}`));
+      const error = new Error(`Formato de arquivo não suportado. Use: ${allowedExtensions.join(', ')}`);
+      error.status = 400;
+      cb(error);
     }
   }
 });
@@ -152,6 +157,44 @@ router.post('/funcionarios/json', verifyToken, logMiddleware('importacao-funcion
   } catch (error) {
     console.error('Erro na importação JSON:', error);
     res.status(500).json({ mensagem: 'Erro ao importar dados', error: error.message });
+  }
+});
+
+// POST - Importar SAFT-X (XML)
+router.post('/saft', verifyToken, logMiddleware('importacao-saft-upload'), upload.single('arquivo'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ mensagem: 'Nenhum arquivo enviado' });
+    }
+
+    const fileExt = path.extname(req.file.originalname).toLowerCase();
+    if (fileExt !== '.xml') {
+      return res.status(400).json({ mensagem: 'Formato inválido. Envie um ficheiro XML SAFT' });
+    }
+
+    const empresaNif = req.body.empresaNif || req.user?.empresaNif;
+    if (!empresaNif) {
+      return res.status(400).json({ mensagem: 'NIF da empresa é obrigatório' });
+    }
+
+    const empresa = await Empresa.findOne({ nif: empresaNif });
+    if (!empresa) {
+      return res.status(404).json({ mensagem: `Empresa com NIF ${empresaNif} não encontrada` });
+    }
+
+    const resultados = await SAFTImportService.importFromSAFTXML(
+      req.file.buffer,
+      empresaNif,
+      empresa._id
+    );
+
+    res.json({
+      mensagem: `Importação SAFT-X concluída. ${resultados.sucessos.length} sucessos, ${resultados.erros.length} erros.`,
+      resultados,
+    });
+  } catch (error) {
+    console.error('Erro na importação SAFT-X:', error);
+    res.status(500).json({ mensagem: 'Erro ao importar SAFT-X', error: error.message });
   }
 });
 
