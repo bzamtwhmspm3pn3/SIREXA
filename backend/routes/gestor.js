@@ -1080,6 +1080,131 @@ router.put("/admin/gestores/:id", verifyToken, verificarAdmin, async (req, res) 
   }
 });
 
+// PUT - Atualizar/renovar licença de um gestor existente (admin)
+router.put("/admin/gestores/:id/licenca", verifyToken, verificarAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { plano, diasValidade } = req.body;
+
+    if (!plano) {
+      return res.status(400).json({
+        sucesso: false,
+        mensagem: 'Plano é obrigatório'
+      });
+    }
+
+    const gestor = await Gestor.findById(id);
+    if (!gestor) {
+      return res.status(404).json({
+        sucesso: false,
+        mensagem: 'Gestor não encontrado'
+      });
+    }
+
+    const empresa = await Empresa.findOne({ gestorId: id });
+    if (!empresa) {
+      return res.status(404).json({
+        sucesso: false,
+        mensagem: 'Nenhuma empresa encontrada para este gestor'
+      });
+    }
+
+    await garantirPlanosExistentes();
+
+    const planoData = await Plano.findOne({ nome: plano });
+    if (!planoData) {
+      return res.status(400).json({
+        sucesso: false,
+        mensagem: `Plano "${plano}" não encontrado. Planos disponíveis: FREE, BÁSICO, PROFISSIONAL, EMPRESARIAL, PLATINUM`
+      });
+    }
+
+    const novaDataExpiracao = new Date();
+    novaDataExpiracao.setDate(novaDataExpiracao.getDate() + (diasValidade || planoData.duracaoDias || 365));
+
+    let licenca;
+    if (gestor.licencaId) {
+      licenca = await Licenca.findById(gestor.licencaId);
+    }
+
+    if (licenca) {
+      licenca.plano = plano;
+      licenca.modulos = planoData.modulos || {};
+      licenca.limites = planoData.limites || {};
+      licenca.dataExpiracao = novaDataExpiracao;
+      licenca.ultimaRenovacao = new Date();
+      licenca.dataAtivacao = new Date();
+      licenca.status = 'ativa';
+      licenca.ativadoPor = req.user.nome || req.user.email;
+      licenca.empresaId = empresa._id;
+      licenca.empresaNome = empresa.nome;
+      await licenca.save();
+    } else {
+      const chave = crypto.randomBytes(16).toString('hex').toUpperCase();
+      licenca = new Licenca({
+        chave,
+        email: gestor.email,
+        plano,
+        modulos: planoData.modulos || {},
+        limites: planoData.limites || {},
+        dataExpiracao: novaDataExpiracao,
+        dataAtivacao: new Date(),
+        ultimaRenovacao: new Date(),
+        status: 'ativa',
+        empresaId: empresa._id,
+        empresaNome: empresa.nome,
+        ativadoPor: req.user.nome || req.user.email
+      });
+      await licenca.save();
+      gestor.licencaId = licenca._id;
+      await gestor.save();
+    }
+
+    const modulosAtivos = Object.keys(planoData.modulos || {}).filter(key => planoData.modulos[key] === true);
+
+    empresa.plano = plano;
+    empresa.licencaId = licenca._id;
+    empresa.dataExpiracaoLicenca = novaDataExpiracao;
+    empresa.dataAtivacao = new Date();
+    empresa.statusLicenca = 'ativa';
+    empresa.modulosAtivos = modulosAtivos;
+    empresa.limites = planoData.limites || {};
+    await empresa.save();
+
+    console.log(`✅ Licença renovada: Gestor ${gestor.nome} -> Plano ${plano} até ${novaDataExpiracao.toLocaleDateString()}`);
+
+    res.json({
+      sucesso: true,
+      mensagem: `Licença do gestor ${gestor.nome} atualizada para ${plano} com sucesso!`,
+      gestor: {
+        _id: gestor._id,
+        nome: gestor.nome,
+        email: gestor.email,
+        ativo: gestor.ativo
+      },
+      licenca: {
+        _id: licenca._id,
+        chave: licenca.chave,
+        plano: licenca.plano,
+        status: licenca.status,
+        dataExpiracao: novaDataExpiracao
+      },
+      empresa: {
+        _id: empresa._id,
+        nome: empresa.nome,
+        plano: empresa.plano,
+        statusLicenca: empresa.statusLicenca,
+        modulosAtivos: empresa.modulosAtivos,
+        dataExpiracaoLicenca: empresa.dataExpiracaoLicenca
+      }
+    });
+
+  } catch (error) {
+    console.error('Erro ao atualizar licença do gestor:', error);
+    res.status(500).json({ sucesso: false, mensagem: error.message });
+  }
+});
+
 // DELETE - Revogar licença (admin)
 router.delete("/admin/licencas/:chave", verifyToken, verificarAdmin, async (req, res) => {
   try {
