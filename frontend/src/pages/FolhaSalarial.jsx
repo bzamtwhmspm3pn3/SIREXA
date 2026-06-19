@@ -835,7 +835,8 @@ const FolhaSalarial = () => {
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(60, 60, 60);
     lns.forEach((l, i) => {
-      doc.setFillColor(i % 2 === 0 ? [248, 250, 252] : [255, 255, 255]);
+      const bg = i % 2 === 0 ? [248, 250, 252] : [255, 255, 255];
+      doc.setFillColor(bg[0], bg[1], bg[2]);
       doc.rect(16, iy - 0.5, largUtil - 4, 3.5, 'F');
       doc.text(l.l, 19, iy + 0.8);
       doc.text(l.v, rMargem - 5, iy + 0.8, { align: 'right' });
