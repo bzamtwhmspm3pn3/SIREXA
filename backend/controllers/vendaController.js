@@ -941,7 +941,7 @@ exports.exportarSAFT = async (req, res) => {
       });
     }
     
-    const query = { empresaId: empresa._id, status: 'finalizada' };
+    const query = { empresaId: empresa._id, status: { $in: ['finalizada', 'parcialmente_paga'] } };
     if (dataInicio && dataFim) {
       query.data = {
         $gte: new Date(dataInicio),
@@ -953,8 +953,8 @@ exports.exportarSAFT = async (req, res) => {
     console.log(`Encontradas ${vendas.length} vendas para exportar`);
     
     const escapeXml = (unsafe) => {
-      if (!unsafe) return '';
-      return unsafe
+      if (unsafe == null) return '';
+      return String(unsafe)
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;')
