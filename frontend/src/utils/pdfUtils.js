@@ -5,6 +5,7 @@ export async function carregarLogoBase64(empresa) {
   if (!empresa?.logotipo) return null;
   try {
     const response = await fetch(`${BASE_URL}/uploads/${empresa.logotipo}`);
+    if (!response.ok) return null;
     const blob = await response.blob();
     return await new Promise((resolve) => {
       const reader = new FileReader();
@@ -13,6 +14,12 @@ export async function carregarLogoBase64(empresa) {
       reader.readAsDataURL(blob);
     });
   } catch { return null; }
+}
+
+function detectarFormatoImagem(logotipo, base64) {
+  if (/\.jpe?g$/i.test(logotipo)) return 'JPEG';
+  if (base64?.startsWith('data:image/jpeg')) return 'JPEG';
+  return 'PNG';
 }
 
 export async function carregarDadosEmpresa(empresaId) {
@@ -45,7 +52,8 @@ export function drawCabecalhoProfissional(doc, empresa, logoBase64, yStart = 15)
     const endereco = empresa.endereco?.cidade || empresa.endereco || '';
 
     if (logoBase64) {
-      doc.addImage(logoBase64, 'PNG', margin, yStart, 16, 16);
+      const formato = detectarFormatoImagem(empresa.logotipo, logoBase64);
+      doc.addImage(logoBase64, formato, margin, yStart, 16, 16);
     } else {
       doc.setFillColor(37, 99, 235);
       doc.rect(margin, yStart, 16, 16, 'F');
