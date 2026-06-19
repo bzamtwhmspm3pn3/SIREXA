@@ -569,8 +569,8 @@ const FolhaSalarial = () => {
       ];
       const startX = [15, 105, 195];
       resumoItems.forEach((item, index) => {
-        const col = Math.floor(index / 4);
-        const row = index % 4;
+        const col = Math.floor(index / 5);
+        const row = index % 5;
         const x = startX[col];
         const yy = y + (row * 4.5);
         doc.setFont("helvetica", "bold");
