@@ -204,9 +204,6 @@ function Layout({ title, children, showBackButton = false, backToRoute = null })
             </button>
           </nav>
 
-          <div className="p-4 border-t border-white/10 space-y-2">
-            <ThemeLangControls vertical />
-          </div>
           <div className="px-4 pb-4">
             <button onClick={handleLogout} className="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-xl bg-gradient-to-r from-red-500/10 to-red-600/10 hover:from-red-500/20 hover:to-red-600/20 text-red-400 hover:text-red-300 border border-red-500/20 hover:border-red-500/40 transition-all duration-300 font-medium text-sm">
               <LogOut size={18} /><span>{t('nav.sair')}</span>
@@ -307,9 +304,6 @@ function Layout({ title, children, showBackButton = false, backToRoute = null })
             })}
           </nav>
 
-          <div className="p-4 border-t border-white/10 space-y-2">
-            <ThemeLangControls vertical />
-          </div>
           <div className="px-4 pb-4">
             <button onClick={handleLogout} className="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-xl bg-gradient-to-r from-red-500/10 to-red-600/10 hover:from-red-500/20 hover:to-red-600/20 text-red-400 hover:text-red-300 border border-red-500/20 hover:border-red-500/40 transition-all duration-300 font-medium text-sm group">
               <LogOut size={18} className="transition-transform duration-300 group-hover:translate-x-1" /><span>{t('nav.sair')}</span>
