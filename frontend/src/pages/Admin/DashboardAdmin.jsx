@@ -177,15 +177,15 @@ const DashboardAdmin = () => {
           </div>
           <div className="p-6 space-y-4">
             {[
-              { label: 'Total Gestores', value: stats?.totalGestores || 0, icon: UserCheck, cor: 'blue' },
-              { label: 'Total Empresas', value: stats?.totalEmpresas || 0, icon: Building2, cor: 'cyan' },
-              { label: 'Licenças Activas', value: stats?.licencasAtivas || 0, icon: CheckCircle, cor: 'green' },
-              { label: 'Licenças Expiradas', value: (stats?.totalLicencas || 0) - (stats?.licencasAtivas || 0), icon: AlertTriangle, cor: 'red' },
+              { label: 'Total Gestores', value: stats?.totalGestores || 0, icon: UserCheck, bg: 'bg-blue-600/20', cor: 'text-blue-400' },
+              { label: 'Total Empresas', value: stats?.totalEmpresas || 0, icon: Building2, bg: 'bg-cyan-600/20', cor: 'text-cyan-400' },
+              { label: 'Licenças Activas', value: stats?.licencasAtivas || 0, icon: CheckCircle, bg: 'bg-green-600/20', cor: 'text-green-400' },
+              { label: 'Licenças Expiradas', value: (stats?.totalLicencas || 0) - (stats?.licencasAtivas || 0), icon: AlertTriangle, bg: 'bg-red-600/20', cor: 'text-red-400' },
             ].map((item, i) => (
               <div key={i} className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className={`w-8 h-8 rounded-lg bg-${item.cor}-600/20 flex items-center justify-center`}>
-                    <item.icon size={16} className={`text-${item.cor}-400`} />
+                  <div className={`w-8 h-8 rounded-lg ${item.bg} flex items-center justify-center`}>
+                    <item.icon size={16} className={item.cor} />
                   </div>
                   <span className="text-gray-300 text-sm">{item.label}</span>
                 </div>

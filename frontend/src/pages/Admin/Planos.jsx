@@ -266,9 +266,12 @@ const Planos = () => {
     return new Intl.NumberFormat('pt-AO').format(valor);
   };
 
-  const getCorPlano = (nome) => {
-    const cores = { FREE: 'gray', BÁSICO: 'blue', PROFISSIONAL: 'green', EMPRESARIAL: 'purple', PLATINUM: 'yellow' };
-    return cores[nome] || 'gray';
+  const classesPlano = {
+    FREE: { card: 'from-gray-600/20 to-gray-800/20 border-gray-500/30', header: 'border-gray-500/30 bg-gray-600/10', icon: 'text-gray-400' },
+    BÁSICO: { card: 'from-blue-600/20 to-blue-800/20 border-blue-500/30', header: 'border-blue-500/30 bg-blue-600/10', icon: 'text-blue-400' },
+    PROFISSIONAL: { card: 'from-green-600/20 to-green-800/20 border-green-500/30', header: 'border-green-500/30 bg-green-600/10', icon: 'text-green-400' },
+    EMPRESARIAL: { card: 'from-purple-600/20 to-purple-800/20 border-purple-500/30', header: 'border-purple-500/30 bg-purple-600/10', icon: 'text-purple-400' },
+    PLATINUM: { card: 'from-yellow-600/20 to-yellow-800/20 border-yellow-500/30', header: 'border-yellow-500/30 bg-yellow-600/10', icon: 'text-yellow-400' },
   };
 
   if (loading) {
@@ -308,12 +311,14 @@ const Planos = () => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
-        {planos.map((plano) => (
-          <div key={plano.nome} className={`bg-gradient-to-br from-${getCorPlano(plano.nome)}-600/20 to-${getCorPlano(plano.nome)}-800/20 rounded-2xl border border-${getCorPlano(plano.nome)}-500/30 overflow-hidden transition-all hover:scale-105`}>
-            <div className={`p-4 border-b border-${getCorPlano(plano.nome)}-500/30 bg-${getCorPlano(plano.nome)}-600/10`}>
+        {planos.map((plano) => {
+          const c = classesPlano[plano.nome] || classesPlano.FREE;
+          return (
+          <div key={plano.nome} className={`bg-gradient-to-br ${c.card} rounded-2xl border overflow-hidden transition-all hover:scale-105`}>
+            <div className={`p-4 border-b ${c.header}`}>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Package className={`text-${getCorPlano(plano.nome)}-400`} size={24} />
+                  <Package className={c.icon} size={24} />
                   <h3 className="text-xl font-bold text-white">{plano.nome}</h3>
                 </div>
                 {plano.ativo ? (
@@ -364,7 +369,8 @@ const Planos = () => {
               </button>
             </div>
           </div>
-        ))}
+        );
+      })}
       </div>
 
       {/* Modal de Edição/Criação de Plano */}

@@ -117,16 +117,16 @@ const VisualizarFornecedor = () => {
 
   const getIconForTipo = (tipoFornecedor) => {
     const tiposConfig = {
-      mercadoria: { icon: Package, cor: "blue", label: "📦 Mercadoria/Produto" },
-      renda: { icon: Home, cor: "green", label: "🏠 Renda (Aluguer)" },
-      servicoProfissional: { icon: Briefcase, cor: "indigo", label: "👔 Serviço Profissional" },
-      internet: { icon: Globe, cor: "cyan", label: "🌐 Internet/Telecom" },
-      manutencao: { icon: Wrench, cor: "orange", label: "🔧 Manutenção" },
-      abastecimento: { icon: Fuel, cor: "yellow", label: "⛽ Abastecimento" },
-      equipamento: { icon: Computer, cor: "purple", label: "🖥️ Equipamento" },
-      servicoGeral: { icon: FileText, cor: "gray", label: "📝 Outro Serviço" }
+      mercadoria: { icon: Package, cor: "text-blue-400", bg: "bg-blue-600/20", border: "border-blue-500/30", gradient: "from-blue-600/20 to-blue-600/20", label: "📦 Mercadoria/Produto" },
+      renda: { icon: Home, cor: "text-green-400", bg: "bg-green-600/20", border: "border-green-500/30", gradient: "from-green-600/20 to-green-600/20", label: "🏠 Renda (Aluguer)" },
+      servicoProfissional: { icon: Briefcase, cor: "text-indigo-400", bg: "bg-indigo-600/20", border: "border-indigo-500/30", gradient: "from-indigo-600/20 to-indigo-600/20", label: "👔 Serviço Profissional" },
+      internet: { icon: Globe, cor: "text-cyan-400", bg: "bg-cyan-600/20", border: "border-cyan-500/30", gradient: "from-cyan-600/20 to-cyan-600/20", label: "🌐 Internet/Telecom" },
+      manutencao: { icon: Wrench, cor: "text-orange-400", bg: "bg-orange-600/20", border: "border-orange-500/30", gradient: "from-orange-600/20 to-orange-600/20", label: "🔧 Manutenção" },
+      abastecimento: { icon: Fuel, cor: "text-yellow-400", bg: "bg-yellow-600/20", border: "border-yellow-500/30", gradient: "from-yellow-600/20 to-yellow-600/20", label: "⛽ Abastecimento" },
+      equipamento: { icon: Computer, cor: "text-purple-400", bg: "bg-purple-600/20", border: "border-purple-500/30", gradient: "from-purple-600/20 to-purple-600/20", label: "🖥️ Equipamento" },
+      servicoGeral: { icon: FileText, cor: "text-gray-400", bg: "bg-gray-600/20", border: "border-gray-500/30", gradient: "from-gray-600/20 to-gray-600/20", label: "📝 Outro Serviço" }
     };
-    return tiposConfig[tipoFornecedor] || { icon: Truck, cor: "gray", label: "Fornecedor" };
+    return tiposConfig[tipoFornecedor] || { icon: Truck, cor: "text-gray-400", bg: "bg-gray-600/20", border: "border-gray-500/30", gradient: "from-gray-600/20 to-gray-600/20", label: "Fornecedor" };
   };
 
   const calcularValorTotalItens = () => {
@@ -552,17 +552,17 @@ const VisualizarFornecedor = () => {
             {/* Tipo de Fornecedor */}
             {fornecedor.tipoFornecedor && (
               <div className="bg-gradient-to-br from-gray-800/90 to-gray-900/90 backdrop-blur-sm rounded-2xl border border-gray-700/50 overflow-hidden">
-                <div className={`bg-gradient-to-r from-${tipoInfo.cor}-600/20 to-${tipoInfo.cor}-600/20 px-6 py-4 border-b border-gray-700`}>
+                <div className={`bg-gradient-to-r ${tipoInfo.gradient} px-6 py-4 border-b border-gray-700`}>
                   <div className="flex items-center gap-2">
-                    {React.createElement(tipoInfo.icon, { className: `w-5 h-5 text-${tipoInfo.cor}-400` })}
+                    {React.createElement(tipoInfo.icon, { className: `w-5 h-5 ${tipoInfo.cor}` })}
                     <h2 className="text-lg font-bold text-white">Tipo de Fornecedor</h2>
                   </div>
                 </div>
                 <div className="p-6">
-                  <div className={`flex items-center gap-3 p-3 bg-${tipoInfo.cor}-600/20 rounded-xl border border-${tipoInfo.cor}-500/30`}>
-                    {React.createElement(tipoInfo.icon, { className: `w-6 h-6 text-${tipoInfo.cor}-400` })}
+                  <div className={`flex items-center gap-3 p-3 ${tipoInfo.bg} rounded-xl border ${tipoInfo.border}`}>
+                    {React.createElement(tipoInfo.icon, { className: `w-6 h-6 ${tipoInfo.cor}` })}
                     <div>
-                      <p className={`font-medium text-${tipoInfo.cor}-400`}>{tipoInfo.label}</p>
+                      <p className={`font-medium ${tipoInfo.cor}`}>{tipoInfo.label}</p>
                       <p className="text-xs text-gray-400 mt-1">
                         {fornecedor.tipoFornecedor === "mercadoria" && "Produtos físicos para revenda ou consumo"}
                         {fornecedor.tipoFornecedor === "renda" && "Serviços de arrendamento"}

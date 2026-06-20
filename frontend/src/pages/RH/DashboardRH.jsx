@@ -7,15 +7,15 @@ import { Users, Briefcase, GraduationCap, CalendarCheck, TrendingUp, AlertTriang
 import API_URL from "../../config/api";
 
 const modules = [
-  { key: "recrutamento", nome: "Recrutamento e Selecção", icon: Briefcase, cor: "blue", desc: "Vagas, candidaturas, entrevistas", rota: "/rh/recrutamento" },
-  { key: "formacao", nome: "Formação e Desenvolvimento", icon: GraduationCap, cor: "green", desc: "Cursos, certificações, inscrições", rota: "/rh/formacao" },
-  { key: "feriasLicencas", nome: "Férias e Licenças", icon: CalendarCheck, cor: "purple", desc: "Pedidos, saldos, aprovações", rota: "/rh/ferias-licencas" },
-  { key: "carreira", nome: "Carreira e Promoções", icon: TrendingUp, cor: "yellow", desc: "Planos de carreira, promoções, sucessão", rota: "/rh/carreira" },
-  { key: "cargos", nome: "Cargos e Hierarquia", icon: Briefcase, cor: "indigo", desc: "Definição de cargos, níveis e salários", rota: "/rh/cargos" },
-  { key: "disciplinar", nome: "Gestão Disciplinar", icon: Gavel, cor: "red", desc: "Advertências, sanções, processos", rota: "/rh/disciplinar" },
-  { key: "competencias", nome: "Competências", icon: Target, cor: "cyan", desc: "Matriz de competências, gap analysis", rota: "/rh/competencias" },
-  { key: "saudeSeguranca", nome: "Saúde e Segurança", icon: Shield, cor: "orange", desc: "Exames, acidentes, EPIs", rota: "/rh/saude-seguranca" },
-  { key: "workflow", nome: "Workflows e Aprovações", icon: GitBranch, cor: "pink", desc: "Fluxos de aprovação configuráveis", rota: "/rh/workflow" }
+  { key: "recrutamento", nome: "Recrutamento e Selecção", icon: Briefcase, bg: "bg-blue-600/20", color: "text-blue-400", desc: "Vagas, candidaturas, entrevistas", rota: "/rh/recrutamento" },
+  { key: "formacao", nome: "Formação e Desenvolvimento", icon: GraduationCap, bg: "bg-green-600/20", color: "text-green-400", desc: "Cursos, certificações, inscrições", rota: "/rh/formacao" },
+  { key: "feriasLicencas", nome: "Férias e Licenças", icon: CalendarCheck, bg: "bg-purple-600/20", color: "text-purple-400", desc: "Pedidos, saldos, aprovações", rota: "/rh/ferias-licencas" },
+  { key: "carreira", nome: "Carreira e Promoções", icon: TrendingUp, bg: "bg-yellow-600/20", color: "text-yellow-400", desc: "Planos de carreira, promoções, sucessão", rota: "/rh/carreira" },
+  { key: "cargos", nome: "Cargos e Hierarquia", icon: Briefcase, bg: "bg-indigo-600/20", color: "text-indigo-400", desc: "Definição de cargos, níveis e salários", rota: "/rh/cargos" },
+  { key: "disciplinar", nome: "Gestão Disciplinar", icon: Gavel, bg: "bg-red-600/20", color: "text-red-400", desc: "Advertências, sanções, processos", rota: "/rh/disciplinar" },
+  { key: "competencias", nome: "Competências", icon: Target, bg: "bg-cyan-600/20", color: "text-cyan-400", desc: "Matriz de competências, gap analysis", rota: "/rh/competencias" },
+  { key: "saudeSeguranca", nome: "Saúde e Segurança", icon: Shield, bg: "bg-orange-600/20", color: "text-orange-400", desc: "Exames, acidentes, EPIs", rota: "/rh/saude-seguranca" },
+  { key: "workflow", nome: "Workflows e Aprovações", icon: GitBranch, bg: "bg-pink-600/20", color: "text-pink-400", desc: "Fluxos de aprovação configuráveis", rota: "/rh/workflow" }
 ];
 
 const DashboardRH = () => {
@@ -144,8 +144,8 @@ const DashboardRH = () => {
                   onClick={() => navigate(mod.rota)}
                   className="bg-gray-800 hover:bg-gray-750 rounded-2xl p-5 border border-gray-700 text-left transition text-white"
                 >
-                  <div className={`w-12 h-12 rounded-xl bg-${mod.cor}-600/20 flex items-center justify-center mb-3`}>
-                    <mod.icon className={`w-6 h-6 text-${mod.cor}-400`} />
+                  <div className={`w-12 h-12 rounded-xl ${mod.bg} flex items-center justify-center mb-3`}>
+                    <mod.icon className={`w-6 h-6 ${mod.color}`} />
                   </div>
                   <h3 className="font-semibold mb-1">{mod.nome}</h3>
                   <p className="text-gray-400 text-sm">{mod.desc}</p>

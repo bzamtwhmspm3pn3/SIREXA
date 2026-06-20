@@ -18,16 +18,16 @@ const LayoutAdmin = ({ children, title }) => {
     navigate('/login');
   };
 
-  const menuItems = [
-    { icon: LayoutDashboard, label: 'Dashboard', path: '/admin', color: 'blue' },
-    { icon: Award, label: 'Planos', path: '/admin/planos', color: 'purple' },
-    { icon: Key, label: 'Gerar Chave', path: '/admin/gerar-chave', color: 'yellow' },
-    { icon: FileText, label: 'Licenças', path: '/admin/licencas', color: 'indigo' },
-    { icon: Users, label: 'Gestores', path: '/admin/gestores', color: 'green' },
-    { icon: Building2, label: 'Empresas', path: '/admin/empresas', color: 'cyan' },
+const menuItems = [
+    { icon: LayoutDashboard, label: 'Dashboard', path: '/admin', color: 'text-blue-400' },
+    { icon: Award, label: 'Planos', path: '/admin/planos', color: 'text-purple-400' },
+    { icon: Key, label: 'Gerar Chave', path: '/admin/gerar-chave', color: 'text-yellow-400' },
+    { icon: FileText, label: 'Licenças', path: '/admin/licencas', color: 'text-indigo-400' },
+    { icon: Users, label: 'Gestores', path: '/admin/gestores', color: 'text-green-400' },
+    { icon: Building2, label: 'Empresas', path: '/admin/empresas', color: 'text-cyan-400' },
     { divider: true },
-    { icon: TrendingUp, label: 'Estatísticas', path: '/admin/estatisticas', color: 'orange' },
-  ];
+    { icon: TrendingUp, label: 'Estatísticas', path: '/admin/estatisticas', color: 'text-orange-400' },
+];
 
   return (
     <div className="min-h-screen bg-gray-900">
@@ -57,7 +57,7 @@ const LayoutAdmin = ({ children, title }) => {
                 to={item.path}
                 className={`flex items-center gap-3 px-3 py-2 rounded-lg text-gray-300 hover:bg-gray-700 hover:text-white transition-all group`}
               >
-                <item.icon size={20} className={`text-${item.color}-400`} />
+                <item.icon size={20} className={item.color} />
                 {sidebarOpen && <span className="text-sm">{item.label}</span>}
                 {!sidebarOpen && (
                   <div className="absolute left-full ml-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition whitespace-nowrap z-50">

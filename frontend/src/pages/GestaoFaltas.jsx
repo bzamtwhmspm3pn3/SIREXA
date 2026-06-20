@@ -581,13 +581,8 @@ const GestaoFaltas = () => {
   };
 
   const imprimirDocumento = async (doc) => {
-    let empresaAtual;
-    if (isTecnico()) {
-      empresaAtual = { nome: userEmpresaNome, _id: userEmpresaId };
-    } else {
-      empresaAtual = empresas.find(e => e._id === empresaSelecionada);
-    }
-    await gerarDocumentoProfissional(doc, user, empresaAtual, []);
+    const pdf = await gerarDocumentoProfissional(doc, doc.itens || []);
+    if (pdf?.doc) pdf.doc.save(pdf.fileName);
   };
 
   const getStatusColor = (status) => {

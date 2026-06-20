@@ -107,16 +107,14 @@ const ConfigurarModulos = () => {
     );
   }
 
-  const getCorClasse = (cor) => {
-    const cores = {
-      gray: 'gray',
-      blue: 'blue',
-      green: 'green',
-      purple: 'purple',
-      yellow: 'yellow'
-    };
-    return cores[cor] || 'gray';
+  const corPlano = {
+    gray: { gradient: 'from-gray-600/20 to-gray-800/20', border: 'border-gray-500/30', icon: 'text-gray-400' },
+    blue: { gradient: 'from-blue-600/20 to-blue-800/20', border: 'border-blue-500/30', icon: 'text-blue-400' },
+    green: { gradient: 'from-green-600/20 to-green-800/20', border: 'border-green-500/30', icon: 'text-green-400' },
+    purple: { gradient: 'from-purple-600/20 to-purple-800/20', border: 'border-purple-500/30', icon: 'text-purple-400' },
+    yellow: { gradient: 'from-yellow-600/20 to-yellow-800/20', border: 'border-yellow-500/30', icon: 'text-yellow-400' },
   };
+  const c = corPlano[planoInfo.cor] || corPlano.gray;
 
   return (
     <Layout title="Configurar Módulos" showBackButton={true}>
@@ -133,11 +131,11 @@ const ConfigurarModulos = () => {
 
       <div className="max-w-4xl mx-auto">
         {/* Info do Plano */}
-        <div className={`bg-gradient-to-r from-${getCorClasse(planoInfo.cor)}-600/20 to-${getCorClasse(planoInfo.cor)}-800/20 rounded-2xl p-6 mb-8 border border-${getCorClasse(planoInfo.cor)}-500/30`}>
+        <div className={`bg-gradient-to-r ${c.gradient} rounded-2xl p-6 mb-8 border ${c.border}`}>
           <div className="flex items-center justify-between flex-wrap gap-4">
             <div>
               <div className="flex items-center gap-2">
-                <Award className={`text-${getCorClasse(planoInfo.cor)}-400`} size={24} />
+                <Award className={c.icon} size={24} />
                 <h2 className="text-2xl font-bold text-white">Plano {planoInfo.nome}</h2>
               </div>
               <p className="text-gray-300 mt-1">{planoInfo.descricao}</p>

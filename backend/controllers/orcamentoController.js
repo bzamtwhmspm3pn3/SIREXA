@@ -3,8 +3,7 @@ const Venda = require('../models/Venda');
 const Pagamento = require('../models/Pagamento');
 const Empresa = require('../models/Empresa');
 const XLSX = require('xlsx');
-const jsPDF = require('jspdf');
-const html2canvas = require('html2canvas');
+const PDFDocument = require('pdfkit');
 
 // =============================================
 // CRUD BÁSICO
@@ -624,74 +623,61 @@ exports.exportarPDF = async (req, res) => {
     const empresa = await Empresa.findById(empresaId);
     
     const totalGeral = orcamentos.reduce((sum, o) => sum + o.valor, 0);
-    
-    // HTML para o PDF
-    const logotipoUrl = empresa?.logotipo
-      ? (empresa.logotipo.startsWith('http') ? empresa.logotipo : `${req.protocol}://${req.get('host')}/uploads/${empresa.logotipo}`)
-      : null;
 
-    const html = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="UTF-8">
-        <title>Relatório de Orçamentos</title>
-        <style>
-          body { font-family: Arial, sans-serif; margin: 40px; }
-          .header { display: flex; align-items: center; justify-content: center; gap: 20px; margin-bottom: 10px; }
-          .header img { max-height: 80px; max-width: 80px; }
-          .header-text { text-align: left; }
-          h1 { color: #2563eb; margin: 0; }
-          h2 { text-align: center; color: #333; margin-top: 5px; }
-          table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-          th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-          th { background-color: #f3f4f6; }
-          .total { font-weight: bold; font-size: 18px; margin-top: 20px; text-align: right; }
-          .footer { margin-top: 30px; text-align: center; font-size: 12px; color: #666; }
-          .linha { border: none; border-top: 2px solid #2563eb; margin: 10px 0; }
-        </style>
-      </head>
-      <body>
-        <div class="header">
-          ${logotipoUrl ? `<img src="${logotipoUrl}" alt="Logo" />` : ''}
-          <div class="header-text">
-            <h1>${empresa?.nome || 'EMPRESA'}</h1>
-            <p style="color:#666;font-size:12px;margin:0">NIF: ${empresa?.nif || '---'}</p>
-          </div>
-        </div>
-        <hr class="linha" />
-        <h2>Relatório de Orçamentos</h2>
-        <p>Período: ${new Date(ano, mes - 1).toLocaleDateString('pt-AO', { month: 'long', year: 'numeric' })}</p>
-        
-        <table>
-          <thead>
-            <tr><th>Descrição</th><th>Tipo</th><th>Cenário</th><th>Valor (Kz)</th><th>Status</th></tr>
-          </thead>
-          <tbody>
-            ${orcamentos.map(o => `
-              <tr>
-                <td>${o.descricao}</td>
-                <td>${o.tipoOrcamento}</td>
-                <td>${o.cenario}</td>
-                <td style="text-align:right">${o.valor.toLocaleString('pt-AO')}</td>
-                <td>${o.status}</td>
-              </tr>
-            `).join('')}
-          </tbody>
-        </table>
-        
-        <div class="total">Total Geral: ${totalGeral.toLocaleString('pt-AO')} Kz</div>
-        
-        <div class="footer">
-          <p>Relatório gerado em ${new Date().toLocaleDateString('pt-AO')}</p>
-          <p>Sistema de Gestão Empresarial</p>
-        </div>
-      </body>
-      </html>
-    `;
-    
-    res.setHeader('Content-Type', 'text/html');
-    res.send(html);
+    const doc = new PDFDocument({ margin: 50, size: 'A4' });
+    const buffers = [];
+    doc.on('data', (chunk) => buffers.push(chunk));
+    doc.on('end', () => {
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `inline; filename="orcamentos_${mes}_${ano}.pdf"`);
+      res.send(Buffer.concat(buffers));
+    });
+
+    doc.fontSize(20).font('Helvetica-Bold').text(empresa?.nome || 'EMPRESA', { align: 'center' });
+    doc.fontSize(10).font('Helvetica').text(`NIF: ${empresa?.nif || '---'}`, { align: 'center' });
+    doc.moveDown(0.5);
+    doc.fontSize(16).font('Helvetica-Bold').text('Relatório de Orçamentos', { align: 'center' });
+    doc.fontSize(11).font('Helvetica').text(`Período: ${new Date(ano, mes - 1).toLocaleDateString('pt-AO', { month: 'long', year: 'numeric' })}`, { align: 'center' });
+    doc.moveDown(1);
+
+    const tableTop = doc.y;
+    const colWidths = [180, 80, 80, 100, 80];
+    const headers = ['Descrição', 'Tipo', 'Cenário', 'Valor (Kz)', 'Status'];
+
+    doc.fontSize(10).font('Helvetica-Bold');
+    let x = 50;
+    headers.forEach((h, i) => {
+      doc.text(h, x, tableTop, { width: colWidths[i], align: i === 3 ? 'right' : 'left' });
+      x += colWidths[i];
+    });
+
+    doc.moveTo(50, doc.y + 3).lineTo(490, doc.y + 3).stroke();
+    doc.moveDown(0.5);
+
+    doc.font('Helvetica').fontSize(9);
+    orcamentos.forEach((o) => {
+      if (doc.y > 750) {
+        doc.addPage();
+      }
+      const y = doc.y;
+      x = 50;
+      const row = [o.descricao, o.tipoOrcamento, o.cenario, o.valor.toLocaleString('pt-AO'), o.status];
+      row.forEach((val, i) => {
+        doc.text(String(val), x, y, { width: colWidths[i], align: i === 3 ? 'right' : 'left' });
+        x += colWidths[i];
+      });
+      doc.moveDown(0.8);
+    });
+
+    doc.moveDown(1);
+    doc.fontSize(12).font('Helvetica-Bold');
+    doc.text(`Total Geral: ${totalGeral.toLocaleString('pt-AO')} Kz`, { align: 'right' });
+
+    doc.moveDown(3);
+    doc.fontSize(8).font('Helvetica').fillColor('#666');
+    doc.text(`Relatório gerado em ${new Date().toLocaleDateString('pt-AO')}  |  Sistema de Gestão Empresarial`, { align: 'center' });
+
+    doc.end();
   } catch (error) {
     console.error('Erro ao exportar PDF:', error);
     res.status(500).json({ erro: error.message });
