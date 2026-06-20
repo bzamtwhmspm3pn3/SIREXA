@@ -3,7 +3,7 @@
 @tailwind utilities;
 
 /* ========================================
-   TEMA NORMAL (original)
+   TEMA NORMAL (original escuro azul)
    ======================================== */
 [data-tema="normal"] {
   --bg-body: linear-gradient(135deg, #003366 0%, #0055A5 50%, #00C0F9 100%);
@@ -21,8 +21,11 @@
   --accent-hover: #60a5fa;
   --accent-bg: rgba(59,130,246,0.15);
   --success: #22c55e;
+  --success-bg: rgba(34,197,94,0.15);
   --warning: #eab308;
+  --warning-bg: rgba(234,179,8,0.15);
   --danger: #ef4444;
+  --danger-bg: rgba(239,68,68,0.15);
   --sidebar-text: #cbd5e1;
   --sidebar-text-hover: #ffffff;
   --sidebar-text-active: #ffffff;
@@ -32,77 +35,84 @@
 }
 
 /* ========================================
-   TEMA ESCURO (preto)
+   TEMA ESCURO (preto solido — estilo Facebook Dark)
    ======================================== */
 [data-tema="escuro"] {
-  --bg-body: #000000;
-  --bg-sidebar: #0a0a0a;
-  --bg-card: #111111;
-  --bg-card-hover: #1a1a1a;
-  --bg-input: #000000;
-  --bg-topbar: #000000;
-  --text-primary: #ffffff;
-  --text-secondary: #cccccc;
-  --text-muted: #888888;
-  --border: rgba(255,255,255,0.12);
-  --border-light: rgba(255,255,255,0.06);
-  --accent: #3b82f6;
-  --accent-hover: #60a5fa;
-  --accent-bg: rgba(59,130,246,0.15);
-  --success: #22c55e;
-  --warning: #eab308;
-  --danger: #ef4444;
-  --sidebar-text: #cccccc;
-  --sidebar-text-hover: #ffffff;
+  --bg-body: #18191a;
+  --bg-sidebar: #242526;
+  --bg-card: #242526;
+  --bg-card-hover: #2d2f30;
+  --bg-input: #18191a;
+  --bg-topbar: #242526;
+  --text-primary: #e4e6eb;
+  --text-secondary: #b0b3b8;
+  --text-muted: #6c6f73;
+  --border: #3e4042;
+  --border-light: #2d2f30;
+  --accent: #2d88ff;
+  --accent-hover: #6db3f8;
+  --accent-bg: rgba(45,136,255,0.15);
+  --success: #45bd62;
+  --success-bg: rgba(69,189,98,0.15);
+  --warning: #f7b928;
+  --warning-bg: rgba(247,185,40,0.15);
+  --danger: #f02849;
+  --danger-bg: rgba(240,40,73,0.15);
+  --sidebar-text: #b0b3b8;
+  --sidebar-text-hover: #e4e6eb;
   --sidebar-text-active: #ffffff;
-  --sidebar-bg-active: rgba(255,255,255,0.15);
-  --sidebar-bg-hover: rgba(255,255,255,0.08);
-  --topbar-text: #ffffff;
+  --sidebar-bg-active: rgba(255,255,255,0.1);
+  --sidebar-bg-hover: rgba(255,255,255,0.05);
+  --topbar-text: #e4e6eb;
 }
 
 /* ========================================
-   TEMA CLARO (AGT-inspired — sidebar escura, conteudo claro)
+   TEMA CLARO (branco solido — estilo Word/AGT/Facebook)
    ======================================== */
 [data-tema="claro"] {
-  --bg-body: #f0f4f8;
-  --bg-sidebar: linear-gradient(180deg, #0f2b5e 0%, #1a3d7a 100%);
+  --bg-body: #f0f2f5;
+  --bg-sidebar: #ffffff;
   --bg-card: #ffffff;
-  --bg-card-hover: #f8fafc;
+  --bg-card-hover: #f0f2f5;
   --bg-input: #ffffff;
   --bg-topbar: #ffffff;
-  --text-primary: #1a202c;
-  --text-secondary: #4a5568;
-  --text-muted: #a0aec0;
-  --border: #e2e8f0;
-  --border-light: #edf2f7;
-  --accent: #2563eb;
-  --accent-hover: #1d4ed8;
-  --accent-bg: rgba(37,99,235,0.08);
-  --success: #16a34a;
-  --warning: #d97706;
-  --danger: #dc2626;
-  --sidebar-text: #cbd5e1;
-  --sidebar-text-hover: #ffffff;
+  --text-primary: #1c1e21;
+  --text-secondary: #606770;
+  --text-muted: #8a8d91;
+  --border: #dadde1;
+  --border-light: #e4e6eb;
+  --accent: #1877f2;
+  --accent-hover: #166fe5;
+  --accent-bg: rgba(24,119,242,0.08);
+  --success: #42b72a;
+  --success-bg: rgba(66,183,42,0.08);
+  --warning: #f0ad4e;
+  --warning-bg: rgba(240,173,78,0.08);
+  --danger: #e41e3f;
+  --danger-bg: rgba(228,30,63,0.08);
+  --sidebar-text: #606770;
+  --sidebar-text-hover: #1c1e21;
   --sidebar-text-active: #ffffff;
-  --sidebar-bg-active: rgba(255,255,255,0.18);
-  --sidebar-bg-hover: rgba(255,255,255,0.08);
-  --topbar-text: #1a202c;
-  --shadow-sm: 0 1px 3px rgba(0,0,0,0.06);
-  --shadow-md: 0 4px 12px rgba(0,0,0,0.08);
-  --shadow-lg: 0 10px 25px rgba(0,0,0,0.1);
+  --sidebar-bg-active: #1877f2;
+  --sidebar-bg-hover: #f0f2f5;
+  --topbar-text: #1c1e21;
+  --card-shadow: 0 1px 2px rgba(0,0,0,0.08);
+  --card-shadow-hover: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+[data-tema="claro"] aside {
+  border-right: 1px solid var(--border) !important;
 }
 
 /* ========================================
-   ALTO CONTRASTE (sobrepoe qualquer tema)
+   ALTO CONTRASTE
    ======================================== */
 [data-contraste="alto"] {
   --text-primary: #ffffff !important;
   --text-secondary: #ffffff !important;
   --text-muted: #cccccc !important;
   --border: #ffffff !important;
-  --border-light: #ffffff !important;
 }
-
 [data-contraste="alto"][data-tema="claro"] {
   --bg-body: #ffffff !important;
   --bg-card: #ffffff !important;
@@ -110,21 +120,16 @@
   --text-secondary: #000000 !important;
   --text-muted: #333333 !important;
   --border: #000000 !important;
-  --border-light: #000000 !important;
   --accent: #0000ff !important;
 }
 
 /* ========================================
    ESTILOS BASE
    ======================================== */
-html, body {
-  margin: 0;
-  padding: 0;
-  min-height: 100vh;
-}
+html, body { margin: 0; padding: 0; min-height: 100vh; }
 
 /* ========================================
-   OVERRIDES DE COR — TEXTO
+   OVERRIDES GLOBAIS — TEXTO
    ======================================== */
 [data-tema] .text-white,
 [data-tema] .text-gray-50,
@@ -175,8 +180,13 @@ html, body {
   color: var(--warning) !important;
 }
 
+[data-tema] .text-purple-300,
+[data-tema] .text-purple-400 {
+  color: var(--accent) !important;
+}
+
 /* ========================================
-   OVERRIDES DE COR — FUNDOS
+   OVERRIDES GLOBAIS — FUNDOS
    ======================================== */
 [data-tema] .bg-gray-700,
 [data-tema] .bg-gray-800,
@@ -207,12 +217,14 @@ html, body {
 
 [data-tema] .bg-green-500\/20,
 [data-tema] .bg-green-600\/20 {
-  background: color-mix(in srgb, var(--success) 15%, transparent) !important;
+  background: var(--success-bg) !important;
+  color: var(--success) !important;
 }
 
 [data-tema] .bg-red-500\/20,
 [data-tema] .bg-red-600\/20 {
-  background: color-mix(in srgb, var(--danger) 15%, transparent) !important;
+  background: var(--danger-bg) !important;
+  color: var(--danger) !important;
 }
 
 [data-tema] .bg-blue-500\/20,
@@ -264,19 +276,12 @@ html, body {
 /* ========================================
    SIDEBAR
    ======================================== */
-[data-tema] aside,
-[data-tema] aside * {
-}
-
 [data-tema] aside .text-xs.text-gray-500 {
   color: var(--text-muted) !important;
 }
 
 [data-tema] aside .text-gray-300,
-[data-tema] aside .text-gray-400 {
-  color: var(--sidebar-text) !important;
-}
-
+[data-tema] aside .text-gray-400,
 [data-tema] aside .text-blue-300,
 [data-tema] aside .text-purple-300 {
   color: var(--sidebar-text) !important;
@@ -305,11 +310,11 @@ html, body {
 }
 
 /* ========================================
-   BOTOES DE ESTADO COM GRADIENTE
+   BOTOES COM GRADIENTE
    ======================================== */
 [data-tema] .from-red-500\/10,
 [data-tema] .from-red-500\/20 {
-  background: color-mix(in srgb, var(--danger) 10%, transparent) !important;
+  background: var(--danger-bg) !important;
 }
 
 [data-tema] .hover\:from-red-500\/20:hover {
@@ -321,21 +326,23 @@ html, body {
 }
 
 /* ========================================
-   SKIP LINK
+   MODAIS E OVERLAYS
    ======================================== */
-.skip-link {
-  position: absolute;
-  top: -100%;
-  left: 0;
-  z-index: 9999;
-  padding: 8px 16px;
-  background: var(--accent, #3b82f6);
-  color: white;
-  text-decoration: none;
-  font-weight: 600;
+[data-tema] .bg-black\/80 {
+  background: rgba(0,0,0,0.6) !important;
 }
-.skip-link:focus {
-  top: 0;
+
+[data-tema] .fixed.inset-0.z-50 {
+  background: rgba(0,0,0,0.5) !important;
+}
+
+/* ========================================
+   SOMBRAS PARA CARDS (tema claro)
+   ======================================== */
+[data-tema="claro"] .rounded-2xl.border,
+[data-tema="claro"] .rounded-xl.border,
+[data-tema="claro"] .rounded-lg.border {
+  box-shadow: var(--card-shadow, 0 1px 2px rgba(0,0,0,0.08)) !important;
 }
 
 /* ========================================
@@ -347,10 +354,5 @@ html, body {
   border-color: var(--border) !important;
   color: var(--text-primary) !important;
 }
-.input:focus {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
-}
-.btn {
-  @apply px-4 py-2 rounded font-semibold flex items-center gap-2;
-}
+.input:focus { outline: 2px solid var(--accent); outline-offset: 2px; }
+.btn { @apply px-4 py-2 rounded font-semibold flex items-center gap-2; }

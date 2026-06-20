@@ -168,7 +168,6 @@ function Layout({ title, children, showBackButton = false, backToRoute = null })
   if (isAdmin) {
     return (
       <div className="flex min-h-screen text-white" style={{ background: "var(--bg-body)", backgroundAttachment: "fixed" }}>
-        <a href="#main-content-admin" className="skip-link">{t('acessibilidade.pular_para_conteudo')}</a>
         <aside className="fixed md:sticky top-0 left-0 z-50 w-72 h-screen flex flex-col transition-transform duration-300 shadow-2xl" style={{ background: "var(--bg-sidebar)" }}>
           <div className="p-6 border-b" style={{ borderColor: "var(--border)" }}>
             <div className="flex items-center gap-3 mb-4">
@@ -215,7 +214,7 @@ function Layout({ title, children, showBackButton = false, backToRoute = null })
           </div>
         </aside>
 
-        <main id="main-content-admin" tabIndex={-1} className="flex-1 flex flex-col min-h-screen focus:outline-none">
+        <main id="main-content-admin" className="flex-1 flex flex-col min-h-screen">
           {title && (
             <div className="sticky top-0 z-30 backdrop-blur-md" style={{ background: "var(--bg-topbar)", borderColor: "var(--border)" }}>
               <div className="flex items-center justify-between">
@@ -239,7 +238,6 @@ function Layout({ title, children, showBackButton = false, backToRoute = null })
   // Layout para GESTOR - SEM a linha da empresa
   return (
     <div className="flex min-h-screen text-white" style={{ background: "var(--bg-body)", backgroundAttachment: "fixed" }}>
-      <a href="#main-content-gestor" className="skip-link">{t('acessibilidade.pular_para_conteudo')}</a>
       {sidebarAberta && <div className="fixed inset-0 bg-black/50 z-40 md:hidden" onClick={() => setSidebarAberta(false)} />}
 
       {isAuthenticated && !estaNaRotaDeLogin && (
@@ -320,7 +318,7 @@ function Layout({ title, children, showBackButton = false, backToRoute = null })
         </aside>
       )}
 
-      <main id="main-content-gestor" tabIndex={-1} className="flex-1 flex flex-col min-h-screen focus:outline-none">
+      <main id="main-content-gestor" className="flex-1 flex flex-col min-h-screen">
         {title && (
           <div className="sticky top-0 z-30 backdrop-blur-md px-6 py-4" style={{ background: "var(--bg-topbar)", borderColor: "var(--border)" }}>
             <div className="flex items-center justify-between">
