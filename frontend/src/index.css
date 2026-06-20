@@ -1,13 +1,121 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-/* Estilos personalizados para inputs e botões */
+
+:root {
+  --bg-body: #0b1120;
+  --bg-sidebar: linear-gradient(180deg, #0f1729 0%, #1a2744 100%);
+  --bg-topbar: rgba(15, 23, 42, 0.85);
+  --bg-card: #1e293b;
+  --bg-card-hover: #263348;
+  --bg-input: #0f1729;
+  --bg-hover: rgba(59, 130, 246, 0.08);
+  --text-primary: #f1f5f9;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+  --border: #1e3a5f;
+  --border-light: #263348;
+  --accent: #3b82f6;
+  --accent-hover: #60a5fa;
+  --accent-bg: rgba(59, 130, 246, 0.12);
+  --success: #22c55e;
+  --success-bg: rgba(34, 197, 94, 0.12);
+  --warning: #eab308;
+  --warning-bg: rgba(234, 179, 8, 0.12);
+  --danger: #ef4444;
+  --danger-bg: rgba(239, 68, 68, 0.12);
+  --info: #06b6d4;
+  --info-bg: rgba(6, 182, 212, 0.12);
+  --ring-focus: 3px solid rgba(59, 130, 246, 0.5);
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.3);
+  --shadow-md: 0 4px 6px rgba(0,0,0,0.4);
+  --shadow-lg: 0 10px 15px rgba(0,0,0,0.5);
+}
+
+html {
+  font-size: 16px;
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--bg-body);
+  color: var(--text-primary);
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+*:focus-visible {
+  outline: var(--ring-focus);
+  outline-offset: 2px;
+}
+
+.skip-link {
+  position: absolute;
+  top: -100%;
+  left: 0;
+  z-index: 9999;
+  padding: 8px 16px;
+  background: var(--accent);
+  color: white;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.skip-link:focus {
+  top: 0;
+}
+
+[data-contraste="alto"] *,
+[data-tema="alto-contraste"] * {
+  border-color: var(--border) !important;
+}
+
+[data-contraste="alto"] .text-gray-300,
+[data-contraste="alto"] .text-gray-400,
+[data-contraste="alto"] .text-gray-500,
+[data-contraste="alto"] .text-slate-300,
+[data-contraste="alto"] .text-slate-400 {
+  color: var(--text-primary) !important;
+}
+
+[data-contraste="alto"] .bg-gray-800,
+[data-contraste="alto"] .bg-gray-900,
+[data-contraste="alto"] .bg-slate-800,
+[data-contraste="alto"] .bg-slate-900 {
+  background: var(--bg-card) !important;
+}
+
+[data-contraste="alto"] .border-gray-700,
+[data-contraste="alto"] .border-gray-600,
+[data-contraste="alto"] .border-slate-700 {
+  border-color: var(--border) !important;
+}
+
+[data-contraste="alto"] a,
+[data-contraste="alto"] button {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.tema-transition,
+.tema-transition * {
+  transition: background-color 0.3s ease,
+              color 0.3s ease,
+              border-color 0.3s ease,
+              box-shadow 0.3s ease !important;
+}
 
 .input {
-  @apply w-full p-2 border rounded border-gray-300;
+  @apply w-full p-2 border rounded;
+  background: var(--bg-input);
+  border-color: var(--border);
+  color: var(--text-primary);
+}
+
+.input:focus {
+  border-color: var(--accent);
+  outline: var(--ring-focus);
 }
 
 .btn {
   @apply px-4 py-2 rounded font-semibold flex items-center gap-2;
 }
-

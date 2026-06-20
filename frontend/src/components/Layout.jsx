@@ -1,5 +1,6 @@
 // src/components/Layout.jsx
 import { useAuth } from "../contexts/AuthContext";
+import { useLanguage } from "../contexts/LanguageContext";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useState, useEffect, useCallback } from "react";
 import { 
@@ -10,9 +11,11 @@ import {
   Activity, Key, Crown, Award
 } from "lucide-react";
 import logo from "../assets/sirexa-logo.ico";
+import ThemeLangControls from "./ThemeLangControls";
 
 function Layout({ title, children, showBackButton = false, backToRoute = null }) {
   const { user, logout, empresaModulos, empresaPlano, empresaNome, empresaId } = useAuth();
+  const { t } = useLanguage();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [secoesExpandidas, setSecoesExpandidas] = useState({});
   const [sidebarAberta, setSidebarAberta] = useState(false);
@@ -155,59 +158,64 @@ function Layout({ title, children, showBackButton = false, backToRoute = null })
   // Layout para ADMIN
   if (isAdmin) {
     return (
-      <div className="flex min-h-screen text-white" style={{ background: "linear-gradient(135deg, #003366 0%, #0055A5 50%, #00C0F9 100%)", backgroundAttachment: "fixed" }}>
-        <aside className="fixed md:sticky top-0 left-0 z-50 w-72 h-screen flex flex-col transition-transform duration-300 shadow-2xl" style={{ background: "linear-gradient(180deg, #002244 0%, #003366 100%)" }}>
-          <div className="p-6 border-b border-white/10">
+      <div className="flex min-h-screen text-white" style={{ background: "var(--bg-body)", backgroundAttachment: "fixed" }}>
+        <a href="#main-content-admin" className="skip-link">{t('acessibilidade.pular_para_conteudo')}</a>
+        <aside className="fixed md:sticky top-0 left-0 z-50 w-72 h-screen flex flex-col transition-transform duration-300 shadow-2xl" style={{ background: "var(--bg-sidebar)" }}>
+          <div className="p-6 border-b" style={{ borderColor: "var(--border)" }}>
             <div className="flex items-center gap-3 mb-4">
               <img src={logo} alt="SIREXA" className="w-12 h-12 object-contain" />
               <div>
-                <span className="text-2xl font-bold text-white">SIREXA</span>
-                <p className="text-xs text-purple-300">Painel Administrativo</p>
+                <span className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>SIREXA</span>
+                <p className="text-xs" style={{ color: "var(--text-secondary)" }}>Painel Administrativo</p>
               </div>
             </div>
-            <div className="mt-3 pt-3 border-t border-white/10">
-              <p className="text-sm font-medium text-white truncate">👑 {user?.nome || "Administrador"}</p>
-              <p className="text-xs text-purple-300 mt-1">Administrador do Sistema</p>
+            <div className="mt-3 pt-3 border-t" style={{ borderColor: "var(--border)" }}>
+              <p className="text-sm font-medium truncate" style={{ color: "var(--text-primary)" }}>👑 {user?.nome || "Administrador"}</p>
+              <p className="text-xs mt-1" style={{ color: "var(--text-secondary)" }}>Administrador do Sistema</p>
             </div>
           </div>
 
           <nav className="flex-1 overflow-y-auto p-4 space-y-1">
-            <button onClick={() => navigate("/admin")} className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 w-full text-left ${location.pathname === "/admin" ? "bg-white/20 text-white font-medium" : "text-gray-300 hover:text-white hover:bg-white/10"}`}>
+            <button onClick={() => navigate("/admin")} className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 w-full text-left ${location.pathname === "/admin" ? "bg-white/20 text-white font-medium" : "hover:text-white hover:bg-white/10"}`} style={{ color: location.pathname === "/admin" ? "var(--text-primary)" : "var(--text-secondary)" }}>
               <LayoutDashboard size={18} /><span>Dashboard</span>
             </button>
-            <button onClick={() => navigate = "/admin/planos"} className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 w-full text-left ${location.pathname === "/admin/planos" ? "bg-white/20 text-white font-medium" : "text-gray-300 hover:text-white hover:bg-white/10"}`}>
+            <button onClick={() => navigate = "/admin/planos"} className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 w-full text-left ${location.pathname === "/admin/planos" ? "bg-white/20 text-white font-medium" : "hover:text-white hover:bg-white/10"}`} style={{ color: location.pathname === "/admin/planos" ? "var(--text-primary)" : "var(--text-secondary)" }}>
               <Award size={18} /><span>Planos</span>
             </button>
-            <button onClick={() => navigate = "/admin/gerar-chave"} className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 w-full text-left ${location.pathname === "/admin/gerar-chave" ? "bg-white/20 text-white font-medium" : "text-gray-300 hover:text-white hover:bg-white/10"}`}>
+            <button onClick={() => navigate = "/admin/gerar-chave"} className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 w-full text-left ${location.pathname === "/admin/gerar-chave" ? "bg-white/20 text-white font-medium" : "hover:text-white hover:bg-white/10"}`} style={{ color: location.pathname === "/admin/gerar-chave" ? "var(--text-primary)" : "var(--text-secondary)" }}>
               <Key size={18} /><span>Gerar Chave</span>
             </button>
-            <button onClick={() => navigate = "/admin/licencas"} className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 w-full text-left ${location.pathname === "/admin/licencas" ? "bg-white/20 text-white font-medium" : "text-gray-300 hover:text-white hover:bg-white/10"}`}>
+            <button onClick={() => navigate = "/admin/licencas"} className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 w-full text-left ${location.pathname === "/admin/licencas" ? "bg-white/20 text-white font-medium" : "hover:text-white hover:bg-white/10"}`} style={{ color: location.pathname === "/admin/licencas" ? "var(--text-primary)" : "var(--text-secondary)" }}>
               <FileText size={18} /><span>Licenças</span>
             </button>
-            <button onClick={() => navigate = "/admin/gestores"} className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 w-full text-left ${location.pathname === "/admin/gestores" ? "bg-white/20 text-white font-medium" : "text-gray-300 hover:text-white hover:bg-white/10"}`}>
+            <button onClick={() => navigate = "/admin/gestores"} className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 w-full text-left ${location.pathname === "/admin/gestores" ? "bg-white/20 text-white font-medium" : "hover:text-white hover:bg-white/10"}`} style={{ color: location.pathname === "/admin/gestores" ? "var(--text-primary)" : "var(--text-secondary)" }}>
               <Users size={18} /><span>Gestores</span>
             </button>
-            <button onClick={() => navigate = "/admin/empresas"} className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 w-full text-left ${location.pathname === "/admin/empresas" ? "bg-white/20 text-white font-medium" : "text-gray-300 hover:text-white hover:bg-white/10"}`}>
+            <button onClick={() => navigate = "/admin/empresas"} className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 w-full text-left ${location.pathname === "/admin/empresas" ? "bg-white/20 text-white font-medium" : "hover:text-white hover:bg-white/10"}`} style={{ color: location.pathname === "/admin/empresas" ? "var(--text-primary)" : "var(--text-secondary)" }}>
               <Building2 size={18} /><span>Empresas</span>
             </button>
           </nav>
 
-          <div className="p-4 border-t border-white/10">
+          <div className="p-4 border-t border-white/10 space-y-2">
+            <ThemeLangControls vertical />
+          </div>
+          <div className="px-4 pb-4">
             <button onClick={handleLogout} className="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-xl bg-gradient-to-r from-red-500/10 to-red-600/10 hover:from-red-500/20 hover:to-red-600/20 text-red-400 hover:text-red-300 border border-red-500/20 hover:border-red-500/40 transition-all duration-300 font-medium text-sm">
-              <LogOut size={18} /><span>Sair</span>
+              <LogOut size={18} /><span>{t('nav.sair')}</span>
             </button>
           </div>
         </aside>
 
-        <main className="flex-1 flex flex-col min-h-screen">
+        <main id="main-content-admin" className="flex-1 flex flex-col min-h-screen">
           {title && (
-            <div className="sticky top-0 z-30 backdrop-blur-md bg-[#003366]/80 border-b border-white/10 px-6 py-4">
+            <div className="sticky top-0 z-30 backdrop-blur-md" style={{ background: "var(--bg-topbar)", borderColor: "var(--border)" }}>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <img src={logo} alt="SIREXA" className="w-8 h-8 object-contain" />
-                  <h1 className="text-2xl font-bold text-white">{title}</h1>
+                  <h1 className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>{title}</h1>
                 </div>
                 <div className="flex items-center gap-2">
+                  <ThemeLangControls />
                   <span className="text-xs text-purple-300">👑 Admin</span>
                 </div>
               </div>
@@ -221,38 +229,38 @@ function Layout({ title, children, showBackButton = false, backToRoute = null })
 
   // Layout para GESTOR - SEM a linha da empresa
   return (
-    <div className="flex min-h-screen text-white" style={{ background: "linear-gradient(135deg, #003366 0%, #0055A5 50%, #00C0F9 100%)", backgroundAttachment: "fixed" }}>
+    <div className="flex min-h-screen text-white" style={{ background: "var(--bg-body)", backgroundAttachment: "fixed" }}>
+      <a href="#main-content-gestor" className="skip-link">{t('acessibilidade.pular_para_conteudo')}</a>
       {sidebarAberta && <div className="fixed inset-0 bg-black/50 z-40 md:hidden" onClick={() => setSidebarAberta(false)} />}
 
       {isAuthenticated && !estaNaRotaDeLogin && (
-        <aside className={`fixed md:sticky top-0 left-0 z-50 w-72 h-screen flex flex-col transition-transform duration-300 shadow-2xl ${sidebarAberta ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`} style={{ background: "linear-gradient(180deg, #002244 0%, #003366 100%)" }}>
-          <div className="p-6 border-b border-white/10">
+        <aside className={`fixed md:sticky top-0 left-0 z-50 w-72 h-screen flex flex-col transition-transform duration-300 shadow-2xl ${sidebarAberta ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`} style={{ background: "var(--bg-sidebar)" }}>
+          <div className="p-6 border-b" style={{ borderColor: "var(--border)" }}>
             <div className="flex items-center gap-3 mb-4">
               <img src={logo} alt="SIREXA" className="w-12 h-12 object-contain" />
               <div>
-                <span className="text-2xl font-bold text-white">SIREXA</span>
-                <p className="text-xs text-blue-300">Plataforma Integrada</p>
+                <span className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>SIREXA</span>
+                <p className="text-xs" style={{ color: "var(--text-secondary)" }}>Plataforma Integrada</p>
               </div>
             </div>
-            <div className="mt-3 pt-3 border-t border-white/10">
-              <p className="text-sm font-medium text-white truncate">👤 {user?.nome || "Usuário"}</p>
-              <p className="text-xs text-blue-300 mt-1">👑 Gestor</p>
-              <p className="text-xs text-purple-300 mt-1">📋 Plano: {empresaPlano || 'FREE'}</p>
-              {/* 🔥 LINHA DA EMPRESA REMOVIDA */}
+            <div className="mt-3 pt-3 border-t" style={{ borderColor: "var(--border)" }}>
+              <p className="text-sm font-medium truncate" style={{ color: "var(--text-primary)" }}>👤 {user?.nome || "Usuário"}</p>
+              <p className="text-xs mt-1" style={{ color: "var(--text-secondary)" }}>👑 Gestor</p>
+              <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>📋 Plano: {empresaPlano || 'FREE'}</p>
             </div>
           </div>
 
           <nav className="flex-1 overflow-y-auto p-4 space-y-1">
             <button onClick={() => navigate = "/menu"} className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 w-full text-left ${location.pathname === "/menu" || location.pathname === "/" ? "bg-white/20 text-white font-medium" : "text-gray-300 hover:text-white hover:bg-white/10"}`}>
-              <Home size={18} /><span>Menu Inicial</span>
+              <Home size={18} /><span>{t('nav.inicio')}</span>
             </button>
 
             <button onClick={() => navigate = "/empresa"} className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 w-full text-left ${location.pathname.startsWith("/empresa") ? "bg-white/20 text-white font-medium" : "text-gray-300 hover:text-white hover:bg-white/10"}`}>
-              <Building2 size={18} /><span>Minha Empresa</span>
+              <Building2 size={18} /><span>{t('sidebar.minha_empresa')}</span>
             </button>
 
-            <div className="my-3 border-t border-white/10 pt-3">
-              <p className="text-xs text-gray-500 uppercase tracking-wider px-3 mb-2">Módulos Ativos</p>
+            <div className="my-3 border-t pt-3" style={{ borderColor: "var(--border)" }}>
+              <p className="text-xs uppercase tracking-wider px-3 mb-2" style={{ color: "var(--text-muted)" }}>{t('sidebar.modulos_ativos')}</p>
             </div>
 
             {Object.entries(ESTRUTURA_MODULOS).map(([secao, dados]) => {
@@ -292,22 +300,25 @@ function Layout({ title, children, showBackButton = false, backToRoute = null })
             })}
           </nav>
 
-          <div className="p-4 border-t border-white/10">
+          <div className="p-4 border-t border-white/10 space-y-2">
+            <ThemeLangControls vertical />
+          </div>
+          <div className="px-4 pb-4">
             <button onClick={handleLogout} className="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-xl bg-gradient-to-r from-red-500/10 to-red-600/10 hover:from-red-500/20 hover:to-red-600/20 text-red-400 hover:text-red-300 border border-red-500/20 hover:border-red-500/40 transition-all duration-300 font-medium text-sm group">
-              <LogOut size={18} className="transition-transform duration-300 group-hover:translate-x-1" /><span>Sair da Sessão</span>
+              <LogOut size={18} className="transition-transform duration-300 group-hover:translate-x-1" /><span>{t('nav.sair')}</span>
             </button>
           </div>
         </aside>
       )}
 
-      <main className="flex-1 flex flex-col min-h-screen">
+      <main id="main-content-gestor" className="flex-1 flex flex-col min-h-screen">
         {title && (
-          <div className="sticky top-0 z-30 backdrop-blur-md bg-[#003366]/80 border-b border-white/10 px-6 py-4">
+          <div className="sticky top-0 z-30 backdrop-blur-md px-6 py-4" style={{ background: "var(--bg-topbar)", borderColor: "var(--border)" }}>
             <div className="flex items-center justify-between">
               {isAuthenticated && !estaNaRotaDeLogin && (<button onClick={() => setSidebarAberta(true)} className="md:hidden text-white hover:text-blue-300 mr-4"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 12h18M3 6h18M3 18h18"/></svg></button>)}
-              {showBackButton ? (<button onClick={handleVoltar} className="bg-white/10 hover:bg-white/20 backdrop-blur-md px-4 py-2 rounded-lg font-semibold text-white transition duration-200 flex items-center gap-2 shadow-md"><ArrowLeft className="w-4 h-4" /> Voltar</button>) : (<div className="w-24"></div>)}
-              <div className="flex items-center gap-3"><img src={logo} alt="SIREXA" className="w-8 h-8 object-contain" /><h1 className="text-2xl font-bold text-white">{title}</h1></div>
-              <div className="w-24"></div>
+              {showBackButton ? (<button onClick={handleVoltar} className="bg-white/10 hover:bg-white/20 backdrop-blur-md px-4 py-2 rounded-lg font-semibold text-white transition duration-200 flex items-center gap-2 shadow-md"><ArrowLeft className="w-4 h-4" /> {t('nav.voltar')}</button>) : (<div className="w-24"></div>)}
+              <div className="flex items-center gap-3"><img src={logo} alt="SIREXA" className="w-8 h-8 object-contain" /><h1 className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>{title}</h1></div>
+              <ThemeLangControls />
             </div>
           </div>
         )}
