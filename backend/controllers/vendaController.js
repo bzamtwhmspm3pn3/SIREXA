@@ -1449,21 +1449,23 @@ exports.getDashboard = async (req, res) => {
     const dataInicio = new Date(ano, mes - 1, 1);
     const dataFim = new Date(ano, mes, 0);
     
-    const totalVendas = await Venda.countDocuments({ empresaId });
+    const excluirCanceladas = { status: { $ne: 'cancelada' } };
+    
+    const totalVendas = await Venda.countDocuments({ empresaId, ...excluirCanceladas });
     const totalFaturado = await Venda.aggregate([
-      { $match: { empresaId: new mongoose.Types.ObjectId(empresaId) } },
+      { $match: { empresaId: new mongoose.Types.ObjectId(empresaId), ...excluirCanceladas } },
       { $group: { _id: null, total: { $sum: '$total' } } }
     ]);
     
-    const vendasMes = await Venda.countDocuments({
-      empresaId,
-      data: { $gte: dataInicio, $lte: dataFim }
-    });
+    const filtroMes = { empresaId, ...excluirCanceladas, data: { $gte: dataInicio, $lte: dataFim } };
+    
+    const vendasMes = await Venda.countDocuments(filtroMes);
     
     const faturamentoMes = await Venda.aggregate([
       { 
         $match: { 
           empresaId: new mongoose.Types.ObjectId(empresaId),
+          ...excluirCanceladas,
           data: { $gte: dataInicio, $lte: dataFim }
         } 
       },

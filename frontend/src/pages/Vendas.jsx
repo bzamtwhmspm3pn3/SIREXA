@@ -791,24 +791,31 @@ const Vendas = () => {
             </div>
 
             {/* Cards de estatísticas */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div className="bg-gradient-to-br from-blue-600/20 to-blue-800/20 rounded-2xl p-5 border border-blue-500/30">
-                <p className="text-blue-300 text-sm">Total de Vendas</p>
-                <p className="text-3xl font-bold text-white">{vendas.length}</p>
+            {(() => {
+              const vendasAtivas = vendas.filter(v => v.status !== 'cancelada');
+              const totalVendas = vendasAtivas.length;
+              const faturamento = vendasAtivas.reduce((acc, v) => acc + (v.total || 0), 0);
+              return (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="bg-gradient-to-br from-blue-600/20 to-blue-800/20 rounded-2xl p-5 border border-blue-500/30">
+                  <p className="text-blue-300 text-sm">Total de Vendas</p>
+                  <p className="text-3xl font-bold text-white">{totalVendas}</p>
+                </div>
+                <div className="bg-gradient-to-br from-green-600/20 to-green-800/20 rounded-2xl p-5 border border-green-500/30">
+                  <p className="text-green-300 text-sm">Faturamento Total</p>
+                  <p className="text-xl font-bold text-green-400">{faturamento.toLocaleString()} Kz</p>
+                </div>
+                <div className="bg-gradient-to-br from-yellow-600/20 to-yellow-800/20 rounded-2xl p-5 border border-yellow-500/30">
+                  <p className="text-yellow-300 text-sm">Clientes</p>
+                  <p className="text-3xl font-bold text-yellow-400">{clientes.length}</p>
+                </div>
+                <div className="bg-gradient-to-br from-purple-600/20 to-purple-800/20 rounded-2xl p-5 border border-purple-500/30">
+                  <p className="text-purple-300 text-sm">Ticket Médio</p>
+                  <p className="text-2xl font-bold text-purple-400">{totalVendas > 0 ? Math.round(faturamento / totalVendas).toLocaleString() : 0} Kz</p>
+                </div>
               </div>
-              <div className="bg-gradient-to-br from-green-600/20 to-green-800/20 rounded-2xl p-5 border border-green-500/30">
-                <p className="text-green-300 text-sm">Faturamento Total</p>
-                <p className="text-xl font-bold text-green-400">{vendas.reduce((acc, v) => acc + (v.total || 0), 0).toLocaleString()} Kz</p>
-              </div>
-              <div className="bg-gradient-to-br from-yellow-600/20 to-yellow-800/20 rounded-2xl p-5 border border-yellow-500/30">
-                <p className="text-yellow-300 text-sm">Clientes</p>
-                <p className="text-3xl font-bold text-yellow-400">{clientes.length}</p>
-              </div>
-              <div className="bg-gradient-to-br from-purple-600/20 to-purple-800/20 rounded-2xl p-5 border border-purple-500/30">
-                <p className="text-purple-300 text-sm">Ticket Médio</p>
-                <p className="text-2xl font-bold text-purple-400">{vendas.length > 0 ? Math.round(vendas.reduce((acc, v) => acc + (v.total || 0), 0) / vendas.length).toLocaleString() : 0} Kz</p>
-              </div>
-            </div>
+              );
+            })()}
 
             {/* Tabela de vendas */}
             {loading ? (
