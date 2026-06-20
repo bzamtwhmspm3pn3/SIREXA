@@ -449,7 +449,7 @@ async function getTopProdutosData(empresaId, anoNum) {
     vendas.forEach(v => {
       if (v.itens && v.itens.length) {
         v.itens.forEach(item => {
-          const nome = item.produto || item.descricao || 'Produto não identificado';
+          const nome = item.produtoOuServico || item.produto || item.descricao || 'Produto não identificado';
           produtosMap[nome] = (produtosMap[nome] || 0) + (item.quantidade || 1);
         });
       }
