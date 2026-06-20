@@ -3,6 +3,7 @@ const DemonstracaoResultados = require('../models/demonstracaoResultados');
 const Venda = require('../models/Venda');
 const Pagamento = require('../models/Pagamento');
 const Empresa = require('../models/Empresa');
+const Stock = require('../models/Stock');
 
 const setNoCacheHeaders = (res) => {
   res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
@@ -41,11 +42,8 @@ const classificarPagamento = (pagamento) => {
     return { categoria: 'impostosPessoal', subcategoria: 'impostosPessoal', nome: 'Impostos sobre Salários' };
   }
   
-  // 3. CUSTO DAS MERCADORIAS VENDIDAS
-  if (tipo === 'Fornecedor' && (subtipo === 'Compras de Mercadorias' || 
-      descricao.includes('compra de mercadoria') || descricao.includes('compra de produto'))) {
-    return { categoria: 'cmv', subcategoria: 'cmv', nome: 'Custo das Mercadorias Vendidas' };
-  }
+  // 3. (CMV agora calculado a partir dos items vendidos × Stock.precoCompra)
+  //    Pagamentos a fornecedores de mercadorias vão para fornecedores (genérico)
   
   // 4. ABASTECIMENTO
   if (tipo === 'Abastecimento' || descricao.includes('combustível') || descricao.includes('combustivel') ||
@@ -163,6 +161,41 @@ exports.calcularDRE = async (req, res) => {
     
     const totalProveitos = vendasProdutos + prestacoesServicos;
     
+    // =============================================
+    // CALCULAR CMV (Custo das Mercadorias Vendidas)
+    // a partir dos items efectivamente vendidos
+    // CMV = Σ (quantidade_vendida × precoCompra)
+    // =============================================
+    let cmv = 0;
+    const produtoIds = new Set();
+    vendas.forEach(v => {
+      if (v.itens) v.itens.forEach(item => {
+        if (item.produtoId) produtoIds.add(item.produtoId.toString());
+      });
+    });
+    
+    if (produtoIds.size > 0) {
+      const stocks = await Stock.find({
+        _id: { $in: [...produtoIds] },
+        empresaId
+      }).lean();
+      
+      const custoPorProduto = {};
+      stocks.forEach(s => {
+        custoPorProduto[s._id.toString()] = s.precoCompra || 0;
+      });
+      
+      vendas.forEach(v => {
+        if (v.itens) v.itens.forEach(item => {
+          if (item.produtoId) {
+            cmv += (item.quantidade || 0) * (custoPorProduto[item.produtoId.toString()] || 0);
+          }
+        });
+      });
+    }
+    
+    console.log(`   CMV calculado (${vendas.length} vendas, ${produtoIds.size} produtos): ${cmv.toLocaleString()} Kz`);
+    
     // Buscar pagamentos
     const pagamentos = await Pagamento.find({ 
       empresaId,
@@ -173,7 +206,6 @@ exports.calcularDRE = async (req, res) => {
     // Inicializar contadores
     let custosPessoal = 0;
     let impostosPessoal = 0;
-    let cmv = 0;
     let abastecimento = 0;
     let comunicacao = 0;
     let rendas = 0;
@@ -194,9 +226,6 @@ exports.calcularDRE = async (req, res) => {
           break;
         case 'impostosPessoal':
           impostosPessoal += valor;
-          break;
-        case 'cmv':
-          cmv += valor;
           break;
         case 'abastecimento':
           abastecimento += valor;
