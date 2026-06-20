@@ -361,8 +361,8 @@ exports.emitirVenda = async (req, res) => {
     console.log(`🏦 Conta bancária para esta venda: ${contaParaVenda}`);
 
     const numeroFactura = await getProximoNumeroFactura(empresa._id);
-    const numeroVenda = await getProximoNumeroVenda(empresa._id);
-    console.log(`✅ Números: Factura ${numeroFactura}, Venda ${numeroVenda}`);
+    const numeroVenda = numeroFactura;
+    console.log(`✅ Número único para Venda e Factura: ${numeroFactura}`);
 
     // PROCESSAR ITENS
     const itensProcessados = [];

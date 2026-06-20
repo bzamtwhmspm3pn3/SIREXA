@@ -198,7 +198,7 @@ export default function App() {
       <Route path="/funcionarios/cadastrar" element={<ProtectedRoute><CadastroFuncionario /></ProtectedRoute>} />
       <Route path="/funcionarios/editar/:id" element={<ProtectedRoute><EditarFuncionario /></ProtectedRoute>} />
       <Route path="/funcionarios/visualizar/:id" element={<ProtectedRoute><VisualizarFuncionario /></ProtectedRoute>} />
-      <Route path="/funcionarios/importar" element={<ImportarFuncionarios />} />
+      <Route path="/funcionarios/importar" element={<ProtectedRoute><ImportarFuncionarios /></ProtectedRoute>} />
 
       {/* Finanças */}
       <Route path="/folha-banco" element={<ProtectedRoute><FolhaBanco /></ProtectedRoute>} />

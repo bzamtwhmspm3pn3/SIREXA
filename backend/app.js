@@ -153,18 +153,18 @@ app.use('/api/indicadores', verifyToken, require('./routes/indicadores'));
 // 📊 Análise Geral
 app.use('/api/analisegeral', verifyToken, analiseGeralRoutes);
 app.use('/api/anos-disponiveis', verifyToken, require('./routes/indicadores'));
-app.use('/api/reconciliacao', reconciliacaoRoutes);
+app.use('/api/reconciliacao', verifyToken, reconciliacaoRoutes);
 
 // 💳 Gestão de Pagamentos
 app.use('/api/pagamentos', verifyToken, require('./routes/pagamentos'));
-app.use('/api/liquidez', liquidezRoutes);
+app.use('/api/liquidez', verifyToken, liquidezRoutes);
 
 // 🏦 Gestão Bancária
 app.use('/api/bancos', verifyToken, require('./routes/bancos'));
 app.use('/api/transferencias', verifyToken, require('./routes/transferencias'));
 app.use('/api/abastecimentos', verifyToken, require('./routes/abastecimentos'));
 app.use('/api/manutencoes', verifyToken, require('./routes/manutencoes'));
-app.use('/api/inventario', inventarioRoutes);
+app.use('/api/inventario', verifyToken, inventarioRoutes);
 app.use('/api/viaturas', verifyToken, require('./routes/viaturas'));
 
 // 👥 Gestão de Recursos Humanos

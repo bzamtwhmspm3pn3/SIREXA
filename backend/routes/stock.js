@@ -30,6 +30,13 @@ router.get('/por-lote/:lote', stockController.getStockByLote);
 router.get('/por-armazem/:armazem', stockController.getStockByArmazem);
 
 // ============================================
+// 📄 RELATÓRIOS (antes de /:id para evitar shadowing)
+// ============================================
+router.get('/relatorio/validade', stockController.relatorioValidade);
+router.get('/relatorio/movimentacoes', stockController.relatorioMovimentacoes);
+router.get('/servicos', (req, res, next) => { req.query.tipo = 'servico'; next(); }, stockController.getAllStock);
+
+// ============================================
 // 📦 CRUD PRINCIPAL
 // ============================================
 router.get('/', stockController.getAllStock);
@@ -55,13 +62,6 @@ router.post('/:id/saida', logMiddleware('stock-saida'), stockController.registra
 // ============================================
 router.post('/:id/devolver', logMiddleware('stock-devolucao'), stockController.devolverProduto);
 router.post('/:id/descartar', logMiddleware('stock-descarte'), stockController.descartarProduto);
-
-// ============================================
-// 📄 RELATÓRIOS
-// ============================================
-router.get('/relatorio/validade', stockController.relatorioValidade);
-router.get('/relatorio/movimentacoes', stockController.relatorioMovimentacoes);
-router.get('/servicos', (req, res, next) => { req.query.tipo = 'servico'; next(); }, stockController.getAllStock);
 
 // ============================================
 // 📊 ROTA DE TESTE
