@@ -73,17 +73,18 @@ class IntegracaoContabilistica {
   // =========================================================================
   // PAGAMENTO / RECEBIMENTO
   // =========================================================================
-  // Conta a Receber (cliente paga):   Débito 45.1.1 Caixa   | Crédito 31.1.2.1 Clientes
-  // Fornecedor (pagamos):             Débito 32.1.2.1 Forn. | Crédito 45.1.1 Caixa
-  // Salários:                          Débito 72.2.1 Salários | Crédito 45.1.1 Caixa
-  // Manutenção:                        Débito 73.1.4 Manut.  | Crédito 45.1.1 Caixa
-  // Abastecimento:                     Débito 75.2.13 Comb.  | Crédito 45.1.1 Caixa
-  // Imposto:                           Débito 77.1.1 Imp.    | Crédito 45.1.1 Caixa
-  // Outros:                            Débito 75.9.1 Outros  | Crédito 45.1.1 Caixa
+  // Conta a Receber (cliente paga):   Débito 43.1.1 Depósitos   | Crédito 31.1.2.1 Clientes
+  // Fornecedor (pagamos):             Débito 32.1.2.1 Forn.     | Crédito 43.1.1 Depósitos
+  // Salários:                          Débito 72.2.1 Salários    | Crédito 43.1.1 Depósitos
+  // Manutenção:                        Débito 73.1.4 Manut.      | Crédito 43.1.1 Depósitos
+  // Abastecimento:                     Débito 75.2.13 Comb.      | Crédito 43.1.1 Depósitos
+  // Imposto:                           Débito 77.1.1 Imp.        | Crédito 43.1.1 Depósitos
+  // Outros:                            Débito 75.9.1 Outros      | Crédito 43.1.1 Depósitos
+  // Apenas Dinheiro físico usa Caixa (45.1.1)
   // =========================================================================
   async integrarPagamento(pagamento, empresaId, usuarioId) {
-    const codCaixa = pagamento.formaPagamento === 'Transferência Bancária' ? '43.1.1' : '45.1.1';
-    const nomeCaixa = pagamento.formaPagamento === 'Transferência Bancária' ? 'Depósitos à Ordem' : 'Caixa';
+    const codCaixa = pagamento.formaPagamento === 'Dinheiro' ? '45.1.1' : '43.1.1';
+    const nomeCaixa = pagamento.formaPagamento === 'Dinheiro' ? 'Caixa' : 'Depósitos à Ordem';
 
     if (pagamento.tipo === 'Conta a Receber') {
       // RECEBIMENTO: dinheiro entra, a dívida do cliente diminui

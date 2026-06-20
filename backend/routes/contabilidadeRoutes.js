@@ -166,4 +166,118 @@ const EncerramentoController = require('../controllers/contabilidade/Encerrament
 router.post('/encerrar', logMiddleware('encerramento'), (req, res) => EncerramentoController.executarEncerramento(req, res));
 router.get('/verificar-pre-encerramento', (req, res) => EncerramentoController.verificarPreEncerramento(req, res));
 
+// ==================== MIGRAÇÃO ====================
+const LancamentoContabilistico = require('../models/LancamentoContabilistico');
+const PlanoContas = require('../models/PlanoContas');
+
+function gerarNumeroEstorno(numeroOriginal) {
+  return `EST-${numeroOriginal}`;
+}
+
+/**
+ * Corrige lançamentos contabilísticos antigos de Conta a Receber
+ * que debitavam 75.9.1 Outros Custos e creditavam 45.1.1 Caixa.
+ * 
+ * O correcto é: Débito 43.1.1 Depósitos | Crédito 31.1.2.1 Clientes
+ */
+router.post('/corrigir-lancamentos', logMiddleware('corrigir-lancamentos'), async (req, res) => {
+  try {
+    const { empresaId } = req.body;
+    if (!empresaId) {
+      return res.status(400).json({ sucesso: false, mensagem: 'Empresa não informada' });
+    }
+
+    // Buscar contas alvo (criar se não existirem)
+    let contaDepositos = await PlanoContas.findOne({ empresaId, codigo: '43.1.1' });
+    if (!contaDepositos) {
+      contaDepositos = new PlanoContas({
+        codigo: '43.1.1', nome: 'Depósitos à Ordem', classe: 4, nivel: 2,
+        natureza: 'Devedora', empresaId, criadoPor: req.usuarioId, ativo: true
+      });
+      await contaDepositos.save();
+    }
+    let contaClientes = await PlanoContas.findOne({ empresaId, codigo: '31.1.2.1' });
+    if (!contaClientes) {
+      contaClientes = new PlanoContas({
+        codigo: '31.1.2.1', nome: 'Clientes Nacionais', classe: 3, nivel: 4,
+        natureza: 'Devedora', empresaId, criadoPor: req.usuarioId, ativo: true
+      });
+      await contaClientes.save();
+    }
+
+    // Identificar lançamentos errados: Conta a Receber com 75.9.1 (antigo padrão)
+    const errados = await LancamentoContabilistico.find({
+      empresaId,
+      status: 'Contabilizado',
+      'partidas.contaCodigo': '75.9.1',
+      descricao: { $regex: /Conta a Receber|Recebimento/i }
+    });
+
+    const corrigidos = [];
+    const erros = [];
+
+    for (const antigo of errados) {
+      try {
+        const partida75 = antigo.partidas.find(p => p.contaCodigo === '75.9.1');
+        const partidaCaixa = antigo.partidas.find(p => p.contaCodigo === '45.1.1');
+        if (!partida75 || !partidaCaixa) continue;
+
+        const valor = partida75.debito || partidaCaixa.credito || 0;
+        if (valor <= 0) continue;
+
+        // 1. Estorno (reversão do lançamento antigo)
+        const estorno = new LancamentoContabilistico({
+          numeroLancamento: gerarNumeroEstorno(antigo.numeroLancamento),
+          descricao: `Estorno: ${antigo.descricao}`,
+          dataLancamento: new Date(),
+          empresaId,
+          partidas: [
+            { contaCodigo: partidaCaixa.contaCodigo, contaDescricao: partidaCaixa.contaDescricao, classe: partidaCaixa.classe, debito: partidaCaixa.credito, credito: 0, documentoOrigem: { tipo: 'Ajuste' } },
+            { contaCodigo: partida75.contaCodigo, contaDescricao: partida75.contaDescricao, classe: partida75.classe, debito: 0, credito: partida75.debito, documentoOrigem: { tipo: 'Ajuste' } }
+          ],
+          totalDebito: valor, totalCredito: valor, status: 'Contabilizado',
+          criadoPor: req.usuarioId, periodo: antigo.periodo,
+          observacoes: `Correção automática de lançamento contabilístico`
+        });
+        await estorno.save();
+
+        // 2. Lançamento correcto: Débito 43.1.1 Depósitos / Crédito 31.1.2.1 Clientes
+        const correcto = new LancamentoContabilistico({
+          numeroLancamento: `COR-${antigo.numeroLancamento}`,
+          descricao: antigo.descricao.replace('Pagamento', 'Recebimento'),
+          dataLancamento: antigo.dataLancamento,
+          empresaId,
+          partidas: [
+            { contaCodigo: contaDepositos.codigo, contaDescricao: contaDepositos.nome, classe: 4, debito: valor, credito: 0, documentoOrigem: { tipo: 'Ajuste' } },
+            { contaCodigo: contaClientes.codigo, contaDescricao: contaClientes.nome, classe: 3, debito: 0, credito: valor, documentoOrigem: { tipo: 'Ajuste' } }
+          ],
+          totalDebito: valor, totalCredito: valor, status: 'Contabilizado',
+          criadoPor: req.usuarioId, periodo: antigo.periodo,
+          observacoes: `Correção de lançamento antigo: ${antigo.numeroLancamento}`
+        });
+        await correcto.save();
+
+        // 3. Marcar antigo como estornado
+        antigo.status = 'Estornado';
+        antigo.motivoCancelamento = 'Corrigido automaticamente';
+        await antigo.save();
+
+        corrigidos.push(antigo.numeroLancamento);
+      } catch (e) {
+        erros.push(`${antigo.numeroLancamento}: ${e.message}`);
+      }
+    }
+
+    res.json({
+      sucesso: true,
+      mensagem: `Corrigidos ${corrigidos.length} lançamentos${erros.length > 0 ? `, ${erros.length} erros` : ''}`,
+      dados: { corrigidos, erros: erros.length > 0 ? erros : undefined }
+    });
+
+  } catch (error) {
+    console.error('Erro na correcção:', error);
+    res.status(500).json({ sucesso: false, mensagem: error.message });
+  }
+});
+
 module.exports = router;
