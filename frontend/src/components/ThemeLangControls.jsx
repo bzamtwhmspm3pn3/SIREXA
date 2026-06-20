@@ -65,19 +65,30 @@ export default function ThemeLangControls({ vertical = false }) {
               <Globe size={14} /> {t('sidebar.idioma')}
             </p>
             <div className="flex gap-2">
-              {Object.entries(IDIOMAS).map(([key, lang]) => (
-                <button
-                  key={key}
-                  onClick={() => setIdioma(key)}
-                  className={`flex-1 px-3 py-2 rounded-lg text-xs font-medium transition-all duration-200
-                    ${idioma === key ? 'ring-2 ring-blue-500/50 bg-blue-500/15' : 'hover:bg-white/5'}`}
-                  style={{ color: idioma === key ? 'var(--accent)' : 'var(--text-secondary)' }}
-                  role="radio"
-                  aria-checked={idioma === key}
-                >
-                  {lang.flag} {lang.labelLocal}
-                </button>
-              ))}
+              {Object.entries(IDIOMAS).map(([key, lang]) => {
+                const isActive = idioma === key;
+                const isFuture = key !== 'pt';
+                return (
+                  <button
+                    key={key}
+                    onClick={() => {
+                      if (isFuture) {
+                        alert('🇬🇧 English and 🇫🇷 Français will be available in a future update.\n\n🇬🇧 English e 🇫🇷 Français estarão disponíveis numa futura actualização.');
+                        return;
+                      }
+                      setIdioma(key);
+                    }}
+                    className={`flex-1 px-3 py-2 rounded-lg text-xs font-medium transition-all duration-200
+                      ${isActive ? 'ring-2 ring-blue-500/50 bg-blue-500/15' : isFuture ? 'opacity-50 cursor-not-allowed' : 'hover:bg-white/5'}`}
+                    style={{ color: isActive ? 'var(--accent)' : 'var(--text-secondary)' }}
+                    disabled={isFuture}
+                    title={isFuture ? (idioma === 'pt' ? 'Disponível numa futura actualização' : 'Available in a future update') : undefined}
+                  >
+                    {lang.flag} {lang.labelLocal}
+                    {isFuture && <span className="block text-[9px] opacity-60 mt-0.5">em breve</span>}
+                  </button>
+                );
+              })}
             </div>
 
             <hr style={{ borderColor: 'var(--border)' }} />
