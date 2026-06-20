@@ -214,6 +214,7 @@ export function drawTotalsBox(doc, documento, startY, tipo) {
 
   let linhas = 3;
   if (desconto > 0) linhas++;
+  if (documento.incluiIVA !== false && totalIVA > 0) linhas++;
   if (totalRetencao > 0) linhas++;
   if (tipo === 'Recibo') linhas += 2;
 
@@ -250,9 +251,11 @@ export function drawTotalsBox(doc, documento, startY, tipo) {
   doc.text('Subtotal c/ Desc.:', boxX + 3, startY + ly);
   doc.text(formatarMoeda(subtotalComDesconto), boxX + boxWidth - 3, startY + ly, { align: 'right' });
 
-  ly += lineH;
-  doc.text(`IVA (${taxaIVA}%):`, boxX + 3, startY + ly);
-  doc.text(formatarMoeda(totalIVA), boxX + boxWidth - 3, startY + ly, { align: 'right' });
+  if (documento.incluiIVA !== false && totalIVA > 0) {
+    ly += lineH;
+    doc.text(`IVA (${taxaIVA}%):`, boxX + 3, startY + ly);
+    doc.text(formatarMoeda(totalIVA), boxX + boxWidth - 3, startY + ly, { align: 'right' });
+  }
 
   if (totalRetencao > 0) {
     ly += lineH;

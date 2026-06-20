@@ -1420,7 +1420,7 @@ const Vendas = () => {
                           <tfoot className="border-t border-gray-600">
                             <tr><td colSpan="3" className="p-2 text-right text-gray-300">Subtotal:</td><td className="p-2 text-right text-white">{vendaSelecionada.subtotal?.toLocaleString()} Kz</td></tr>
                             {vendaSelecionada.desconto > 0 && <tr><td colSpan="3" className="p-2 text-right text-red-400">Desconto:</td><td className="p-2 text-right text-red-400">- {vendaSelecionada.desconto?.toLocaleString()} Kz</td></tr>}
-                            {vendaSelecionada.totalIva > 0 && <tr><td colSpan="3" className="p-2 text-right text-gray-300">IVA ({vendaSelecionada.taxaIVA || 14}%):</td><td className="p-2 text-right text-white">{vendaSelecionada.totalIva?.toLocaleString()} Kz</td></tr>}
+                            {vendaSelecionada.incluiIVA !== false && vendaSelecionada.totalIva > 0 && <tr><td colSpan="3" className="p-2 text-right text-gray-300">IVA ({vendaSelecionada.taxaIVA || 14}%):</td><td className="p-2 text-right text-white">{vendaSelecionada.totalIva?.toLocaleString()} Kz</td></tr>}
                             {vendaSelecionada.totalRetencao > 0 && <tr><td colSpan="3" className="p-2 text-right text-red-400">Retenção ({vendaSelecionada.taxaRetencao || 0}%):</td><td className="p-2 text-right text-red-400">- {vendaSelecionada.totalRetencao?.toLocaleString()} Kz</td></tr>}
                             <tr className="border-t-2 border-gray-600"><td colSpan="3" className="p-2 text-right text-white font-bold">TOTAL:</td><td className="p-2 text-right text-green-400 font-bold">{vendaSelecionada.total?.toLocaleString()} Kz</td></tr>
                           </tfoot>

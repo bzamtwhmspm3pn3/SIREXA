@@ -73,27 +73,56 @@ export const gerarFacturaProfissional = async (venda, usuario, empresa, contasBa
 
     yPos += 3;
 
+    const incluiIVA = venda.incluiIVA !== false;
+
     const itensTabela = venda.itens?.map((item) => {
       const qtd = Number(item.quantidade) || 1;
       const precoUnit = Number(item.precoUnitario) || 0;
-      const iva = Number(item.iva) || Number(item.taxaIva) || taxaIVA;
+      const iva = incluiIVA ? (Number(item.iva) || Number(item.taxaIVA) || taxaIVA) : 0;
       const subLinha = qtd * precoUnit;
       const valorIva = subLinha * (iva / 100);
       const totalLinha = subLinha + valorIva;
+      if (incluiIVA) {
+        return [
+          item.produtoOuServico || item.descricao || '---',
+          qtd.toLocaleString('pt-PT'),
+          formatarMoeda(precoUnit),
+          `${iva}%`,
+          formatarMoeda(valorIva),
+          formatarMoeda(totalLinha),
+        ];
+      }
       return [
         item.produtoOuServico || item.descricao || '---',
         qtd.toLocaleString('pt-PT'),
         formatarMoeda(precoUnit),
-        `${iva}%`,
-        formatarMoeda(valorIva),
         formatarMoeda(totalLinha),
       ];
     }) || [];
 
     if (itensTabela.length > 0) {
+      const colHead = incluiIVA
+        ? ['Descrição', 'Qtd', 'Preço Unit.', 'IVA', 'Valor IVA', 'Total']
+        : ['Descrição', 'Qtd', 'Preço Unit.', 'Total'];
+      const colStyles = incluiIVA
+        ? {
+            0: { cellWidth: 'auto' },
+            1: { cellWidth: 14, halign: 'center' },
+            2: { cellWidth: 26, halign: 'right' },
+            3: { cellWidth: 16, halign: 'center' },
+            4: { cellWidth: 26, halign: 'right' },
+            5: { cellWidth: 28, halign: 'right' },
+          }
+        : {
+            0: { cellWidth: 'auto' },
+            1: { cellWidth: 14, halign: 'center' },
+            2: { cellWidth: 26, halign: 'right' },
+            3: { cellWidth: 28, halign: 'right' },
+          };
+
       autoTable(doc, {
         startY: yPos,
-        head: [['Descrição', 'Qtd', 'Preço Unit.', 'IVA', 'Valor IVA', 'Total']],
+        head: [colHead],
         body: itensTabela,
         theme: 'grid',
         headStyles: {
@@ -106,14 +135,7 @@ export const gerarFacturaProfissional = async (venda, usuario, empresa, contasBa
         },
         bodyStyles: { fontSize: 6.5, textColor: [55, 65, 81], cellPadding: 2 },
         alternateRowStyles: { fillColor: [245, 247, 250] },
-        columnStyles: {
-          0: { cellWidth: 'auto' },
-          1: { cellWidth: 14, halign: 'center' },
-          2: { cellWidth: 26, halign: 'right' },
-          3: { cellWidth: 16, halign: 'center' },
-          4: { cellWidth: 26, halign: 'right' },
-          5: { cellWidth: 28, halign: 'right' },
-        },
+        columnStyles: colStyles,
         margin: { left: 14, right: 14 },
       });
 
@@ -130,6 +152,7 @@ export const gerarFacturaProfissional = async (venda, usuario, empresa, contasBa
       total,
       taxaIVA,
       taxaRetencao,
+      incluiIVA: venda.incluiIVA,
     }, yPos, 'Factura');
 
     yPos += 6;

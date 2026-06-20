@@ -79,35 +79,68 @@ export async function gerarDocumentoPDF(documento, items, config = {}) {
   yPos += 3;
 
   if (items?.length > 0) {
+    const incluiIVA = documento.incluiIVA !== false;
+
     const tableRows = items.map((item) => {
       const qtd = Number(item.quantidade) || 1;
       const precoUnit = Number(item.precoUnitario) || Number(item.precoUnit) || 0;
-      const iva = Number(item.iva) || Number(item.taxaIva) || 14;
+      const iva = incluiIVA ? (Number(item.iva) || Number(item.taxaIVA) || 14) : 0;
       const subtotalLinha = qtd * precoUnit;
       const valorIva = subtotalLinha * (iva / 100);
       const totalLinha = subtotalLinha + valorIva;
 
       const descontoLinha = Number(item.desconto) || 0;
 
+      if (incluiIVA) {
+        return [
+          item.codigo || '',
+          item.descricao || item.nome || item.servico || '',
+          qtd.toLocaleString('pt-PT'),
+          formatarMoeda(precoUnit),
+          formatarMoeda(subtotalLinha - descontoLinha),
+          `${iva}%`,
+          formatarMoeda(valorIva),
+          formatarMoeda(totalLinha - descontoLinha),
+        ];
+      }
       return [
         item.codigo || '',
         item.descricao || item.nome || item.servico || '',
         qtd.toLocaleString('pt-PT'),
         formatarMoeda(precoUnit),
         formatarMoeda(subtotalLinha - descontoLinha),
-        `${iva}%`,
-        formatarMoeda(valorIva),
         formatarMoeda(totalLinha - descontoLinha),
       ];
     });
 
     const hasDiscount = items.some(item => Number(item.desconto) > 0);
 
+    const colHead = incluiIVA
+      ? ['Cód.', 'Descrição', 'Qtd', 'Preço Unit.', 'Subtotal', 'IVA', 'Valor IVA', 'Total']
+      : ['Cód.', 'Descrição', 'Qtd', 'Preço Unit.', 'Subtotal', 'Total'];
+    const colStyles = incluiIVA
+      ? {
+          0: { cellWidth: 16, halign: 'center' },
+          1: { cellWidth: 'auto' },
+          2: { cellWidth: 14, halign: 'center' },
+          3: { cellWidth: 22, halign: 'right' },
+          4: { cellWidth: 22, halign: 'right' },
+          5: { cellWidth: 14, halign: 'center' },
+          6: { cellWidth: 22, halign: 'right' },
+          7: { cellWidth: 24, halign: 'right' },
+        }
+      : {
+          0: { cellWidth: 16, halign: 'center' },
+          1: { cellWidth: 'auto' },
+          2: { cellWidth: 14, halign: 'center' },
+          3: { cellWidth: 22, halign: 'right' },
+          4: { cellWidth: 22, halign: 'right' },
+          5: { cellWidth: 24, halign: 'right' },
+        };
+
     doc.autoTable({
       startY: yPos,
-      head: [['Cód.', 'Descrição', 'Qtd', 'Preço Unit.', 'Subtotal', 'IVA', 'Valor IVA', 'Total']].flatMap(h =>
-        hasDiscount ? [h] : [h]
-      ),
+      head: [colHead],
       body: tableRows,
       theme: 'grid',
       headStyles: {
@@ -126,16 +159,7 @@ export async function gerarDocumentoPDF(documento, items, config = {}) {
       alternateRowStyles: {
         fillColor: [245, 247, 250],
       },
-      columnStyles: {
-        0: { cellWidth: 16, halign: 'center' },
-        1: { cellWidth: 'auto' },
-        2: { cellWidth: 14, halign: 'center' },
-        3: { cellWidth: 22, halign: 'right' },
-        4: { cellWidth: 22, halign: 'right' },
-        5: { cellWidth: 14, halign: 'center' },
-        6: { cellWidth: 22, halign: 'right' },
-        7: { cellWidth: 24, halign: 'right' },
-      },
+      columnStyles: colStyles,
       margin: { left: 14, right: 14 },
       tableWidth: 'auto',
       didParseCell(data) {
