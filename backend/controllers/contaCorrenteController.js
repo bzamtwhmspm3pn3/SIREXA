@@ -331,14 +331,15 @@ exports.atualizarContaAposPagamento = async (pagamento, empresaId) => {
     }
     
     const saldoAnterior = conta.saldo;
-    const valorPago = pagamento.valorLiquido || pagamento.valor;
+    const valorRetido = pagamento.valorRetencao || 0;
+    const valorPago = pagamento.valor - valorRetido;
     const novoSaldo = saldoAnterior - valorPago;
     
     const movimento = {
       tipo: 'Débito',
       valor: valorPago,
       valorBruto: pagamento.valor,
-      retencaoFonte: pagamento.retencaoFonte || 0,
+      retencaoFonte: valorRetido,
       descricao: pagamento.descricao || `Pagamento ${pagamento.referencia}`,
       data: pagamento.dataPagamento || pagamento.dataVencimento || new Date(),
       referencia: pagamento.referencia,

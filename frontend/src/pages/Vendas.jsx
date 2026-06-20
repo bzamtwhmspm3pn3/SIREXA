@@ -709,7 +709,7 @@ const Vendas = () => {
       });
       
       if (response.ok) {
-        mostrarMensagem(`Parcela ${parcelaSelecionada.numero} paga com sucesso!`, "sucesso");
+        mostrarMensagem(`Parcela ${parcelaSelecionada.numero} recebida com sucesso!`, "sucesso");
         setModalPagamentoParcela(false);
         carregarVendas();
       } else {
@@ -1459,7 +1459,7 @@ const Vendas = () => {
                               </div>
                               {parcela.status !== 'pago' && (
                                 <button onClick={() => handlePagamentoParcela(parcela)} className="px-3 py-1 bg-green-600 rounded-lg text-sm hover:bg-green-700">
-                                  Pagar
+                                  Receber
                                 </button>
                               )}
                             </div>
@@ -1484,7 +1484,7 @@ const Vendas = () => {
               <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
                 <div className="bg-gray-800 rounded-2xl w-full max-w-md">
                   <div className="p-6">
-                    <h2 className="text-xl font-bold text-white mb-4">Pagamento de Parcela</h2>
+                    <h2 className="text-xl font-bold text-white mb-4">Recebimento de Parcela</h2>
                     <div className="space-y-4">
                       <div className="bg-gray-700 rounded-lg p-3">
                         <p className="text-gray-400">Parcela {parcelaSelecionada.numero}</p>
@@ -1492,7 +1492,7 @@ const Vendas = () => {
                         <p className="text-gray-400 text-sm">Vencimento: {new Date(parcelaSelecionada.dataVencimento).toLocaleDateString()}</p>
                       </div>
                       <div className="flex gap-3">
-                        <button onClick={processarPagamentoParcela} className="flex-1 bg-green-600 py-2 rounded-xl">Confirmar Pagamento</button>
+                        <button onClick={processarPagamentoParcela} className="flex-1 bg-green-600 py-2 rounded-xl">Confirmar Recebimento</button>
                         <button onClick={() => setModalPagamentoParcela(false)} className="flex-1 bg-gray-700 py-2 rounded-xl">Cancelar</button>
                       </div>
                     </div>

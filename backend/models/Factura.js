@@ -262,10 +262,15 @@ FacturaSchema.pre('save', function(next) {
   if (this.itens && this.itens.length > 0) {
     this.subtotal = this.itens.reduce((sum, item) => sum + (item.total || 0), 0);
     
-    // Recalcular IVA se necessário
     if (this.incluiIVA) {
-      const subtotalComDesconto = this.subtotal - (this.desconto || 0);
-      this.totalIva = subtotalComDesconto * ((this.itens[0]?.taxaIVA || 14) / 100);
+      // recalcular IVA para facturas criadas directamente (sem emitirVenda)
+      if (!this.totalIva || this.totalIva === 0) {
+        this.totalIva = this.itens.reduce((acc, item) => {
+          return acc + (item.total || 0) * ((item.taxaIVA || 14) / 100);
+        }, 0);
+      }
+    } else {
+      this.totalIva = 0;
     }
     
     // Calcular total

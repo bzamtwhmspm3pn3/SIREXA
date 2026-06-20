@@ -408,8 +408,9 @@ exports.emitirVenda = async (req, res) => {
         console.log(`🛠️ Serviço "${item.produtoOuServico}" - sem alteração de estoque`);
       }
       
-      const taxaIVA = item.taxaIVA || produtoStock.taxaIVA || 14;
-      const ivaItem = item.total * (taxaIVA / 100);
+      const incluiIVA = venda.incluiIVA !== false;
+      const taxaIVA = incluiIVA ? (item.taxaIVA || produtoStock.taxaIVA || 14) : 0;
+      const ivaItem = incluiIVA ? item.total * (taxaIVA / 100) : 0;
       
       let agendamentoData = null;
       if (item.agendamento && (produtoStock.tipo === 'servico' || item.tipo === 'servico')) {
@@ -448,7 +449,7 @@ exports.emitirVenda = async (req, res) => {
     let totalRetencao = 0;
     let taxaRetencaoAplicada = 0;
 
-    if (venda.retencao && venda.retencao > 0) {
+    if (venda.incluiRetencao && venda.retencao && venda.retencao > 0) {
       if (venda.taxaRetencao && venda.taxaRetencao > 0) {
         taxaRetencaoAplicada = venda.taxaRetencao;
         totalRetencao = (subtotalComDesconto * taxaRetencaoAplicada) / 100;
@@ -553,6 +554,8 @@ exports.emitirVenda = async (req, res) => {
         ...item,
         linha: idx + 1
       })),
+      incluiIVA: venda.incluiIVA !== false,
+      incluiRetencao: venda.incluiRetencao || false,
       subtotal: subtotal,
       totalIva: totalIva,
       desconto: desconto,

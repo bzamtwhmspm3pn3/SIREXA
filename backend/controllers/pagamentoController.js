@@ -77,7 +77,8 @@ async function criarRegistoBancarioPagamento(pagamento, empresa, contaDebito, eh
     });
     
     await registo.save();
-    console.log(`✅ Registo bancário criado para ${ehEntrada ? 'recebimento' : 'pagamento'} ${pagamento._id}: ${pagamento.valor} Kz na conta ${contaDebito}`);
+    const valorEfetivo = pagamento.valor - (pagamento.valorRetencao || 0);
+    console.log(`✅ Registo bancário criado para ${ehEntrada ? 'recebimento' : 'pagamento'} ${pagamento._id}: ${valorEfetivo} Kz na conta ${contaDebito}`);
     return registo;
   } catch (error) {
     console.error('Erro ao criar registo bancário:', error);
@@ -444,8 +445,8 @@ exports.criarPagamentoManual = async (req, res) => {
     };
     
     if (tipo === 'Fornecedor' && retencaoFonte) {
-      pagamentoData.retencaoFonte = parseFloat(retencaoFonte);
-      pagamentoData.valorLiquido = parseFloat(valorLiquido) || parseFloat(valor) - parseFloat(retencaoFonte);
+      pagamentoData.valorRetencao = parseFloat(retencaoFonte);
+      pagamentoData.taxaRetencao = 6.5;
     }
     
     if (dataPagamento) pagamentoData.dataPagamento = new Date(dataPagamento);
@@ -800,7 +801,7 @@ exports.prepararPagamento = async (req, res) => {
           _id: pagamento._id,
           referencia: pagamento.referencia,
           beneficiario: pagamento.beneficiario,
-          valor: pagamento.valor,
+      valor: pagamento.valor - (pagamento.valorRetencao || 0),
           valorFormatado: pagamento.valor.toLocaleString('pt-AO', { style: 'currency', currency: 'AOA' }),
           descricao: pagamento.descricao,
           dataVencimento: pagamento.dataVencimento,
@@ -867,14 +868,15 @@ exports.processarPagamento = async (req, res) => {
     const ehRecebimento = pagamento.tipo === 'Conta a Receber';
     
     if (!ehRecebimento) {
+      const valorEfetivo = pagamento.valor - (pagamento.valorRetencao || 0);
       const saldoConta = await calcularSaldoConta(contaDebito, empresaId);
-      if (saldoConta < pagamento.valor) {
+      if (saldoConta < valorEfetivo) {
         const banco = await Banco.findOne({ codNome: contaDebito, empresaId });
         return res.status(400).json({ 
           sucesso: false, 
-          mensagem: `Saldo insuficiente na conta ${banco?.nome || contaDebito}. Disponível: ${saldoConta.toLocaleString()} Kz, Necessário: ${pagamento.valor.toLocaleString()} Kz`,
+          mensagem: `Saldo insuficiente na conta ${banco?.nome || contaDebito}. Disponível: ${saldoConta.toLocaleString()} Kz, Necessário: ${valorEfetivo.toLocaleString()} Kz`,
           saldoDisponivel: saldoConta,
-          valorNecessario: pagamento.valor
+          valorNecessario: valorEfetivo
         });
       }
     }

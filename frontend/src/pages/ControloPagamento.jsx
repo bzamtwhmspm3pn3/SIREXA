@@ -333,6 +333,7 @@ const ControloPagamento = () => {
         observacao: formData.observacao,
         empresaId: empresaSelecionada,
         retencaoFonte: formData.retencaoFonte,
+        taxaRetencao: 6.5,
         valorLiquido: formData.valorLiquido
       };
       
@@ -534,7 +535,7 @@ const ControloPagamento = () => {
       beneficiario: pagamento.beneficiario,
       valor: pagamento.valor,
       valorLiquido: pagamento.valorLiquido || pagamento.valor,
-      retencaoFonte: pagamento.retencaoFonte || 0,
+      retencaoFonte: pagamento.valorRetencao || pagamento.retencaoFonte || 0,
       descricao: pagamento.descricao || `Pagamento referente a ${pagamento.tipo}`,
       referencia: pagamento.referencia,
       dataPagamento: dataPagamento,
@@ -788,9 +789,9 @@ const ControloPagamento = () => {
                         </div>
                         <p className="text-2xl font-bold text-blue-400 mb-2">{formatarNumero(pagamento.valor)} Kz</p>
                         
-                        {pagamento.retencaoFonte > 0 && (
+                        {(pagamento.valorRetencao || pagamento.retencaoFonte) > 0 && (
                           <p className="text-sm text-orange-400 mb-1">
-                            Retenção Fonte: {formatarNumero(pagamento.retencaoFonte)} Kz (6.5%)
+                            Retenção Fonte: {formatarNumero(pagamento.valorRetencao || pagamento.retencaoFonte)} Kz (6.5%)
                           </p>
                         )}
                         
@@ -973,12 +974,15 @@ const ControloPagamento = () => {
               <div><p className="text-sm text-gray-400">Beneficiário</p><p className="font-semibold text-white">{pagamentoSelecionado.beneficiario}</p></div>
               <div><p className="text-sm text-gray-400">Valor Bruto</p><p className="font-bold text-2xl text-blue-400">{formatarNumero(pagamentoSelecionado.valor)} Kz</p></div>
               
-              {pagamentoSelecionado.retencaoFonte > 0 && (
-                <>
-                  <div><p className="text-sm text-gray-400">Retenção na Fonte (6.5%)</p><p className="font-semibold text-orange-400">{formatarNumero(pagamentoSelecionado.retencaoFonte)} Kz</p></div>
-                  <div><p className="text-sm text-gray-400">Valor Líquido</p><p className="font-bold text-green-400">{formatarNumero(pagamentoSelecionado.valorLiquido)} Kz</p></div>
-                </>
-              )}
+              {(() => {
+                const retencao = pagamentoSelecionado.valorRetencao || pagamentoSelecionado.retencaoFonte || 0;
+                if (retencao <= 0) return null;
+                const liquido = (pagamentoSelecionado.valor || 0) - retencao;
+                return <>
+                  <div><p className="text-sm text-gray-400">Retenção na Fonte (6.5%)</p><p className="font-semibold text-orange-400">{formatarNumero(retencao)} Kz</p></div>
+                  <div><p className="text-sm text-gray-400">Valor Líquido</p><p className="font-bold text-green-400">{formatarNumero(liquido)} Kz</p></div>
+                </>;
+              })()}
               
               <div className="grid grid-cols-2 gap-4">
                 <div><p className="text-sm text-gray-400">Vencimento</p><p className="font-semibold text-white">{formatarData(pagamentoSelecionado.dataVencimento)}</p></div>
