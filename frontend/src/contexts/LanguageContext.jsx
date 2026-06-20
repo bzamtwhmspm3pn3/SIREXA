@@ -4,7 +4,6 @@ import en from '../locales/en.json';
 import fr from '../locales/fr.json';
 
 const LanguageContext = createContext();
-
 const TRADUCOES = { pt, en, fr };
 
 function loadIdioma() {
@@ -24,19 +23,12 @@ export function LanguageProvider({ children }) {
   }, [idioma]);
 
   const t = useCallback((chave, params = {}) => {
-    const keys = chave.split('.');
-    let valor = TRADUCOES[idioma];
-    for (const k of keys) {
-      valor = valor?.[k];
-      if (valor === undefined) break;
+    let valor = TRADUCOES[idioma]?.[chave];
+    if (valor === undefined) {
+      valor = TRADUCOES.pt?.[chave];
     }
     if (valor === undefined) {
-      let fallback = TRADUCOES.pt;
-      for (const k of keys) {
-        fallback = fallback?.[k];
-        if (fallback === undefined) break;
-      }
-      valor = fallback ?? chave;
+      return chave.split('.').pop();
     }
     if (params && Object.keys(params).length > 0) {
       Object.entries(params).forEach(([key, val]) => {

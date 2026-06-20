@@ -30,7 +30,7 @@ export default function ThemeLangControls({ vertical = false }) {
       {aberto && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setAberto(false)} />
-          <div className={`${vertical ? 'static mt-2' : 'absolute right-0 top-full mt-2'} z-50 min-w-[240px] rounded-xl border bg-gray-900/95 backdrop-blur-xl shadow-2xl p-4 space-y-4`} style={{ borderColor: 'var(--border)' }}>
+          <div className={`${vertical ? 'static mt-2' : 'absolute right-0 top-full mt-2'} z-50 min-w-[240px] rounded-xl border shadow-2xl p-4 space-y-4`} style={{ background: 'var(--bg-card)', borderColor: 'var(--border)', color: 'var(--text-primary)' }}>
             {/* Temas */}
             <p className="text-xs font-semibold uppercase tracking-wider flex items-center gap-2" style={{ color: 'var(--text-muted)' }}>
               <Palette size={14} /> {t('sidebar.tema')}

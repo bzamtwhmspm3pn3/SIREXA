@@ -3,9 +3,9 @@
 @tailwind utilities;
 
 /* ========================================
-   TEMA NORMAL (original — fundo azul escuro)
+   TEMA NORMAL (original)
    ======================================== */
-html, [data-tema="normal"] {
+[data-tema="normal"] {
   --bg-body: linear-gradient(135deg, #003366 0%, #0055A5 50%, #00C0F9 100%);
   --bg-sidebar: linear-gradient(180deg, #002244 0%, #003366 100%);
   --bg-card: #1e293b;
@@ -15,13 +15,24 @@ html, [data-tema="normal"] {
   --text-primary: #f1f5f9;
   --text-secondary: #cbd5e1;
   --text-muted: #64748b;
-  --border: rgba(255,255,255,0.1);
+  --border: rgba(255,255,255,0.12);
+  --border-light: rgba(255,255,255,0.06);
   --accent: #3b82f6;
   --accent-hover: #60a5fa;
+  --accent-bg: rgba(59,130,246,0.15);
+  --success: #22c55e;
+  --warning: #eab308;
+  --danger: #ef4444;
+  --sidebar-text: #cbd5e1;
+  --sidebar-text-hover: #ffffff;
+  --sidebar-text-active: #ffffff;
+  --sidebar-bg-active: rgba(255,255,255,0.15);
+  --sidebar-bg-hover: rgba(255,255,255,0.08);
+  --topbar-text: #ffffff;
 }
 
 /* ========================================
-   TEMA ESCURO (fundo preto puro)
+   TEMA ESCURO (preto)
    ======================================== */
 [data-tema="escuro"] {
   --bg-body: #000000;
@@ -29,61 +40,97 @@ html, [data-tema="normal"] {
   --bg-card: #111111;
   --bg-card-hover: #1a1a1a;
   --bg-input: #000000;
-  --bg-topbar: #050505;
+  --bg-topbar: #000000;
   --text-primary: #ffffff;
   --text-secondary: #cccccc;
   --text-muted: #888888;
   --border: rgba(255,255,255,0.12);
+  --border-light: rgba(255,255,255,0.06);
   --accent: #3b82f6;
   --accent-hover: #60a5fa;
+  --accent-bg: rgba(59,130,246,0.15);
+  --success: #22c55e;
+  --warning: #eab308;
+  --danger: #ef4444;
+  --sidebar-text: #cccccc;
+  --sidebar-text-hover: #ffffff;
+  --sidebar-text-active: #ffffff;
+  --sidebar-bg-active: rgba(255,255,255,0.15);
+  --sidebar-bg-hover: rgba(255,255,255,0.08);
+  --topbar-text: #ffffff;
 }
 
 /* ========================================
-   TEMA CLARO (fundo branco)
+   TEMA CLARO (branco profissional)
    ======================================== */
 [data-tema="claro"] {
-  --bg-body: #f1f5f9;
-  --bg-sidebar: linear-gradient(180deg, #1e3a5f 0%, #2d4a7a 100%);
+  --bg-body: #f0f4f8;
+  --bg-sidebar: #ffffff;
   --bg-card: #ffffff;
   --bg-card-hover: #f8fafc;
   --bg-input: #ffffff;
   --bg-topbar: #ffffff;
   --text-primary: #0f172a;
-  --text-secondary: #334155;
-  --text-muted: #64748b;
-  --border: rgba(0,0,0,0.1);
+  --text-secondary: #475569;
+  --text-muted: #94a3b8;
+  --border: #d1d5db;
+  --border-light: #e5e7eb;
   --accent: #2563eb;
   --accent-hover: #1d4ed8;
+  --accent-bg: rgba(37,99,235,0.08);
+  --success: #16a34a;
+  --warning: #ca8a04;
+  --danger: #dc2626;
+  --sidebar-text: #475569;
+  --sidebar-text-hover: #0f172a;
+  --sidebar-text-active: #ffffff;
+  --sidebar-bg-active: #2563eb;
+  --sidebar-bg-hover: #f1f5f9;
+  --topbar-text: #0f172a;
 }
 
 /* ========================================
-   APLICAR VARIAVEIS AOS ELEMENTOS BASE
+   ALTO CONTRASTE (sobrepoe qualquer tema)
+   ======================================== */
+[data-contraste="alto"] {
+  --text-primary: #ffffff !important;
+  --text-secondary: #ffffff !important;
+  --text-muted: #cccccc !important;
+  --border: #ffffff !important;
+  --border-light: #ffffff !important;
+}
+
+[data-contraste="alto"][data-tema="claro"] {
+  --bg-body: #ffffff !important;
+  --bg-card: #ffffff !important;
+  --text-primary: #000000 !important;
+  --text-secondary: #000000 !important;
+  --text-muted: #333333 !important;
+  --border: #000000 !important;
+  --border-light: #000000 !important;
+  --accent: #0000ff !important;
+}
+
+/* ========================================
+   ESTILOS BASE
    ======================================== */
 html, body {
-  background: var(--bg-body) !important;
-  color: var(--text-primary) !important;
-  transition: background 0.3s ease, color 0.3s ease;
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
 }
 
 /* ========================================
-   OVERRIDES GLOBAIS POR TEMA
+   OVERRIDES DE COR — TEXTO
    ======================================== */
-[data-tema] *,
-[data-tema] *::before,
-[data-tema] *::after {
-  transition: background 0.3s ease,
-              color 0.3s ease,
-              border-color 0.3s ease,
-              box-shadow 0.3s ease !important;
-}
-
-/* --- Texto --- */
 [data-tema] .text-white,
 [data-tema] .text-gray-50,
 [data-tema] .text-gray-100,
 [data-tema] .text-gray-200,
 [data-tema] .text-slate-100,
-[data-tema] .text-slate-200 {
+[data-tema] .text-slate-200,
+[data-tema] h1, [data-tema] h2, [data-tema] h3,
+[data-tema] th {
   color: var(--text-primary) !important;
 }
 
@@ -105,18 +152,35 @@ html, body {
   color: var(--text-muted) !important;
 }
 
-/* --- Fundos --- */
+[data-tema] .text-blue-400,
+[data-tema] .text-indigo-400 {
+  color: var(--accent) !important;
+}
+
+[data-tema] .text-green-400,
+[data-tema] .text-green-500 {
+  color: var(--success) !important;
+}
+
+[data-tema] .text-red-400,
+[data-tema] .text-red-500 {
+  color: var(--danger) !important;
+}
+
+[data-tema] .text-yellow-400,
+[data-tema] .text-yellow-500 {
+  color: var(--warning) !important;
+}
+
+/* ========================================
+   OVERRIDES DE COR — FUNDOS
+   ======================================== */
 [data-tema] .bg-gray-700,
 [data-tema] .bg-gray-800,
 [data-tema] .bg-gray-900,
 [data-tema] .bg-slate-700,
 [data-tema] .bg-slate-800,
-[data-tema] .bg-slate-900 {
-  background: var(--bg-card) !important;
-}
-
-[data-tema] .bg-gray-750,
-[data-tema] .bg-slate-750,
+[data-tema] .bg-slate-900,
 [data-tema] .bg-gray-700\/50,
 [data-tema] .bg-gray-800\/90,
 [data-tema] .bg-gray-800\/50,
@@ -124,17 +188,12 @@ html, body {
   background: var(--bg-card) !important;
 }
 
+[data-tema] .bg-gray-750,
 [data-tema] .bg-gray-600\/20,
 [data-tema] .bg-gray-600\/10 {
-  background: var(--bg-hover, rgba(128,128,128,0.1)) !important;
+  background: var(--bg-card-hover) !important;
 }
 
-[data-tema] .bg-\[\#003366\]\/80,
-[data-tema] .bg-\[\#003366\] {
-  background: var(--bg-topbar) !important;
-}
-
-/* Inputs */
 [data-tema] input,
 [data-tema] textarea,
 [data-tema] select {
@@ -143,7 +202,32 @@ html, body {
   border-color: var(--border) !important;
 }
 
-/* --- Bordas --- */
+[data-tema] .bg-green-500\/20,
+[data-tema] .bg-green-600\/20 {
+  background: color-mix(in srgb, var(--success) 15%, transparent) !important;
+}
+
+[data-tema] .bg-red-500\/20,
+[data-tema] .bg-red-600\/20 {
+  background: color-mix(in srgb, var(--danger) 15%, transparent) !important;
+}
+
+[data-tema] .bg-blue-500\/20,
+[data-tema] .bg-blue-600\/20 {
+  background: var(--accent-bg) !important;
+}
+
+[data-tema] .bg-indigo-500\/20 {
+  background: color-mix(in srgb, #818cf8 20%, transparent) !important;
+}
+
+[data-tema] .bg-white\/20 {
+  background: var(--sidebar-bg-active) !important;
+}
+
+/* ========================================
+   OVERRIDES — BORDAS
+   ======================================== */
 [data-tema] .border-white\/10,
 [data-tema] .border-white\/5,
 [data-tema] .border-gray-700,
@@ -154,63 +238,83 @@ html, body {
   border-color: var(--border) !important;
 }
 
-[data-tema] .border-blue-500\/30,
-[data-tema] .border-blue-500\/20 {
-  border-color: color-mix(in srgb, var(--accent) 30%, transparent) !important;
+[data-tema] .border-indigo-500\/30 {
+  border-color: color-mix(in srgb, #818cf8 30%, transparent) !important;
 }
 
-/* --- Links e hover --- */
+/* ========================================
+   OVERRIDES — HOVER
+   ======================================== */
 [data-tema] .hover\:text-white:hover {
-  color: var(--text-primary) !important;
+  color: var(--sidebar-text-hover) !important;
 }
 
 [data-tema] .hover\:bg-white\/10:hover,
 [data-tema] .hover\:bg-white\/5:hover {
-  background: var(--bg-hover, rgba(255,255,255,0.05)) !important;
+  background: var(--sidebar-bg-hover) !important;
 }
 
 [data-tema] .hover\:bg-gray-700:hover {
   background: var(--bg-card-hover) !important;
 }
 
-/* --- Cores de estado (success, danger, etc) --- */
-[data-tema] .text-green-400 { color: var(--accent) !important; }
-[data-tema] .text-red-400 { color: #ef4444 !important; }
-[data-tema] .text-red-500 { color: #ef4444 !important; }
-[data-tema] .text-yellow-400 { color: #eab308 !important; }
-[data-tema] .text-purple-300 { color: var(--text-secondary) !important; }
-[data-tema] .text-purple-400 { color: #a78bfa !important; }
-[data-tema] .text-blue-300 { color: var(--text-secondary) !important; }
-[data-tema] .text-blue-400 { color: var(--accent) !important; }
-[data-tema] .text-indigo-400 { color: #818cf8 !important; }
-
-[data-tema] .bg-green-500\/20,
-[data-tema] .bg-green-600\/20 { background: rgba(34,197,94,0.12) !important; }
-[data-tema] .bg-red-500\/20,
-[data-tema] .bg-red-600\/20 { background: rgba(239,68,68,0.12) !important; }
-[data-tema] .bg-blue-600\/20 { background: color-mix(in srgb, var(--accent) 20%, transparent) !important; }
-[data-tema] .bg-indigo-500\/20 { background: rgba(129,140,248,0.2) !important; }
-[data-tema] .bg-white\/20 { background: rgba(255,255,255,0.15) !important; }
-
-/* --- Fundo principal do layout --- */
-[data-tema] .flex.min-h-screen[style*="linear-gradient"] {
-  background: var(--bg-body) !important;
+/* ========================================
+   SIDEBAR
+   ======================================== */
+[data-tema] aside,
+[data-tema] aside * {
 }
 
-/* --- Sidebar --- */
-[data-tema] aside[style*="linear-gradient"] {
-  background: var(--bg-sidebar) !important;
+[data-tema] aside .text-xs.text-gray-500 {
+  color: var(--text-muted) !important;
 }
 
-/* --- Títulos no sidebar --- */
-[data-tema] aside .text-2xl.font-bold {
-  color: var(--text-primary) !important;
+[data-tema] aside .text-gray-300,
+[data-tema] aside .text-gray-400 {
+  color: var(--sidebar-text) !important;
 }
 
-/* --- Topbar sticky --- */
+[data-tema] aside .text-blue-300,
+[data-tema] aside .text-purple-300 {
+  color: var(--sidebar-text) !important;
+}
+
+[data-tema] aside .bg-white\/20 {
+  background: var(--sidebar-bg-active) !important;
+  color: var(--sidebar-text-active) !important;
+}
+
+[data-tema] aside a,
+[data-tema] aside button:not(.theme-toggle) {
+  color: var(--sidebar-text) !important;
+}
+
+/* ========================================
+   TOPBAR
+   ======================================== */
 [data-tema] .sticky.top-0 {
   background: var(--bg-topbar) !important;
   border-color: var(--border) !important;
+}
+
+[data-tema] .sticky.top-0 h1 {
+  color: var(--topbar-text) !important;
+}
+
+/* ========================================
+   BOTOES DE ESTADO COM GRADIENTE
+   ======================================== */
+[data-tema] .from-red-500\/10,
+[data-tema] .from-red-500\/20 {
+  background: color-mix(in srgb, var(--danger) 10%, transparent) !important;
+}
+
+[data-tema] .hover\:from-red-500\/20:hover {
+  background: color-mix(in srgb, var(--danger) 20%, transparent) !important;
+}
+
+[data-tema] .border-red-500\/20 {
+  border-color: color-mix(in srgb, var(--danger) 20%, transparent) !important;
 }
 
 /* ========================================
@@ -227,7 +331,9 @@ html, body {
   text-decoration: none;
   font-weight: 600;
 }
-.skip-link:focus { top: 0; }
+.skip-link:focus {
+  top: 0;
+}
 
 /* ========================================
    INPUT / BTN
