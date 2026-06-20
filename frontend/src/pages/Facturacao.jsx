@@ -618,7 +618,8 @@ const Facturacao = () => {
         await carregarDocumentos();
         
         if (result.dados) {
-          await gerarDocumentoProfissional(result.dados, result.dados.itens || []);
+          const pdf = await gerarDocumentoProfissional(result.dados, result.dados.itens || []);
+          if (pdf?.doc) pdf.doc.save(pdf.fileName);
         }
         
         setModalOpen(false);
@@ -692,7 +693,8 @@ const Facturacao = () => {
         await carregarDocumentos();
         
         if (result.dados) {
-          await gerarDocumentoProfissional(result.dados, result.dados.itens || []);
+          const pdf = await gerarDocumentoProfissional(result.dados, result.dados.itens || []);
+          if (pdf?.doc) pdf.doc.save(pdf.fileName);
         }
       } else {
         mostrarMensagem(result.mensagem || "Erro ao gerar recibo", "erro");
@@ -735,7 +737,8 @@ const Facturacao = () => {
         mostrarMensagem("Nota de Crédito gerada com sucesso!", "sucesso");
         await carregarDocumentos();
         if (result.dados) {
-          await gerarDocumentoProfissional(result.dados, result.dados.itens || []);
+          const pdf = await gerarDocumentoProfissional(result.dados, result.dados.itens || []);
+          if (pdf?.doc) pdf.doc.save(pdf.fileName);
         }
       } else {
         mostrarMensagem(result.mensagem || "Erro ao gerar nota de crédito", "erro");
@@ -791,7 +794,8 @@ const Facturacao = () => {
     } else {
       empresaAtual = empresas.find(e => e._id === empresaSelecionada);
     }
-    await gerarDocumentoProfissional(doc, doc.itens || []);
+    const pdf = await gerarDocumentoProfissional(doc, doc.itens || []);
+    if (pdf?.doc) pdf.doc.save(pdf.fileName);
   };
 
   const exportarSAFT = async () => {
