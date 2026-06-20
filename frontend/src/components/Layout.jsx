@@ -8,7 +8,7 @@ import {
   Calendar, Gift, BarChart3, Car, Fuel, Wrench, Boxes, Truck, TrendingUp,
   PieChart, Eye, ArrowRightLeft, Users, DollarSign, FileText, Home, Building2,
   Shield, Settings, LogOut, BookOpen, LayoutDashboard, RefreshCw, Calculator,
-  Activity, Key, Crown, Award
+  Activity, Key, Crown, Award, Briefcase, GraduationCap, CalendarCheck, Target, Gavel, GitBranch
 } from "lucide-react";
 import logo from "../assets/sirexa-logo.ico";
 import ThemeLangControls from "./ThemeLangControls";
@@ -50,6 +50,15 @@ function Layout({ title, children, showBackButton = false, backToRoute = null })
         gestaoFaltas: { label: "Gestão de Faltas", icon: Calendar, rota: "/gestao-faltas" },
         gestaoAbonos: { label: "Subsídios e Abonos", icon: Gift, rota: "/gestao-abonos" },
         avaliacao: { label: "Avaliação", icon: BarChart3, rota: "/avaliacao-desempenho" },
+        recrutamento: { label: "Recrutamento", icon: Briefcase, rota: "/rh/recrutamento" },
+        formacao: { label: "Formação", icon: GraduationCap, rota: "/rh/formacao" },
+        feriasLicencas: { label: "Férias e Licenças", icon: CalendarCheck, rota: "/rh/ferias-licencas" },
+        carreira: { label: "Carreira", icon: TrendingUp, rota: "/rh/carreira" },
+        cargos: { label: "Cargos", icon: Users, rota: "/rh/cargos" },
+        disciplinar: { label: "Disciplinar", icon: Gavel, rota: "/rh/disciplinar" },
+        competencias: { label: "Competências", icon: Target, rota: "/rh/competencias" },
+        saudeSeguranca: { label: "Saúde e Segurança", icon: Shield, rota: "/rh/saude-seguranca" },
+        workflow: { label: "Workflows", icon: GitBranch, rota: "/rh/workflow" },
         rh: { label: "RH Avançado", icon: BarChart3, rota: "/rh" }
       }
     },
@@ -179,19 +188,19 @@ function Layout({ title, children, showBackButton = false, backToRoute = null })
             <button onClick={() => navigate("/admin")} className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 w-full text-left ${location.pathname === "/admin" ? "bg-white/20 text-white font-medium" : "hover:text-white hover:bg-white/10"}`} style={{ color: location.pathname === "/admin" ? "var(--text-primary)" : "var(--text-secondary)" }}>
               <LayoutDashboard size={18} /><span>Dashboard</span>
             </button>
-            <button onClick={() => navigate = "/admin/planos"} className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 w-full text-left ${location.pathname === "/admin/planos" ? "bg-white/20 text-white font-medium" : "hover:text-white hover:bg-white/10"}`} style={{ color: location.pathname === "/admin/planos" ? "var(--text-primary)" : "var(--text-secondary)" }}>
+            <button onClick={() => navigate("/admin/planos")} className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 w-full text-left ${location.pathname === "/admin/planos" ? "bg-white/20 text-white font-medium" : "hover:text-white hover:bg-white/10"}`} style={{ color: location.pathname === "/admin/planos" ? "var(--text-primary)" : "var(--text-secondary)" }}>
               <Award size={18} /><span>Planos</span>
             </button>
-            <button onClick={() => navigate = "/admin/gerar-chave"} className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 w-full text-left ${location.pathname === "/admin/gerar-chave" ? "bg-white/20 text-white font-medium" : "hover:text-white hover:bg-white/10"}`} style={{ color: location.pathname === "/admin/gerar-chave" ? "var(--text-primary)" : "var(--text-secondary)" }}>
+            <button onClick={() => navigate("/admin/gerar-chave")} className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 w-full text-left ${location.pathname === "/admin/gerar-chave" ? "bg-white/20 text-white font-medium" : "hover:text-white hover:bg-white/10"}`} style={{ color: location.pathname === "/admin/gerar-chave" ? "var(--text-primary)" : "var(--text-secondary)" }}>
               <Key size={18} /><span>Gerar Chave</span>
             </button>
-            <button onClick={() => navigate = "/admin/licencas"} className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 w-full text-left ${location.pathname === "/admin/licencas" ? "bg-white/20 text-white font-medium" : "hover:text-white hover:bg-white/10"}`} style={{ color: location.pathname === "/admin/licencas" ? "var(--text-primary)" : "var(--text-secondary)" }}>
+            <button onClick={() => navigate("/admin/licencas")} className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 w-full text-left ${location.pathname === "/admin/licencas" ? "bg-white/20 text-white font-medium" : "hover:text-white hover:bg-white/10"}`} style={{ color: location.pathname === "/admin/licencas" ? "var(--text-primary)" : "var(--text-secondary)" }}>
               <FileText size={18} /><span>Licenças</span>
             </button>
-            <button onClick={() => navigate = "/admin/gestores"} className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 w-full text-left ${location.pathname === "/admin/gestores" ? "bg-white/20 text-white font-medium" : "hover:text-white hover:bg-white/10"}`} style={{ color: location.pathname === "/admin/gestores" ? "var(--text-primary)" : "var(--text-secondary)" }}>
+            <button onClick={() => navigate("/admin/gestores")} className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 w-full text-left ${location.pathname === "/admin/gestores" ? "bg-white/20 text-white font-medium" : "hover:text-white hover:bg-white/10"}`} style={{ color: location.pathname === "/admin/gestores" ? "var(--text-primary)" : "var(--text-secondary)" }}>
               <Users size={18} /><span>Gestores</span>
             </button>
-            <button onClick={() => navigate = "/admin/empresas"} className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 w-full text-left ${location.pathname === "/admin/empresas" ? "bg-white/20 text-white font-medium" : "hover:text-white hover:bg-white/10"}`} style={{ color: location.pathname === "/admin/empresas" ? "var(--text-primary)" : "var(--text-secondary)" }}>
+            <button onClick={() => navigate("/admin/empresas")} className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 w-full text-left ${location.pathname === "/admin/empresas" ? "bg-white/20 text-white font-medium" : "hover:text-white hover:bg-white/10"}`} style={{ color: location.pathname === "/admin/empresas" ? "var(--text-primary)" : "var(--text-secondary)" }}>
               <Building2 size={18} /><span>Empresas</span>
             </button>
           </nav>
@@ -251,11 +260,11 @@ function Layout({ title, children, showBackButton = false, backToRoute = null })
           </div>
 
           <nav className="flex-1 overflow-y-auto p-4 space-y-1">
-            <button onClick={() => navigate = "/menu"} className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 w-full text-left ${location.pathname === "/menu" || location.pathname === "/" ? "bg-white/20 text-white font-medium" : "text-gray-300 hover:text-white hover:bg-white/10"}`}>
+            <button onClick={() => navigate("/menu")} className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 w-full text-left ${location.pathname === "/menu" || location.pathname === "/" ? "bg-white/20 text-white font-medium" : "text-gray-300 hover:text-white hover:bg-white/10"}`}>
               <Home size={18} /><span>{t('nav.inicio')}</span>
             </button>
 
-            <button onClick={() => navigate = "/empresa"} className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 w-full text-left ${location.pathname.startsWith("/empresa") ? "bg-white/20 text-white font-medium" : "text-gray-300 hover:text-white hover:bg-white/10"}`}>
+            <button onClick={() => navigate("/empresa")} className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 w-full text-left ${location.pathname.startsWith("/empresa") ? "bg-white/20 text-white font-medium" : "text-gray-300 hover:text-white hover:bg-white/10"}`}>
               <Building2 size={18} /><span>{t('sidebar.minha_empresa')}</span>
             </button>
 
@@ -285,7 +294,7 @@ function Layout({ title, children, showBackButton = false, backToRoute = null })
                         return (
                           <button
                             key={id}
-                            onClick={() => navigate = modulo.rota}
+                            onClick={() => navigate(modulo.rota)}
                             className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all duration-200 w-full text-left ${ativo ? "bg-indigo-500/20 text-white font-medium border-l-2 border-indigo-400 -ml-[15px] pl-[19px]" : "text-gray-400 hover:text-white hover:bg-white/5"}`}
                           >
                             <modulo.icon size={16} className={ativo ? "text-indigo-400" : "text-gray-500"} />
