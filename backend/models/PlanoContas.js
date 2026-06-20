@@ -57,6 +57,14 @@ const planocontasSchema = new mongoose.Schema({
     },
     dataDesativacao: {
         type: Date
+    },
+    saldoDevedor: {
+        type: Number,
+        default: 0
+    },
+    saldoCredor: {
+        type: Number,
+        default: 0
     }
 }, { timestamps: true });
 

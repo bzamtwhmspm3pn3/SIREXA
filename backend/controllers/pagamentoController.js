@@ -557,6 +557,8 @@ exports.atualizarStatus = async (req, res) => {
           pagamento.empresaId,
           req.user?.id || req.user?._id || null
         );
+        pagamento.contabilizado = true;
+        await pagamento.save();
         console.log(`✅ Lançamento contabilístico criado para pagamento ${pagamento.referencia}`);
       } catch (err) {
         console.error('⚠️ Erro ao criar lançamento contabilístico:', err.message);
@@ -628,6 +630,8 @@ exports.atualizarStatusPagamento = async (req, res) => {
           pagamento.empresaId,
           req.user?.id || req.user?._id || null
         );
+        pagamento.contabilizado = true;
+        await pagamento.save();
         console.log(`✅ Lançamento contabilístico criado para pagamento ${pagamento.referencia}`);
       } catch (err) {
         console.error('⚠️ Erro ao criar lançamento contabilístico:', err.message);
@@ -942,11 +946,29 @@ exports.processarPagamento = async (req, res) => {
       }
       
       console.log(`✅ Recebimento ${pagamento.referencia} processado: ${statusAnterior} → Recebido na conta ${contaDebito}`);
+
+      // Lançamento contabilístico automático
+      try {
+        await IntegracaoContabilistica.integrarPagamento(pagamento.toObject(), empresaId, req.user?._id);
+        pagamento.contabilizado = true;
+        await pagamento.save();
+      } catch (err) {
+        console.error(`⚠️ Erro ao contabilizar recebimento ${pagamento.referencia}:`, err.message);
+      }
     } else {
       // 🔁 PAGAMENTO - saída no banco + débito na conta corrente do fornecedor
       await criarRegistoBancarioPagamento(pagamento, empresa, contaDebito, false);
       await contaCorrenteController.atualizarContaAposPagamento(pagamento, empresaId);
       console.log(`✅ Pagamento ${pagamento.referencia} processado: ${statusAnterior} → Pago via conta ${contaDebito}`);
+
+      // Lançamento contabilístico automático
+      try {
+        await IntegracaoContabilistica.integrarPagamento(pagamento.toObject(), empresaId, req.user?._id);
+        pagamento.contabilizado = true;
+        await pagamento.save();
+      } catch (err) {
+        console.error(`⚠️ Erro ao contabilizar pagamento ${pagamento.referencia}:`, err.message);
+      }
     }
     
     const novosaldoConta = await calcularSaldoConta(contaDebito, empresaId);

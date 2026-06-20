@@ -334,19 +334,29 @@ const BalancoPatrimonial = () => {
         if (data.sucesso && data.dados) {
           const contas = data.dados.balancete || [];
           
-          const ativoContas = contas.filter(c => c.classe === 1 || c.classe === 2);
-          const passivoContas = contas.filter(c => c.classe === 3 && c.saldo < 0);
+          // Classe 3 (Terceiros) é Mista: saldo > 0 = devedor (clientes) = ativo
+          //                         saldo < 0 = credor (fornecedores) = passivo
+          const ativoContas = contas.filter(c => 
+            c.classe === 1 || c.classe === 2 || c.classe === 4 ||
+            (c.classe === 3 && c.saldo >= 0)
+          );
+          const passivoContas = contas.filter(c => 
+            (c.classe === 3 && c.saldo < 0)
+          );
           const patrimonioContas = contas.filter(c => c.classe === 5);
           
           setBalanco({
             ativo: {
-              circulante: ativoContas.filter(c => c.contaCodigo.startsWith("2") || c.contaCodigo.startsWith("3")),
-              naoCirculante: ativoContas.filter(c => c.contaCodigo.startsWith("1")),
+              circulante: ativoContas.filter(c => 
+                c.classe === 2 || c.classe === 4 || 
+                (c.classe === 3 && c.saldo >= 0)
+              ),
+              naoCirculante: ativoContas.filter(c => c.classe === 1),
               total: ativoContas.reduce((sum, c) => sum + Math.abs(c.saldo), 0)
             },
             passivo: {
-              circulante: passivoContas.filter(c => c.contaCodigo.startsWith("3")),
-              naoCirculante: passivoContas.filter(c => c.contaCodigo.startsWith("4")),
+              circulante: passivoContas.filter(c => true),
+              naoCirculante: [],
               total: Math.abs(passivoContas.reduce((sum, c) => sum + c.saldo, 0))
             },
             patrimonioLiquido: {

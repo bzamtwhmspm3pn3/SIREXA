@@ -92,7 +92,8 @@ router.post('/sincronizar', logMiddleware('sincronizacao'), async (req, res) => 
         // Buscar pagamentos não contabilizados
         const pagamentosNaoContabilizados = await Pagamento.find({
             empresaId,
-            contabilizado: { $ne: true }
+            contabilizado: { $ne: true },
+            status: 'Pago'
         });
         
         let vendasProcessadas = 0;
