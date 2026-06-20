@@ -4,6 +4,7 @@ const Pagamento = require('../models/Pagamento');
 const Transferencia = require('../models/Transferencia');
 const Empresa = require('../models/Empresa');
 const Banco = require('../models/Banco');
+const RegistoBancario = require('../models/RegistoBancario');
 const saldoService = require('../services/saldoService');
 
 const setNoCacheHeaders = (res) => {
