@@ -32,10 +32,15 @@
   --sidebar-bg-active: rgba(255,255,255,0.15);
   --sidebar-bg-hover: rgba(255,255,255,0.08);
   --topbar-text: #ffffff;
+  --bg-elevated: #1e293b;
+  --bg-highlight: rgba(99,102,241,0.15);
+  --border-highlight: #6366f1;
+  --bg-white-low: rgba(255,255,255,0.08);
+  --bg-white-mid: rgba(255,255,255,0.15);
 }
 
 /* ========================================
-   TEMA ESCURO (preto solido — estilo Facebook Dark)
+   TEMA ESCURO (preto solido — Facebook Dark)
    ======================================== */
 [data-tema="escuro"] {
   --bg-body: #18191a;
@@ -64,10 +69,15 @@
   --sidebar-bg-active: rgba(255,255,255,0.1);
   --sidebar-bg-hover: rgba(255,255,255,0.05);
   --topbar-text: #e4e6eb;
+  --bg-elevated: #242526;
+  --bg-highlight: rgba(45,136,255,0.2);
+  --border-highlight: #2d88ff;
+  --bg-white-low: rgba(255,255,255,0.08);
+  --bg-white-mid: rgba(255,255,255,0.12);
 }
 
 /* ========================================
-   TEMA CLARO (branco solido — estilo Word/AGT/Facebook)
+   TEMA CLARO (branco solido — Word/AGT/Facebook)
    ======================================== */
 [data-tema="claro"] {
   --bg-body: #f0f2f5;
@@ -98,10 +108,20 @@
   --topbar-text: #1c1e21;
   --card-shadow: 0 1px 2px rgba(0,0,0,0.08);
   --card-shadow-hover: 0 4px 12px rgba(0,0,0,0.1);
+  --bg-elevated: #ffffff;
+  --bg-highlight: rgba(24,119,242,0.08);
+  --border-highlight: #1877f2;
+  --bg-white-low: #e4e6eb;
+  --bg-white-mid: #d8dadf;
 }
 
 [data-tema="claro"] aside {
   border-right: 1px solid var(--border) !important;
+}
+[data-tema="claro"] .backdrop-blur-md,
+[data-tema="claro"] .backdrop-blur {
+  backdrop-filter: none !important;
+  background: var(--bg-topbar) !important;
 }
 
 /* ========================================
@@ -137,8 +157,7 @@ html, body { margin: 0; padding: 0; min-height: 100vh; }
 [data-tema] .text-gray-200,
 [data-tema] .text-slate-100,
 [data-tema] .text-slate-200,
-[data-tema] h1, [data-tema] h2, [data-tema] h3,
-[data-tema] th {
+[data-tema] h1, [data-tema] h2, [data-tema] h3 {
   color: var(--text-primary) !important;
 }
 
@@ -156,33 +175,29 @@ html, body { margin: 0; padding: 0; min-height: 100vh; }
 [data-tema] .text-gray-600,
 [data-tema] .text-gray-700,
 [data-tema] .text-slate-600,
-[data-tema] .text-slate-700 {
+[data-tema] .text-slate-700,
+[data-tema] .text-xs,
+[data-tema] .text-sm.text-gray-500 {
   color: var(--text-muted) !important;
 }
 
 [data-tema] .text-blue-400,
-[data-tema] .text-indigo-400 {
-  color: var(--accent) !important;
-}
-
+[data-tema] .text-indigo-400 { color: var(--accent) !important; }
 [data-tema] .text-green-400,
-[data-tema] .text-green-500 {
-  color: var(--success) !important;
-}
-
+[data-tema] .text-green-500 { color: var(--success) !important; }
 [data-tema] .text-red-400,
-[data-tema] .text-red-500 {
-  color: var(--danger) !important;
-}
-
+[data-tema] .text-red-500 { color: var(--danger) !important; }
 [data-tema] .text-yellow-400,
-[data-tema] .text-yellow-500 {
-  color: var(--warning) !important;
-}
-
+[data-tema] .text-yellow-500 { color: var(--warning) !important; }
 [data-tema] .text-purple-300,
-[data-tema] .text-purple-400 {
-  color: var(--accent) !important;
+[data-tema] .text-purple-400 { color: var(--accent) !important; }
+[data-tema] .text-cyan-400,
+[data-tema] .text-orange-400 { color: var(--text-secondary) !important; }
+
+/* Icons with text colors */
+[data-tema] svg,
+[data-tema] .lucide {
+  color: inherit;
 }
 
 /* ========================================
@@ -201,10 +216,20 @@ html, body { margin: 0; padding: 0; min-height: 100vh; }
   background: var(--bg-card) !important;
 }
 
-[data-tema] .bg-gray-750,
-[data-tema] .bg-gray-600\/20,
-[data-tema] .bg-gray-600\/10 {
+[data-tema] .bg-gray-750 {
   background: var(--bg-card-hover) !important;
+}
+
+[data-tema] .bg-gradient-to-r.from-gray-800 {
+  background: var(--bg-topbar) !important;
+}
+
+[data-tema] [class*="from-gray-800"][class*="to-gray-800"] {
+  background: var(--bg-topbar) !important;
+}
+
+[data-tema] .bg-gradient-to-r.from-purple-600.to-pink-600 {
+  background: var(--accent) !important;
 }
 
 [data-tema] input,
@@ -228,17 +253,35 @@ html, body { margin: 0; padding: 0; min-height: 100vh; }
 }
 
 [data-tema] .bg-blue-500\/20,
-[data-tema] .bg-blue-600\/20 {
-  background: var(--accent-bg) !important;
+[data-tema] .bg-blue-600\/20 { background: var(--accent-bg) !important; }
+
+[data-tema] .bg-indigo-500\/20 { background: var(--bg-highlight) !important; }
+
+/* ========================================
+   bg-white/xx — translucent overrides
+   ======================================== */
+[data-tema] [class*="bg-white/5"],
+[data-tema] [class*="bg-white\/5"] { background: var(--bg-white-low) !important; }
+
+[data-tema] [class*="bg-white/10"],
+[data-tema] [class*="bg-white\/10"] { background: var(--bg-white-low) !important; }
+
+[data-tema] [class*="bg-white/20"],
+[data-tema] [class*="bg-white\/20"] { background: var(--bg-white-mid) !important; }
+
+/* ========================================
+   Gradient overlays (from-red-500/10 etc)
+   ======================================== */
+[data-tema] [class*="from-red-500"],
+[data-tema] [class*="from-red-600"] {
+  background: var(--danger-bg) !important;
+}
+[data-tema] [class*="hover:from-red-500"],
+[data-tema] [class*="hover:from-red-600"] {
+  background: var(--danger-bg) !important;
 }
 
-[data-tema] .bg-indigo-500\/20 {
-  background: color-mix(in srgb, #818cf8 20%, transparent) !important;
-}
-
-[data-tema] .bg-white\/20 {
-  background: var(--sidebar-bg-active) !important;
-}
+[data-tema] .border-red-500\/20 { border-color: var(--danger) !important; border-opacity: 0.3; }
 
 /* ========================================
    OVERRIDES — BORDAS
@@ -253,32 +296,32 @@ html, body { margin: 0; padding: 0; min-height: 100vh; }
   border-color: var(--border) !important;
 }
 
-[data-tema] .border-indigo-500\/30 {
-  border-color: color-mix(in srgb, #818cf8 30%, transparent) !important;
+[data-tema] .border-indigo-500\/30,
+[data-tema] .border-indigo-400 {
+  border-color: var(--border-highlight) !important;
 }
 
 /* ========================================
    OVERRIDES — HOVER
    ======================================== */
-[data-tema] .hover\:text-white:hover {
-  color: var(--sidebar-text-hover) !important;
-}
+[data-tema] .hover\:text-white:hover { color: var(--sidebar-text-hover) !important; }
 
 [data-tema] .hover\:bg-white\/10:hover,
-[data-tema] .hover\:bg-white\/5:hover {
-  background: var(--sidebar-bg-hover) !important;
-}
+[data-tema] .hover\:bg-white\/5:hover { background: var(--sidebar-bg-hover) !important; }
 
-[data-tema] .hover\:bg-gray-700:hover {
-  background: var(--bg-card-hover) !important;
-}
+[data-tema] .hover\:bg-gray-700:hover { background: var(--bg-card-hover) !important; }
+
+[data-tema] .hover\:from-red-500\/20:hover,
+[data-tema] .hover\:to-red-600\/20:hover { background: var(--danger-bg) !important; }
+
+[data-tema] .hover\:border-red-500\/40:hover { border-color: var(--danger) !important; }
+
+[data-tema] .hover\:text-red-300:hover { color: var(--danger) !important; }
 
 /* ========================================
    SIDEBAR
    ======================================== */
-[data-tema] aside .text-xs.text-gray-500 {
-  color: var(--text-muted) !important;
-}
+[data-tema] aside .text-xs.text-gray-500 { color: var(--text-muted) !important; }
 
 [data-tema] aside .text-gray-300,
 [data-tema] aside .text-gray-400,
@@ -287,54 +330,38 @@ html, body { margin: 0; padding: 0; min-height: 100vh; }
   color: var(--sidebar-text) !important;
 }
 
-[data-tema] aside .bg-white\/20 {
-  background: var(--sidebar-bg-active) !important;
-  color: var(--sidebar-text-active) !important;
-}
+[data-tema] aside .bg-white\/20 { background: var(--sidebar-bg-active) !important; color: var(--sidebar-text-active) !important; }
 
 [data-tema] aside a,
 [data-tema] aside button:not(.theme-toggle) {
   color: var(--sidebar-text) !important;
 }
 
+[data-tema] aside a:hover,
+[data-tema] aside button:hover:not(.theme-toggle) {
+  color: var(--sidebar-text-hover) !important;
+}
+
+[data-tema] aside .bg-gray-700 { background: var(--sidebar-bg-hover) !important; }
+
 /* ========================================
    TOPBAR
    ======================================== */
-[data-tema] .sticky.top-0 {
+[data-tema] .sticky.top-0,
+[data-tema] header.sticky,
+[data-tema] [class*="sticky"][class*="top-0"] {
   background: var(--bg-topbar) !important;
   border-color: var(--border) !important;
+  backdrop-filter: none !important;
 }
 
-[data-tema] .sticky.top-0 h1 {
-  color: var(--topbar-text) !important;
-}
-
-/* ========================================
-   BOTOES COM GRADIENTE
-   ======================================== */
-[data-tema] .from-red-500\/10,
-[data-tema] .from-red-500\/20 {
-  background: var(--danger-bg) !important;
-}
-
-[data-tema] .hover\:from-red-500\/20:hover {
-  background: color-mix(in srgb, var(--danger) 20%, transparent) !important;
-}
-
-[data-tema] .border-red-500\/20 {
-  border-color: color-mix(in srgb, var(--danger) 20%, transparent) !important;
-}
+[data-tema] .sticky.top-0 h1 { color: var(--topbar-text) !important; }
 
 /* ========================================
    MODAIS E OVERLAYS
    ======================================== */
-[data-tema] .bg-black\/80 {
-  background: rgba(0,0,0,0.6) !important;
-}
-
-[data-tema] .fixed.inset-0.z-50 {
-  background: rgba(0,0,0,0.5) !important;
-}
+[data-tema] .bg-black\/80 { background: rgba(0,0,0,0.6) !important; }
+[data-tema] .fixed.inset-0.z-50 { background: rgba(0,0,0,0.5) !important; }
 
 /* ========================================
    SOMBRAS PARA CARDS (tema claro)
@@ -342,7 +369,15 @@ html, body { margin: 0; padding: 0; min-height: 100vh; }
 [data-tema="claro"] .rounded-2xl.border,
 [data-tema="claro"] .rounded-xl.border,
 [data-tema="claro"] .rounded-lg.border {
-  box-shadow: var(--card-shadow, 0 1px 2px rgba(0,0,0,0.08)) !important;
+  box-shadow: var(--card-shadow) !important;
+}
+
+/* ========================================
+   CARDS COM bg-elevated
+   ======================================== */
+[data-tema] .bg-gradient-to-br,
+[data-tema] [class*="rounded-2xl"][class*="shadow-"] {
+  background: var(--bg-elevated) !important;
 }
 
 /* ========================================

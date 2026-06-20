@@ -1,4 +1,3 @@
-// src/pages/Admin/LayoutAdmin.jsx
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
@@ -19,30 +18,31 @@ const LayoutAdmin = ({ children, title }) => {
   };
 
 const menuItems = [
-    { icon: LayoutDashboard, label: 'Dashboard', path: '/admin', color: 'text-blue-400' },
-    { icon: Award, label: 'Planos', path: '/admin/planos', color: 'text-purple-400' },
-    { icon: Key, label: 'Gerar Chave', path: '/admin/gerar-chave', color: 'text-yellow-400' },
-    { icon: FileText, label: 'Licenças', path: '/admin/licencas', color: 'text-indigo-400' },
-    { icon: Users, label: 'Gestores', path: '/admin/gestores', color: 'text-green-400' },
-    { icon: Building2, label: 'Empresas', path: '/admin/empresas', color: 'text-cyan-400' },
+    { icon: LayoutDashboard, label: 'Dashboard', path: '/admin' },
+    { icon: Award, label: 'Planos', path: '/admin/planos' },
+    { icon: Key, label: 'Gerar Chave', path: '/admin/gerar-chave' },
+    { icon: FileText, label: 'Licenças', path: '/admin/licencas' },
+    { icon: Users, label: 'Gestores', path: '/admin/gestores' },
+    { icon: Building2, label: 'Empresas', path: '/admin/empresas' },
     { divider: true },
-    { icon: TrendingUp, label: 'Estatísticas', path: '/admin/estatisticas', color: 'text-orange-400' },
+    { icon: TrendingUp, label: 'Estatísticas', path: '/admin/estatisticas' },
 ];
 
   return (
-    <div className="min-h-screen bg-gray-900">
-      <div className={`fixed top-0 left-0 h-full bg-gray-800 border-r border-gray-700 transition-all duration-300 z-30 flex flex-col ${sidebarOpen ? 'w-64' : 'w-20'}`}>
-        <div className="flex items-center justify-between p-4 border-b border-gray-700">
+    <div className="min-h-screen" style={{ background: 'var(--bg-body)' }}>
+      <div className={`fixed top-0 left-0 h-full transition-all duration-300 z-30 flex flex-col ${sidebarOpen ? 'w-64' : 'w-20'}`}
+        style={{ background: 'var(--bg-sidebar)', borderRight: '1px solid var(--border)' }}>
+        <div className="flex items-center justify-between p-4" style={{ borderBottom: '1px solid var(--border)' }}>
           <div className="flex items-center gap-3">
             <img src={logo} alt="SIREXA" className="w-8 h-8" />
             {sidebarOpen && (
               <div>
-                <span className="text-white font-bold block">SIREXA</span>
-                <span className="text-xs text-purple-400">Administrador</span>
+                <span className="font-bold block" style={{ color: 'var(--text-primary)' }}>SIREXA</span>
+                <span className="text-xs" style={{ color: 'var(--accent)' }}>Administrador</span>
               </div>
             )}
           </div>
-          <button onClick={() => setSidebarOpen(!sidebarOpen)} className="text-gray-400 hover:text-white">
+          <button onClick={() => setSidebarOpen(!sidebarOpen)} style={{ color: 'var(--text-secondary)' }}>
             {sidebarOpen ? <X size={20} /> : <Menu size={20} />}
           </button>
         </div>
@@ -50,17 +50,21 @@ const menuItems = [
         <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
           {menuItems.map((item, index) => (
             item.divider ? (
-              <div key={index} className="border-t border-gray-700 my-2"></div>
+              <div key={index} style={{ borderTop: '1px solid var(--border)', margin: '0.5rem 0' }}></div>
             ) : (
               <Link
                 key={index}
                 to={item.path}
-                className={`flex items-center gap-3 px-3 py-2 rounded-lg text-gray-300 hover:bg-gray-700 hover:text-white transition-all group`}
+                className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-all group`}
+                style={{ color: 'var(--sidebar-text)' }}
+                onMouseEnter={e => { e.currentTarget.style.background = 'var(--sidebar-bg-hover)'; e.currentTarget.style.color = 'var(--sidebar-text-hover)'; }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--sidebar-text)'; }}
               >
-                <item.icon size={20} className={item.color} />
+                <item.icon size={20} style={{ color: 'var(--accent)' }} />
                 {sidebarOpen && <span className="text-sm">{item.label}</span>}
                 {!sidebarOpen && (
-                  <div className="absolute left-full ml-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition whitespace-nowrap z-50">
+                  <div className="absolute left-full ml-2 px-2 py-1 text-xs rounded opacity-0 group-hover:opacity-100 transition whitespace-nowrap z-50"
+                    style={{ background: 'var(--bg-card)', color: 'var(--text-primary)' }}>
                     {item.label}
                   </div>
                 )}
@@ -69,20 +73,21 @@ const menuItems = [
           ))}
         </nav>
 
-        <div className="p-4 border-t border-gray-700">
+        <div className="p-4" style={{ borderTop: '1px solid var(--border)' }}>
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full bg-gradient-to-r from-purple-600 to-pink-600 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-full flex items-center justify-center"
+              style={{ background: 'var(--accent)' }}>
               <span className="text-white text-sm font-bold">
                 {user?.nome?.charAt(0) || 'A'}
               </span>
             </div>
             {sidebarOpen && (
               <div className="flex-1">
-                <p className="text-white text-sm font-medium truncate">{user?.nome || 'Admin'}</p>
-                <p className="text-gray-400 text-xs">Administrador</p>
+                <p className="text-sm font-medium truncate" style={{ color: 'var(--text-primary)' }}>{user?.nome || 'Admin'}</p>
+                <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>Administrador</p>
               </div>
             )}
-            <button onClick={handleLogout} className="text-gray-400 hover:text-white transition">
+            <button onClick={handleLogout} style={{ color: 'var(--text-secondary)' }}>
               <LogOut size={18} />
             </button>
           </div>
@@ -90,14 +95,15 @@ const menuItems = [
       </div>
 
       <div className={`transition-all duration-300 min-h-screen ${sidebarOpen ? 'ml-64' : 'ml-20'}`}>
-        <div className="bg-gradient-to-r from-gray-800 to-gray-800/80 border-b border-gray-700 px-6 py-4 sticky top-0 z-20">
+        <div className="px-6 py-4 sticky top-0 z-20"
+          style={{ background: 'var(--bg-topbar)', borderBottom: '1px solid var(--border)' }}>
           <div className="flex items-center justify-between">
-            <h1 className="text-xl font-bold text-white flex items-center gap-2">
-              <Shield className="w-5 h-5 text-purple-400" />
+            <h1 className="text-xl font-bold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
+              <Shield className="w-5 h-5" style={{ color: 'var(--accent)' }} />
               {title || 'Painel Administrativo'}
             </h1>
             <div className="flex items-center gap-3">
-              <span className="text-xs text-gray-400">
+              <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
                 {new Date().toLocaleDateString('pt-PT', { day: '2-digit', month: 'long', year: 'numeric' })}
               </span>
             </div>
