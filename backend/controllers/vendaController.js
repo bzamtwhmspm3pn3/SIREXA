@@ -1019,8 +1019,8 @@ exports.exportarSAFT = async (req, res) => {
             <TaxType>IVA</TaxType>
             <TaxCountryRegion>AO</TaxCountryRegion>
             <TaxCode>NOR</TaxCode>
-            <TaxPercentage>${item.taxaIVA || 14}</TaxPercentage>
-            <TaxAmount>${item.iva || (item.total * 0.14)}</TaxAmount>
+            <TaxPercentage>${item.taxaIVA != null ? item.taxaIVA : 14}</TaxPercentage>
+            <TaxAmount>${item.iva != null ? item.iva : (item.total * 0.14)}</TaxAmount>
           </Tax>
         </Line>`;
       });

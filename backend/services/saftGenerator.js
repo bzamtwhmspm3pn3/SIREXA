@@ -91,8 +91,8 @@ class SAFTGenerator {
             'TaxType': 'IVA',
             'TaxCountryRegion': 'AO',
             'TaxCode': 'NOR',
-            'TaxPercentage': item.taxaIVA || 14,
-            'TaxAmount': item.iva || (item.total * ((item.taxaIVA || 14) / 100))
+            'TaxPercentage': item.taxaIVA != null ? item.taxaIVA : 14,
+            'TaxAmount': item.iva != null ? item.iva : (item.total * ((item.taxaIVA != null ? item.taxaIVA : 14) / 100))
           }
         })),
         'DocumentTotals': {
