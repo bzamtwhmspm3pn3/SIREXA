@@ -291,7 +291,7 @@ export async function gerarPDFProfissional(documento, itens, opcoes = {}) {
   const logo = await logoBase64(empresa);
 
   const dataEmissao = documento.dataEmissao ? new Date(documento.dataEmissao).toLocaleDateString('pt-PT') : new Date().toLocaleDateString('pt-PT');
-  const numeroDocumento = documento.numeroDocumento || documento.numeroFactura || `FT/${new Date().getFullYear()}`;
+  const numeroDocumento = String(documento.numeroDocumento || documento.numeroFactura || `FT/${new Date().getFullYear()}`);
   const atcud = documento.atcud || vendaAtcud || '';
   const hash = documento.hash || vendaHash || '';
   const hashAnterior = documento.hashAnterior || '';
