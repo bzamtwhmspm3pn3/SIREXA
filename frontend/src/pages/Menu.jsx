@@ -1,5 +1,5 @@
 // src/pages/Menu.jsx
-import { Navigate } from "react-router-dom";
+import { Navigate, useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import Layout from "../components/Layout";
 import { 
@@ -496,9 +496,10 @@ export default function Menu() {
 
 // 🔥 COMPONENTE MenuCard - Usa window.location.href
 const MenuCard = ({ to, icon, title, description, gradient }) => {
+  const navigate = useNavigate();
   const handleClick = () => {
     console.log(`🔍 Navegando para: ${to}`);
-    window.location.href = to;
+    navigate(to);
   };
 
   return (

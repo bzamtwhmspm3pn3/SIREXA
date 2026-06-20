@@ -105,7 +105,7 @@ const CadastroEmpresa = () => {
         setRedirecting(true);
         
         setTimeout(() => {
-          window.location.href = "/empresa";
+          navigate("/empresa");
         }, 1000);
       } else {
         mostrarMensagem(result.mensagem || "Erro ao cadastrar empresa", "erro");

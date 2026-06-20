@@ -16,6 +16,7 @@ export const AuthProvider = ({ children }) => {
   const [empresaEmail, setEmpresaEmail] = useState(null);
   const [empresaTelefone, setEmpresaTelefone] = useState(null);
   const [empresaEndereco, setEmpresaEndereco] = useState(null);
+  const [token, setToken] = useState(localStorage.getItem("token"));
   // 🔥 NOVOS STATES PARA MÓDULOS E PLANO
   const [empresaModulos, setEmpresaModulos] = useState([]);
   const [empresaPlano, setEmpresaPlano] = useState('FREE');
@@ -29,6 +30,7 @@ export const AuthProvider = ({ children }) => {
         if (token && storedUser) {
           const userData = JSON.parse(storedUser);
           setUser(userData);
+          setToken(token);
           axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
           
           const primeiraEmpresaArr = Array.isArray(userData.empresas) ? userData.empresas[0] : null;
@@ -154,6 +156,7 @@ export const AuthProvider = ({ children }) => {
       localStorage.setItem("token", token);
       localStorage.setItem("user", JSON.stringify(finalUserData));
       axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      setToken(token);
       setUser(finalUserData);
       
       // Definir empresaId e dados da empresa
@@ -241,6 +244,7 @@ export const AuthProvider = ({ children }) => {
       empresaTelefone,
       empresaEndereco,
       getEmpresaAtiva,
+      token,
       // 🔥 NOVOS VALORES EXPORTADOS
       empresaModulos,
       empresaPlano

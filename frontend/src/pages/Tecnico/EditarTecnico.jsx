@@ -159,7 +159,7 @@ const EditarTecnico = () => {
         setMensagem({ texto: "✅ Técnico atualizado!", tipo: "sucesso" });
         setRedirecting(true);
         setTimeout(() => {
-          window.location.href = "/tecnico";
+          navigate("/tecnico");
         }, 500);
       } else {
         const error = await response.json();

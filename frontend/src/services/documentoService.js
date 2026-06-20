@@ -58,8 +58,8 @@ export async function gerarDocumentoPDF(documento, items, config = {}) {
     if (documento.codigoValidacao) extrasDoc.push(`Validação: ${documento.codigoValidacao}`);
 
     let extraText = '';
-    if (extraDoc.length > 0) {
-      extraText = extraDoc.join(' | ');
+    if (extrasDoc.length > 0) {
+      extraText = extrasDoc.join(' | ');
     }
     if (extraText) {
       doc.text(extraText, rMargin - 3, yPos + 1, { align: 'right' });

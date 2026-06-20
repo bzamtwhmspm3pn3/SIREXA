@@ -68,7 +68,7 @@ const RelatorioEmpresa = () => {
   };
 
   const voltarParaLista = () => {
-    window.location.href = "/empresa";
+    navigate("/empresa");
   };
 
   const formatarMoeda = (valor) => {
@@ -411,7 +411,7 @@ const RelatorioEmpresa = () => {
       mostrarMensagem("PDF gerado com sucesso!", "sucesso");
       
       setTimeout(() => {
-        window.location.href = "/empresa";
+        navigate("/empresa");
       }, 2000);
       
     } catch (error) {

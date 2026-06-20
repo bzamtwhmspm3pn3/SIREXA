@@ -277,7 +277,7 @@ const EditarEmpresa = () => {
       if (response.ok) {
         setMensagem({ texto: "✅ Empresa atualizada com sucesso!", tipo: "sucesso" });
         setTimeout(() => {
-          window.location.href = "/empresa";
+          navigate("/empresa");
         }, 1000);
       } else {
         mostrarMensagem(result.mensagem || "Erro ao atualizar empresa", "erro");

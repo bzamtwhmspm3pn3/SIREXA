@@ -1,5 +1,6 @@
 // frontend/src/pages/Transferencias.jsx - VERSÃO CORRIGIDA
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import Layout from "../components/Layout";
 import { 
@@ -35,6 +36,7 @@ import { carregarLogoBase64, drawCabecalhoProfissional, drawRodape } from '../ut
 
 function Transferencias() {
   const { user, isGestor, isTecnico, empresaId: userEmpresaId, empresaNome: userEmpresaNome } = useAuth();
+  const navigate = useNavigate();
   
   const [empresas, setEmpresas] = useState([]);
   const [empresaSelecionada, setEmpresaSelecionada] = useState("");
@@ -201,7 +203,7 @@ function Transferencias() {
   const handleVoltar = () => {
     setRedirecting(true);
     setTimeout(() => {
-      window.location.href = '/menu';
+      navigate('/menu');
     }, 100);
   };
 

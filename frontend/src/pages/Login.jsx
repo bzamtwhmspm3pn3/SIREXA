@@ -16,7 +16,8 @@ const Login = () => {
   const [erro, setErro] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [tipoLogin, setTipoLogin] = useState("gestor");
-  const { login, reenviarValidacao } = useAuth();
+  const API_URL = import.meta.env.VITE_API_URL || 'https://sirexa-api.onrender.com/api';
+  const { login } = useAuth();
   const navigate = useNavigate();
 
   // Estados para recuperação de senha
@@ -75,12 +76,21 @@ const Login = () => {
     setReenviando(true);
     setMensagemReenvio("");
     
-    const result = await reenviarValidacao(emailNaoConfirmado);
-    
-    if (result.success) {
-      setMensagemReenvio("✅ Novo link de confirmação enviado! Verifique seu email.");
-    } else {
-      setMensagemReenvio(`❌ ${result.message}`);
+    try {
+      const response = await fetch(`${API_URL}/gestor/reenviar-validacao`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: emailNaoConfirmado })
+      });
+      const result = await response.json();
+      
+      if (result.sucesso) {
+        setMensagemReenvio("Novo link de confirmação enviado! Verifique seu email.");
+      } else {
+        setMensagemReenvio(result.mensagem || "Erro ao reenviar validação");
+      }
+    } catch (error) {
+      setMensagemReenvio("Erro ao conectar ao servidor");
     }
     
     setReenviando(false);

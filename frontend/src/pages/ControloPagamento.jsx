@@ -1,5 +1,6 @@
 // src/pages/ControloPagamento.jsx - VERSÃO COMPLETA E ROBUSTA
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import Layout from "../components/Layout";
 import EmpresaSelector from "../components/EmpresaSelector";
@@ -15,6 +16,7 @@ import html2canvas from "html2canvas";
 import { carregarLogoBase64, drawCabecalhoProfissional, drawRodape, carregarDadosEmpresa } from '../utils/pdfUtils';
 
 const ControloPagamento = () => {
+  const navigate = useNavigate();
   const [empresas, setEmpresas] = useState([]);
   const [empresaSelecionada, setEmpresaSelecionada] = useState("");
   const [pagamentos, setPagamentos] = useState([]);
@@ -352,7 +354,7 @@ const ControloPagamento = () => {
         setRecarregar(!recarregar);
         
         setTimeout(() => {
-          window.location.href = '/controlo-pagamento';
+          navigate('/controlo-pagamento');
         }, 100);
       } else {
         mostrarMensagem(data.mensagem || "Erro ao criar pagamento", "erro");

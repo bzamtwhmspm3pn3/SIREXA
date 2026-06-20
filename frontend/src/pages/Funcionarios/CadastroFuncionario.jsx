@@ -279,7 +279,7 @@ const CadastroFuncionario = () => {
         setMensagem({ texto: "✅ Funcionário cadastrado com sucesso!", tipo: "sucesso" });
         setRedirecting(true);
         setTimeout(() => {
-          window.location.href = "/funcionarios";
+          navigate("/funcionarios");
         }, 500);
       } else {
         mostrarMensagem(result.mensagem || "Erro ao cadastrar funcionário", "erro");
