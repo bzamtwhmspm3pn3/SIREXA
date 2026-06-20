@@ -22,10 +22,11 @@ class IntegracaoContabilistica {
   // =========================================================================
   // VENDA
   // =========================================================================
-  // Venda a pronto (Dinheiro):   Débito 45.1.1 Caixa     | Crédito 61.1.1 Vendas
-  // Venda a crédito (prazo):     Débito 31.1.2.1 Clientes  | Crédito 61.1.1 Vendas
-  // Prest. Serviço (pronto):     Débito 45.1.1 Caixa     | Crédito 62.1.1 Serviços
-  // Prest. Serviço (crédito):    Débito 31.1.2.1 Clientes  | Crédito 62.1.1 Serviços
+  // Sem IVA:
+  //   Venda a pronto (Dinheiro): Débito 45.1.1 Caixa     | Crédito 61.1.1 Vendas
+  //   Venda a crédito (prazo):   Débito 31.1.2.1 Clientes  | Crédito 61.1.1 Vendas
+  // Com IVA (incluiIVA=true):
+  //   Débito Caixa/Clientes (total) | Crédito Vendas (subtotal) + IVA Liquidado (totalIva)
   // =========================================================================
   async integrarVenda(venda, empresaId, usuarioId) {
     const isServico = venda.tipoFactura === 'Prestação de Serviço';
@@ -34,35 +35,32 @@ class IntegracaoContabilistica {
     const nomeVenda = isServico ? 'Prestações de Serviços' : 'Vendas - Mercado Nacional';
     const contaVenda = await this.obterConta(empresaId, codVenda, nomeVenda, 6, 'Credora', usuarioId);
 
-    if (isCash) {
-      const contaCaixa = await this.obterConta(empresaId, '45.1.1', 'Caixa', 4, 'Devedora', usuarioId);
-      const lancamento = new LancamentoContabilistico({
-        numeroLancamento: `VND-CASH-${venda.numeroFactura}`,
-        descricao: `Venda a Pronto Pagamento #${venda.numeroFactura} - ${venda.cliente}`,
-        dataLancamento: new Date(venda.data),
-        empresaId,
-        partidas: [
-          { contaCodigo: contaCaixa.codigo, contaDescricao: contaCaixa.nome, classe: 4, debito: venda.total, credito: 0, documentoOrigem: { tipo: 'Venda', id: venda._id, referencia: venda.numeroFactura } },
-          { contaCodigo: contaVenda.codigo, contaDescricao: contaVenda.nome, classe: 6, debito: 0, credito: venda.total, documentoOrigem: { tipo: 'Venda', id: venda._id, referencia: venda.numeroFactura } }
-        ],
-        totalDebito: venda.total, totalCredito: venda.total, status: 'Contabilizado',
-        criadoPor: usuarioId, periodo: { ano: new Date(venda.data).getFullYear(), mes: new Date(venda.data).getMonth() + 1 }
-      });
-      await lancamento.save();
-      return lancamento;
+    const codCaixa = isCash ? '45.1.1' : '43.1.1';
+    const nomeCaixa = isCash ? 'Caixa' : 'Depósitos à Ordem';
+    const contaCaixa = await this.obterConta(empresaId, codCaixa, nomeCaixa, 4, 'Devedora', usuarioId);
+
+    const temIVA = venda.incluiIVA !== false && (venda.totalIva || 0) > 0;
+    const receita = venda.subtotal || (venda.total - (venda.totalIva || 0));
+    const valorIVA = temIVA ? (venda.totalIva || 0) : 0;
+
+    const partidas = [
+      { contaCodigo: contaCaixa.codigo, contaDescricao: contaCaixa.nome, classe: 4, debito: venda.total, credito: 0, documentoOrigem: { tipo: 'Venda', id: venda._id, referencia: venda.numeroFactura } },
+      { contaCodigo: contaVenda.codigo, contaDescricao: contaVenda.nome, classe: 6, debito: 0, credito: receita, documentoOrigem: { tipo: 'Venda', id: venda._id, referencia: venda.numeroFactura } }
+    ];
+
+    if (temIVA) {
+      const contaIVA = await this.obterConta(empresaId, '24.1.1', 'IVA Liquidado', 2, 'Credora', usuarioId);
+      partidas.push(
+        { contaCodigo: contaIVA.codigo, contaDescricao: contaIVA.nome, classe: 2, debito: 0, credito: valorIVA, documentoOrigem: { tipo: 'Venda', id: venda._id, referencia: venda.numeroFactura } }
+      );
     }
 
-    // Venda a crédito
-    const contaCliente = await this.obterConta(empresaId, '31.1.2.1', 'Clientes Nacionais', 3, 'Devedora', usuarioId);
     const lancamento = new LancamentoContabilistico({
-      numeroLancamento: `VND-${venda.numeroFactura}`,
-      descricao: `Venda a Crédito #${venda.numeroFactura} - ${venda.cliente}`,
+      numeroLancamento: isCash ? `VND-CASH-${venda.numeroFactura}` : `VND-${venda.numeroFactura}`,
+      descricao: `${isCash ? 'Venda a Pronto' : 'Venda a Crédito'} #${venda.numeroFactura} - ${venda.cliente}`,
       dataLancamento: new Date(venda.data),
       empresaId,
-      partidas: [
-        { contaCodigo: contaCliente.codigo, contaDescricao: contaCliente.nome, classe: 3, debito: venda.total, credito: 0, documentoOrigem: { tipo: 'Venda', id: venda._id, referencia: venda.numeroFactura } },
-        { contaCodigo: contaVenda.codigo, contaDescricao: contaVenda.nome, classe: 6, debito: 0, credito: venda.total, documentoOrigem: { tipo: 'Venda', id: venda._id, referencia: venda.numeroFactura } }
-      ],
+      partidas,
       totalDebito: venda.total, totalCredito: venda.total, status: 'Contabilizado',
       criadoPor: usuarioId, periodo: { ano: new Date(venda.data).getFullYear(), mes: new Date(venda.data).getMonth() + 1 }
     });
@@ -110,7 +108,7 @@ class IntegracaoContabilistica {
     // PAGAMENTO (despesa): custo reconhecido, dinheiro sai
     const mapCategoria = {
       'Folha Salarial': { codigo: '72.2.1', nome: 'Salários e Remunerações', classe: 7 },
-      'Fornecedor': { codigo: '32.1.2.1', nome: 'Fornecedores', classe: 3 },
+      'Fornecedor': { codigo: '32.1.1', nome: 'Fornecedores', classe: 3 },
       'Manutenção': { codigo: '73.1.4', nome: 'Manutenção', classe: 7 },
       'Abastecimento': { codigo: '75.2.13', nome: 'Combustíveis', classe: 7 },
       'Imposto': { codigo: '77.1.1', nome: 'Impostos', classe: 7 },
