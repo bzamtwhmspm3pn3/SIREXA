@@ -1,5 +1,5 @@
-import { jsPDF } from 'jspdf';
-import 'jspdf-autotable';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import { carregarLogoBase64, carregarDadosEmpresa, drawCabecalhoProfissional, drawRodape, drawClientSection, drawTotalsBox, formatarMoeda, getCorTitulo, getTextoObservacoes, COR_TEXTO, COR_ESCURA, COR_CINZA_MEDIO, COR_BORDA, COR_PRIMARIA } from '../utils/pdfUtils';
 
 export async function gerarDocumentoPDF(documento, items, config = {}) {
@@ -138,7 +138,7 @@ export async function gerarDocumentoPDF(documento, items, config = {}) {
           5: { cellWidth: 24, halign: 'right' },
         };
 
-    doc.autoTable({
+    autoTable(doc, {
       startY: yPos,
       head: [colHead],
       body: tableRows,

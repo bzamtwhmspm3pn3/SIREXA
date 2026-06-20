@@ -12,15 +12,15 @@ import FacturasProvider from './contexts/FacturasContext';
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
     <BrowserRouter>
-      <ThemeProvider>
-        <LanguageProvider>
-          <AuthProvider>
+      <AuthProvider>
+        <ThemeProvider>
+          <LanguageProvider>
             <FacturasProvider>
               <App />
             </FacturasProvider>
-          </AuthProvider>
-        </LanguageProvider>
-      </ThemeProvider>
+          </LanguageProvider>
+        </ThemeProvider>
+      </AuthProvider>
     </BrowserRouter>
   </React.StrictMode>
 );
