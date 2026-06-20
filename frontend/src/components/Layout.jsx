@@ -215,7 +215,7 @@ function Layout({ title, children, showBackButton = false, backToRoute = null })
           </div>
         </aside>
 
-        <main id="main-content-admin" className="flex-1 flex flex-col min-h-screen">
+        <main id="main-content-admin" tabIndex={-1} className="flex-1 flex flex-col min-h-screen focus:outline-none">
           {title && (
             <div className="sticky top-0 z-30 backdrop-blur-md" style={{ background: "var(--bg-topbar)", borderColor: "var(--border)" }}>
               <div className="flex items-center justify-between">
@@ -320,7 +320,7 @@ function Layout({ title, children, showBackButton = false, backToRoute = null })
         </aside>
       )}
 
-      <main id="main-content-gestor" className="flex-1 flex flex-col min-h-screen">
+      <main id="main-content-gestor" tabIndex={-1} className="flex-1 flex flex-col min-h-screen focus:outline-none">
         {title && (
           <div className="sticky top-0 z-30 backdrop-blur-md px-6 py-4" style={{ background: "var(--bg-topbar)", borderColor: "var(--border)" }}>
             <div className="flex items-center justify-between">

@@ -61,32 +61,35 @@
 }
 
 /* ========================================
-   TEMA CLARO (branco profissional)
+   TEMA CLARO (AGT-inspired — sidebar escura, conteudo claro)
    ======================================== */
 [data-tema="claro"] {
   --bg-body: #f0f4f8;
-  --bg-sidebar: #ffffff;
+  --bg-sidebar: linear-gradient(180deg, #0f2b5e 0%, #1a3d7a 100%);
   --bg-card: #ffffff;
   --bg-card-hover: #f8fafc;
   --bg-input: #ffffff;
   --bg-topbar: #ffffff;
-  --text-primary: #0f172a;
-  --text-secondary: #475569;
-  --text-muted: #94a3b8;
-  --border: #d1d5db;
-  --border-light: #e5e7eb;
+  --text-primary: #1a202c;
+  --text-secondary: #4a5568;
+  --text-muted: #a0aec0;
+  --border: #e2e8f0;
+  --border-light: #edf2f7;
   --accent: #2563eb;
   --accent-hover: #1d4ed8;
   --accent-bg: rgba(37,99,235,0.08);
   --success: #16a34a;
-  --warning: #ca8a04;
+  --warning: #d97706;
   --danger: #dc2626;
-  --sidebar-text: #475569;
-  --sidebar-text-hover: #0f172a;
+  --sidebar-text: #cbd5e1;
+  --sidebar-text-hover: #ffffff;
   --sidebar-text-active: #ffffff;
-  --sidebar-bg-active: #2563eb;
-  --sidebar-bg-hover: #f1f5f9;
-  --topbar-text: #0f172a;
+  --sidebar-bg-active: rgba(255,255,255,0.18);
+  --sidebar-bg-hover: rgba(255,255,255,0.08);
+  --topbar-text: #1a202c;
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.06);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.08);
+  --shadow-lg: 0 10px 25px rgba(0,0,0,0.1);
 }
 
 /* ========================================
