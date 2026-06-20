@@ -128,7 +128,7 @@ const calcularTotais = (itens, desconto = 0, incluiIVA = true) => {
 };
 
 // Helper para processar itens (produtos e serviços)
-const processarItens = async (itens, empresaId, usuario, isFactura = false) => {
+const processarItens = async (itens, empresaId, usuario, isFactura = false, incluiIVA = true) => {
   const itensProcessados = [];
   
   for (let i = 0; i < itens.length; i++) {
@@ -160,9 +160,8 @@ const processarItens = async (itens, empresaId, usuario, isFactura = false) => {
     const descontoItem = item.desconto || 0;
     const totalComDesconto = total - descontoItem;
     
-    // Calcular IVA apenas se a taxa for > 0 e for factura (ou se incluiIVA for true)
     let ivaItem = 0;
-    if (taxaIVA > 0) {
+    if (incluiIVA && taxaIVA > 0) {
       ivaItem = totalComDesconto * (taxaIVA / 100);
     }
     
@@ -294,6 +293,7 @@ exports.gerarOrcamento = async (req, res) => {
       totalIva: totalIva,
       desconto: dados.desconto || 0,
       total: totalFinal,
+      incluiIVA: incluiIVA,
       formaPagamento: dados.formaPagamento || "A definir",
       status: "rascunho",
       usuario: usuario,
@@ -411,6 +411,7 @@ exports.gerarProforma = async (req, res) => {
       totalIva: totalIva,
       desconto: dados.desconto || 0,
       total: totalFinal,
+      incluiIVA: incluiIVA,
       formaPagamento: dados.formaPagamento || "A definir",
       status: "rascunho",
       usuario: usuario,
@@ -473,7 +474,7 @@ exports.emitirFactura = async (req, res) => {
     const incluiIVA = dados.incluiIVA !== undefined ? dados.incluiIVA : true;
 
     // Processar itens com validação de estoque (para factura definitiva)
-    const itensProcessados = await processarItens(dados.itens, empresa._id, usuario, true);
+    const itensProcessados = await processarItens(dados.itens, empresa._id, usuario, true, incluiIVA);
 
     const { subtotal, totalIva, totalFinal } = calcularTotais(itensProcessados, dados.desconto || 0, incluiIVA);
 
@@ -651,6 +652,7 @@ exports.emitirFacturaRecibo = async (req, res) => {
       totalIva: totalIva,
       desconto: dados.desconto || 0,
       total: totalFinal,
+      incluiIVA: incluiIVA,
       formaPagamento: dados.formaPagamento || "Dinheiro",
       detalhesPagamento: {
         dataPagamento: new Date(),
@@ -744,6 +746,7 @@ exports.gerarRecibo = async (req, res) => {
       totalIva: facturaOriginal.totalIva,
       desconto: facturaOriginal.desconto,
       total: facturaOriginal.total,
+      incluiIVA: facturaOriginal.incluiIVA !== false,
       formaPagamento: dados?.formaPagamento || facturaOriginal.formaPagamento,
       detalhesPagamento: {
         ...facturaOriginal.detalhesPagamento?.toObject(),

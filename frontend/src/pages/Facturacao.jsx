@@ -618,7 +618,7 @@ const Facturacao = () => {
         await carregarDocumentos();
         
         if (result.dados) {
-          await gerarDocumentoProfissional(result.dados, user, empresaAtual, contasBancarias);
+          await gerarDocumentoProfissional(result.dados, result.dados.itens || []);
         }
         
         setModalOpen(false);
@@ -692,7 +692,7 @@ const Facturacao = () => {
         await carregarDocumentos();
         
         if (result.dados) {
-          await gerarDocumentoProfissional(result.dados, user, empresaAtual, contasBancarias);
+          await gerarDocumentoProfissional(result.dados, result.dados.itens || []);
         }
       } else {
         mostrarMensagem(result.mensagem || "Erro ao gerar recibo", "erro");
@@ -735,7 +735,7 @@ const Facturacao = () => {
         mostrarMensagem("Nota de Crédito gerada com sucesso!", "sucesso");
         await carregarDocumentos();
         if (result.dados) {
-          await gerarDocumentoProfissional(result.dados, user, empresaAtual, contasBancarias);
+          await gerarDocumentoProfissional(result.dados, result.dados.itens || []);
         }
       } else {
         mostrarMensagem(result.mensagem || "Erro ao gerar nota de crédito", "erro");
@@ -791,7 +791,7 @@ const Facturacao = () => {
     } else {
       empresaAtual = empresas.find(e => e._id === empresaSelecionada);
     }
-    await gerarDocumentoProfissional(doc, user, empresaAtual, contasBancarias);
+    await gerarDocumentoProfissional(doc, doc.itens || []);
   };
 
   const exportarSAFT = async () => {
