@@ -12,7 +12,7 @@ import {
   Package, Trash2, Minus, Filter, Percent, ShoppingCart,
   CreditCard, DollarSign, Phone, Mail, MapPin, Wrench, Briefcase
 } from "lucide-react";
-import { gerarDocumentoProfissional } from "../services/documentoService";
+import { gerarPDFProfissional } from "../services/sirexaPdfService";
 
 const Facturacao = () => {
   const [empresas, setEmpresas] = useState([]);
@@ -618,7 +618,11 @@ const Facturacao = () => {
         await carregarDocumentos();
         
         if (result.dados) {
-          const pdf = await gerarDocumentoProfissional(result.dados, result.dados.itens || []);
+          const pdf = await gerarPDFProfissional(result.dados, result.dados.itens || [], {
+            tipo: result.dados.tipo || tipoDocumento,
+            empresa: empresaAtual,
+            contasBancarias
+          });
           if (pdf?.doc) pdf.doc.save(pdf.fileName);
         }
         
@@ -737,7 +741,11 @@ const Facturacao = () => {
         mostrarMensagem("Nota de Crédito gerada com sucesso!", "sucesso");
         await carregarDocumentos();
         if (result.dados) {
-          const pdf = await gerarDocumentoProfissional(result.dados, result.dados.itens || []);
+          const pdf = await gerarPDFProfissional(result.dados, result.dados.itens || [], {
+            tipo: 'Nota Credito',
+            empresa: empresaAtual,
+            contasBancarias
+          });
           if (pdf?.doc) pdf.doc.save(pdf.fileName);
         }
       } else {
@@ -794,7 +802,11 @@ const Facturacao = () => {
     } else {
       empresaAtual = empresas.find(e => e._id === empresaSelecionada);
     }
-    const pdf = await gerarDocumentoProfissional(doc, doc.itens || []);
+    const pdf = await gerarPDFProfissional(doc, doc.itens || [], {
+      tipo: doc.tipo || 'Factura',
+      empresa: empresaAtual,
+      contasBancarias
+    });
     if (pdf?.doc) pdf.doc.save(pdf.fileName);
   };
 

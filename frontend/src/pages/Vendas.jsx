@@ -13,7 +13,7 @@ import {
   CalendarDays, MapPin, Phone, Mail, Wallet, Landmark,
   Edit, Copy, FileSpreadsheet, Download
 } from "lucide-react";
-import { gerarFacturaProfissional } from "../services/facturaService";
+import { gerarPDFProfissional } from "../services/sirexaPdfService";
 
 const Vendas = () => {
   const [empresas, setEmpresas] = useState([]);
@@ -592,7 +592,18 @@ const Vendas = () => {
       if (response.ok && result.sucesso) {
         mostrarMensagem("Venda realizada com sucesso!", "sucesso");
         if (result.dados?.venda) {
-          await gerarFacturaProfissional(result.dados.venda, user, empresaAtual, contasBancarias);
+          const v = result.dados.venda;
+          const pdf = await gerarPDFProfissional(v, v.itens || [], {
+            tipo: 'Factura',
+            empresa: empresaAtual,
+            contasBancarias,
+            vendaFormaPagamento: v.formaPagamento,
+            vendaContaBancaria: v.contaBancaria,
+            vendaAtcud: v.atcud,
+            vendaHash: v.hash,
+            incluiIVA: vendaData.incluiIVA !== false,
+          });
+          if (pdf?.doc) pdf.doc.save(pdf.fileName);
         }
         setModalOpen(false);
         setModalParcelas(false);
@@ -664,7 +675,16 @@ const Vendas = () => {
     const empresaAtual = isTecnico() 
       ? { nome: userEmpresaNome, nif: userEmpresaNif, email: userEmpresaEmail, telefone: userEmpresaTelefone, endereco: userEmpresaEndereco }
       : empresas.find(e => e._id === empresaSelecionada);
-    await gerarFacturaProfissional(venda, user, empresaAtual, contasBancarias);
+    const pdf = await gerarPDFProfissional(venda, venda.itens || [], {
+      tipo: 'Factura',
+      empresa: empresaAtual,
+      contasBancarias,
+      vendaFormaPagamento: venda.formaPagamento,
+      vendaContaBancaria: venda.contaBancaria,
+      vendaAtcud: venda.atcud,
+      vendaHash: venda.hash,
+    });
+    if (pdf?.doc) pdf.doc.save(pdf.fileName);
   };
 
   const cancelarVenda = async (venda) => {
