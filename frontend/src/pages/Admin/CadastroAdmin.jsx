@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import logo from "../../assets/sirexa-logo.ico";
 import API_URL from '../../config/api';
+import ThemeLangControls from "../../components/ThemeLangControls";
 
 const CadastroAdmin = () => {
   const navigate = useNavigate();
@@ -123,12 +124,15 @@ const CadastroAdmin = () => {
 
   return (
     <div 
-      className="min-h-screen flex items-center justify-center p-4"
+      className="min-h-screen flex items-center justify-center p-4 relative"
       style={{
         background: "linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)",
         backgroundAttachment: "fixed",
       }}
     >
+      <div className="absolute top-4 right-4 z-50">
+        <ThemeLangControls />
+      </div>
       <div className="w-full max-w-md">
         {/* Logo e Título */}
         <div className="text-center mb-8">

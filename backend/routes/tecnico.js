@@ -67,12 +67,41 @@ router.post('/login', async (req, res) => {
         empresaNome: tecnico.empresaNome,
         modulos: tecnico.modulos,
         role: 'tecnico',
-        empresasPermitidas: empresasPermitidas
+        empresasPermitidas: empresasPermitidas,
+        prefs: tecnico.prefs || { tema: 'normal', contraste: 'normal', tamanhoFonte: 'normal' }
       }
     });
   } catch (error) {
     console.error('❌ Erro no login:', error);
     res.status(500).json({ mensagem: "Erro ao fazer login" });
+  }
+});
+
+// ============================================
+// 👤 ATUALIZAR PREFERÊNCIAS DO UTILIZADOR
+// ============================================
+router.patch("/prefs", verifyToken, async (req, res) => {
+  try {
+    const { tema, contraste, tamanhoFonte } = req.body;
+    const update = {};
+    if (tema) update['prefs.tema'] = tema;
+    if (contraste) update['prefs.contraste'] = contraste;
+    if (tamanhoFonte) update['prefs.tamanhoFonte'] = tamanhoFonte;
+
+    const tecnico = await Tecnico.findByIdAndUpdate(
+      req.user.id,
+      { $set: update },
+      { new: true }
+    ).select('prefs');
+
+    if (!tecnico) {
+      return res.status(404).json({ sucesso: false, mensagem: "Técnico não encontrado" });
+    }
+
+    res.json({ sucesso: true, prefs: tecnico.prefs });
+  } catch (erro) {
+    console.error('❌ Erro ao atualizar prefs:', erro);
+    res.status(500).json({ sucesso: false, mensagem: "Erro ao atualizar preferências" });
   }
 });
 

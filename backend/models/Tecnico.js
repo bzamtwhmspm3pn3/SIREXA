@@ -66,6 +66,13 @@ const TecnicoSchema = new mongoose.Schema({
     encerramento: { type: Boolean, default: false }        
   },
   
+  // 👤 PREFERÊNCIAS DO UTILIZADOR (tema, etc)
+  prefs: {
+    tema: { type: String, default: 'normal' },
+    contraste: { type: String, default: 'normal' },
+    tamanhoFonte: { type: String, default: 'normal' }
+  },
+
   createdAt: { type: Date, default: Date.now }
 });
 

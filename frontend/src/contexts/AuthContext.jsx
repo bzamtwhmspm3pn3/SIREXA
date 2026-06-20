@@ -138,6 +138,8 @@ export const AuthProvider = ({ children }) => {
       const empresaTelefoneFinal = empresaCompleta?.telefone || userData.empresaTelefone || primeiraEmpresaArray?.contactos?.telefone || '';
       const empresaEnderecoFinal = empresaCompleta?.endereco || userData.empresaEndereco || primeiraEmpresaArray?.endereco || null;
 
+      const userPrefs = userData.prefs || { tema: 'normal', contraste: 'normal', tamanhoFonte: 'normal' };
+
       const finalUserData = {
         ...userData,
         role: userData.role || tipo,
@@ -150,8 +152,14 @@ export const AuthProvider = ({ children }) => {
         empresaEndereco: empresaEnderecoFinal,
         modulos: userData.modulos || {},
         modulosAtivos: modulosAtivos,
-        plano: plano
+        plano: plano,
+        prefs: userPrefs
       };
+
+      // Guardar preferências do tema por utilizador
+      if (finalUserData.email) {
+        localStorage.setItem(`sirexa_theme_${finalUserData.email}`, JSON.stringify(userPrefs));
+      }
       
       localStorage.setItem("token", token);
       localStorage.setItem("user", JSON.stringify(finalUserData));
@@ -226,6 +234,20 @@ export const AuthProvider = ({ children }) => {
     return null;
   };
 
+  const updateUserPrefs = async (novasPrefs) => {
+    if (!user?.email) return;
+    try {
+      const url = user.role === 'tecnico' ? `${API_URL}/tecnico/prefs` : `${API_URL}/gestor/prefs`;
+      await axios.patch(url, novasPrefs);
+      setUser((prev) => ({ ...prev, prefs: { ...prev.prefs, ...novasPrefs } }));
+      localStorage.setItem(`sirexa_theme_${user.email}`, JSON.stringify({ ...user.prefs, ...novasPrefs }));
+    } catch (err) {
+      console.error('Erro ao salvar preferências:', err);
+    }
+  };
+
+  const userPrefs = user?.prefs || { tema: 'normal', contraste: 'normal', tamanhoFonte: 'normal' };
+
   return (
     <AuthContext.Provider value={{
       user,
@@ -245,9 +267,11 @@ export const AuthProvider = ({ children }) => {
       empresaEndereco,
       getEmpresaAtiva,
       token,
-      // 🔥 NOVOS VALORES EXPORTADOS
       empresaModulos,
-      empresaPlano
+      empresaPlano,
+      // 👤 PREFERÊNCIAS DO UTILIZADOR
+      userPrefs,
+      updateUserPrefs
     }}>
       {children}
     </AuthContext.Provider>

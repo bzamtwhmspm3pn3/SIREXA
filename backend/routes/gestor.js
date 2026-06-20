@@ -449,7 +449,8 @@ router.post("/login", async (req, res) => {
         empresaEmail: primeiraEmpresa?.contactos?.email || '',
         empresaTelefone: primeiraEmpresa?.contactos?.telefone || '',
         empresaEndereco: primeiraEmpresa?.endereco || null,
-        modulosAtivos: modulosAtivos
+        modulosAtivos: modulosAtivos,
+        prefs: gestor.prefs || { tema: 'normal', contraste: 'normal', tamanhoFonte: 'normal' }
       }
     });
     
@@ -463,6 +464,33 @@ router.post("/login", async (req, res) => {
   }
 });
 
+// ============================================
+// 👤 ATUALIZAR PREFERÊNCIAS DO UTILIZADOR
+// ============================================
+router.patch("/prefs", verifyToken, async (req, res) => {
+  try {
+    const { tema, contraste, tamanhoFonte } = req.body;
+    const update = {};
+    if (tema) update['prefs.tema'] = tema;
+    if (contraste) update['prefs.contraste'] = contraste;
+    if (tamanhoFonte) update['prefs.tamanhoFonte'] = tamanhoFonte;
+
+    const gestor = await Gestor.findByIdAndUpdate(
+      req.user.id,
+      { $set: update },
+      { new: true }
+    ).select('prefs');
+
+    if (!gestor) {
+      return res.status(404).json({ sucesso: false, mensagem: "Gestor não encontrado" });
+    }
+
+    res.json({ sucesso: true, prefs: gestor.prefs });
+  } catch (erro) {
+    console.error('❌ Erro ao atualizar prefs:', erro);
+    res.status(500).json({ sucesso: false, mensagem: "Erro ao atualizar preferências" });
+  }
+});
 
 // ============================================
 // 🔥 VALIDAÇÃO DE LICENÇA (PÚBLICA)

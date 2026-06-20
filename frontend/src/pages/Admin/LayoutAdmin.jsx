@@ -6,6 +6,7 @@ import {
   Menu, X, Shield, Award, Settings, TrendingUp
 } from 'lucide-react';
 import logo from '../../assets/sirexa-logo.ico';
+import ThemeLangControls from '../../components/ThemeLangControls';
 
 const LayoutAdmin = ({ children, title }) => {
   const { logout, user } = useAuth();
@@ -103,6 +104,7 @@ const menuItems = [
               {title || 'Painel Administrativo'}
             </h1>
             <div className="flex items-center gap-3">
+              <ThemeLangControls />
               <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
                 {new Date().toLocaleDateString('pt-PT', { day: '2-digit', month: 'long', year: 'numeric' })}
               </span>

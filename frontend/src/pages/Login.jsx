@@ -8,6 +8,7 @@ import {
   KeyRound, Send
 } from "lucide-react";
 import logo from "../assets/sirexa-logo.ico";
+import ThemeLangControls from "../components/ThemeLangControls";
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -215,12 +216,15 @@ const Login = () => {
 
   return (
     <div 
-      className="min-h-screen flex items-center justify-center p-4"
+      className="min-h-screen flex items-center justify-center p-4 relative"
       style={{
-        background: "linear-gradient(135deg, #003366 0%, #0055A5 50%, #00C0F9 100%)",
+        background: "var(--bg-body, linear-gradient(135deg, #003366 0%, #0055A5 50%, #00C0F9 100%))",
         backgroundAttachment: "fixed",
       }}
     >
+      <div className="absolute top-4 right-4 z-50">
+        <ThemeLangControls />
+      </div>
       <div className="w-full max-w-md">
         {/* Logo e Título */}
         <div className="text-center mb-8">

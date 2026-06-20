@@ -19,6 +19,13 @@ const GestorSchema = new mongoose.Schema({
   chaveAtivacao: { type: String }, // Chave usada no cadastro
   licencaId: { type: mongoose.Schema.Types.ObjectId, ref: 'Licenca' },
   
+  // 👤 PREFERÊNCIAS DO UTILIZADOR (tema, etc)
+  prefs: {
+    tema: { type: String, default: 'normal' },
+    contraste: { type: String, default: 'normal' },
+    tamanhoFonte: { type: String, default: 'normal' }
+  },
+
   // 🔥 SEGURANÇA
   loginAttempts: { type: Number, default: 0 }, // Tentativas de login falhas
   lockUntil: { type: Date }, // Data até quando está bloqueado

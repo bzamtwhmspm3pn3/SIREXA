@@ -24,7 +24,7 @@ export default function ThemeLangControls({ vertical = false }) {
         aria-label={t('common.tema_acao')}
       >
         <TemaIcon size={16} />
-        {vertical && <span>{t(`sidebar.acessibilidade`)}</span>}
+        {vertical && <span>{t('sidebar.tema')}</span>}
       </button>
 
       {aberto && (
