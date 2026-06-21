@@ -79,12 +79,16 @@ const Relatorios = () => {
       const r = await fetch(`${BASE_URL}/api/relatorios/lista-modulos`, { headers: getHeaders() });
       const data = await r.json();
       if (data.sucesso) {
-        setGrupos(data.grupos);
-        const gs = Object.keys(data.grupos);
+        const grupos = data.grupos;
+        if (grupos.analise) {
+          grupos.analise.modulos.unshift({ id: 'completo', nome: 'Gestão Completo' });
+        }
+        setGrupos(grupos);
+        const gs = Object.keys(grupos);
         setModulosList(gs);
         if (gs.length > 0) {
           setGrupoAtivo(gs[0]);
-          const firstMod = data.grupos[gs[0]].modulos;
+          const firstMod = grupos[gs[0]].modulos;
           if (firstMod.length > 0) {
             setSubModuloAtivo(firstMod[0].id);
             setIsGroupMode(false);
@@ -148,7 +152,10 @@ const Relatorios = () => {
     setRelatorio(null);
     try {
       let url;
-      if (isGroupMode) {
+      if (subModuloAtivo === 'completo') {
+        url = `${BASE_URL}/api/relatorios/completo?empresaId=${empresaSelecionada}&tipoPeriodo=${tipoPeriodo}&ano=${ano}`;
+        if (tipoPeriodo !== 'anual') url += `&mes=${mes}`;
+      } else if (isGroupMode) {
         url = `${BASE_URL}/api/relatorios/grupo/${grupoAtivo}?empresaId=${empresaSelecionada}&tipoPeriodo=${tipoPeriodo}&ano=${ano}`;
         if (tipoPeriodo !== 'anual') url += `&mes=${mes}`;
       } else {
@@ -233,7 +240,7 @@ const Relatorios = () => {
         y = doc.lastAutoTable.finalY + 8;
       };
 
-      const { modulo, grupo, nome, dados, periodo, empresa } = relatorio;
+      const { modulo, grupo, nome, dados, periodo, empresa, texto, indicadoresFinanceiros, indicadoresEmpresa, contasCorrentes: cc, topClientes } = relatorio;
       const isGroup = !!grupo;
       const titulo = isGroup ? `RELATORIO ${(nome || grupo).toUpperCase()}` : `RELATORIO: ${(nome || modulo).toUpperCase()}`;
       const empresaNome = empresa?.nome || "Empresa";
@@ -257,39 +264,116 @@ const Relatorios = () => {
 
       doc.addPage(); y = 25;
 
-      // Indicadores
-      if (dados?.indicadores && dados.indicadores.length > 0) {
-        sec("INDICADORES", "1");
-        const iBody = dados.indicadores.map(ind => [ind.nome, formatValor(ind.valor, ind.fmt)]);
-        table(["Indicador", "Valor"], iBody);
-      }
-
-      if (dados?.indicadoresAgregados && dados.indicadoresAgregados.length > 0) {
-        sec("INDICADORES AGREGADOS", "1");
-        const aBody = dados.indicadoresAgregados.map(ind => [ind.nome, formatValor(ind.valor, 'moeda')]);
-        table(["Indicador", "Valor"], aBody);
-      }
-
-      // Gráficos
-      let chartIdx = 0;
-      if (dados?.graficos) {
-        sec("GRÁFICOS", "2");
-        for (const g of dados.graficos) {
-          if (chartIdx < chartImages.length && chartImages[chartIdx]) {
-            addChartImg(chartImages[chartIdx]);
-          }
-          chartIdx++;
+      // Indicadores (section inside narrative - skip if narrative will show them)
+      if (!texto?.introducao) {
+        if (dados?.indicadores && dados.indicadores.length > 0) {
+          sec("INDICADORES", "1");
+          const iBody = dados.indicadores.map(ind => [ind.nome, formatValor(ind.valor, ind.fmt)]);
+          table(["Indicador", "Valor"], iBody);
+        }
+        if (dados?.indicadoresAgregados && dados.indicadoresAgregados.length > 0) {
+          sec("INDICADORES AGREGADOS", "1");
+          const aBody = dados.indicadoresAgregados.map(ind => [ind.nome, formatValor(ind.valor, 'moeda')]);
+          table(["Indicador", "Valor"], aBody);
         }
       }
 
-      // Alertas
-      if (dados?.alertas && dados.alertas.length > 0) {
-        sec("ALERTAS", "3");
-        const aBody = dados.alertas.map(a => [a.nome, fI(a.quantidade)]);
-        table(["Alerta", "Qtd"], aBody, { headColor: [220, 38, 38] });
-      }
+      // Completo: Relatório de Gestão Completo com narrativa
+      if (texto?.introducao) {
+        sec("INTRODUÇÃO", "1");
+        doc.setFontSize(9); doc.setFont("helvetica", "normal"); doc.setTextColor(50, 50, 60);
+        const introLines = doc.splitTextToSize(texto.introducao || "", pw - 2 * m);
+        for (const line of introLines) { checkPage(5); doc.text(line, m, y); y += 5; }
 
-      // Sub-módulos (group mode)
+        sec("ENQUADRAMENTO GERAL", "2");
+        const enquLines = doc.splitTextToSize(texto.enquadramento || "", pw - 2 * m);
+        for (const line of enquLines) { checkPage(5); doc.text(line, m, y); y += 5; }
+
+        sec("INDICADORES DE DESEMPENHO", "3");
+
+        // Company-wide financial indicators
+        const fi = indicadoresFinanceiros || {};
+        const ei = indicadoresEmpresa || {};
+        const indBody = [
+          ["Receitas Totais", `${fN(fi.totalReceitas)} Kz`], ["Despesas Totais", `${fN(fi.totalDespesas)} Kz`],
+          ["Resultado Líquido", `${fN(Math.abs(fi.resultadoLiquido || 0))} Kz`], ["Margem de Lucro", `${Number(fi.margemLucro || 0).toFixed(2)}%`],
+          ["Margem Bruta", `${Number(fi.margemBruta || 0).toFixed(2)}%`], ["Ticket Médio", `${fN(fi.ticketMedio)} Kz`],
+          ["Total de Vendas", fI(fi.totalVendas)], ["Saldo Inicial", `${fN(fi.saldoInicial)} Kz`],
+          ["Saldo Final", `${fN(fi.saldoFinal)} Kz`], ["Funcionários", fI(ei.totalFuncionarios)],
+          ["Clientes", fI(ei.totalClientes)], ["Fornecedores", fI(ei.totalFornecedores)],
+          ["Produtos Stock", fI(ei.totalProdutos)], ["Valor Stock", `${fN(ei.valorTotalStock)} Kz`],
+          ["Viaturas", fI(ei.totalViaturas)]
+        ];
+        table(["Indicador", "Valor"], indBody);
+
+        // Module-specific indicators
+        if (dados?.indicadores?.length > 0) {
+          doc.setFontSize(10); doc.setFont("helvetica", "bold"); doc.setTextColor(59, 130, 246);
+          doc.text(`Indicadores do Módulo: ${nome || modulo}`, m, y); y += 6;
+          const modIndBody = dados.indicadores.map(ind => [ind.nome, ind.fmt === 'moeda' ? `${fN(ind.valor)} Kz` : fI(ind.valor)]);
+          table(["Indicador", "Valor"], modIndBody, { headColor: [59, 130, 246] });
+        }
+        if (dados?.indicadoresAgregados?.length > 0) {
+          doc.setFontSize(10); doc.setFont("helvetica", "bold"); doc.setTextColor(147, 51, 234);
+          doc.text(`Indicadores Agregados do Grupo`, m, y); y += 6;
+          const agrBody = dados.indicadoresAgregados.map(ind => [ind.nome, `${fN(ind.valor)} Kz`]);
+          table(["Indicador", "Valor"], agrBody, { headColor: [147, 51, 234] });
+        }
+
+        sec("ANÁLISE FINANCEIRA", "4");
+        const afLines = doc.splitTextToSize(texto.analiseFinanceira || "", pw - 2 * m);
+        for (const line of afLines) { checkPage(5); doc.text(line, m, y); y += 5; }
+
+        sec("ANÁLISE OPERACIONAL", "5");
+        const aoLines = doc.splitTextToSize(texto.analiseOperacional || "", pw - 2 * m);
+        for (const line of aoLines) { checkPage(5); doc.text(line, m, y); y += 5; }
+
+        sec("ANÁLISE DE CONTAS CORRENTES", "6");
+        const ccAnalise = texto.analiseContasCorrentes || cc?.analise || "";
+        if (ccAnalise) {
+          let analiseLimpa = ccAnalise.replace(/& þ.*$/g, '').replace(/FORNECEDORES QUE REQUEREM.*$/g, '');
+          const ccLines = doc.splitTextToSize(analiseLimpa, pw - 2 * m);
+          for (const line of ccLines) { checkPage(5); doc.text(line, m, y); y += 5; }
+        }
+
+        sec("RECOMENDAÇÕES ESTRATÉGICAS", "7");
+        const recTexto = typeof texto.recomendacoes === 'string' ? texto.recomendacoes : Array.isArray(texto.recomendacoes) ? texto.recomendacoes.join("\n") : "";
+        if (recTexto) {
+          const recLines = doc.splitTextToSize(recTexto, pw - 2 * m);
+          for (const line of recLines) { checkPage(5); doc.text(line, m, y); y += 5; }
+        } else { doc.text("Nenhuma recomendação disponível.", m, y); y += 5; }
+
+        sec("CONCLUSÃO", "8");
+        const concLines = doc.splitTextToSize(texto.conclusao || "", pw - 2 * m);
+        for (const line of concLines) { checkPage(5); doc.text(line, m, y); y += 5; }
+
+        if (topClientes?.length > 0) {
+          sec("TOP CLIENTES", "9");
+          const tcBody = topClientes.slice(0, 10).map(c => [c.nome, `${fN(c.total)} Kz`]);
+          table(["Cliente", "Total"], tcBody);
+        }
+
+        // Charts (inside narrative block)
+        let chartIdx = 0;
+        if (dados?.graficos) {
+          doc.addPage(); y = 25;
+          sec("GRÁFICOS", "");
+          for (const g of dados.graficos) {
+            if (chartIdx < chartImages.length && chartImages[chartIdx]) {
+              addChartImg(chartImages[chartIdx]);
+            }
+            chartIdx++;
+          }
+        }
+
+        // Alertas
+        if (dados?.alertas && dados.alertas.length > 0) {
+          checkPage(20);
+          sec("ALERTAS", "");
+          const aBody = dados.alertas.map(a => [a.nome, fI(a.quantidade)]);
+          table(["Alerta", "Qtd"], aBody, { headColor: [220, 38, 38] });
+        }
+      }
       if (isGroup && dados?.subModulos) {
         sec("MÓDULOS DO GRUPO", "4");
         for (const sub of dados.subModulos) {
@@ -476,23 +560,159 @@ const Relatorios = () => {
                 <p className="text-gray-400 text-sm">Período: {relatorio.periodo?.nome}</p>
               </div>
 
-              {/* Group mode: sub-modules summary */}
-              {relatorio.grupo && relatorio.dados?.subModulos && (
-                <div className="space-y-4">
-                  {relatorio.dados.indicadoresAgregados?.length > 0 && (
+              {/* UNIFIED FULL STRUCTURE FOR ALL REPORTS */}
+              <div className="space-y-6">
+                {/* Financial indicators grid */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+                  <div className="bg-gray-700 p-3 rounded-lg text-center">
+                    <p className="text-xs text-gray-400">Receitas</p>
+                    <p className="text-lg font-bold text-green-400">{formatarMoeda(relatorio.indicadoresFinanceiros?.totalReceitas)}</p>
+                  </div>
+                  <div className="bg-gray-700 p-3 rounded-lg text-center">
+                    <p className="text-xs text-gray-400">Despesas</p>
+                    <p className="text-lg font-bold text-red-400">{formatarMoeda(relatorio.indicadoresFinanceiros?.totalDespesas)}</p>
+                  </div>
+                  <div className="bg-gray-700 p-3 rounded-lg text-center">
+                    <p className="text-xs text-gray-400">Resultado</p>
+                    <p className={`text-lg font-bold ${(relatorio.indicadoresFinanceiros?.resultadoLiquido || 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                      {formatarMoeda(Math.abs(relatorio.indicadoresFinanceiros?.resultadoLiquido || 0))}
+                    </p>
+                  </div>
+                  <div className="bg-gray-700 p-3 rounded-lg text-center">
+                    <p className="text-xs text-gray-400">Margem</p>
+                    <p className="text-lg font-bold text-blue-400">{relatorio.indicadoresFinanceiros?.margemLucro}%</p>
+                  </div>
+                </div>
+
+                {/* Narrative sections (all modules now have texto) */}
+                {relatorio.texto?.introducao && (
+                  <div className="space-y-4 max-h-96 overflow-y-auto pr-2">
                     <div>
-                      <h3 className="text-md font-bold text-purple-400 mb-3">Indicadores Agregados do Grupo</h3>
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                        {relatorio.dados.indicadoresAgregados.map((ind, i) => (
-                          <div key={i} className="bg-gray-700 p-3 rounded-lg text-center">
-                            <p className="text-xs text-gray-400">{ind.nome}</p>
-                            <p className="text-lg font-bold text-blue-400">{formatValor(ind.valor, 'moeda')}</p>
-                          </div>
-                        ))}
+                      <h2 className="text-md font-bold text-blue-400 mb-2">1. INTRODUÇÃO</h2>
+                      <p className="text-gray-300 text-sm leading-relaxed">{relatorio.texto.introducao}</p>
+                    </div>
+                    <div>
+                      <h2 className="text-md font-bold text-blue-400 mb-2">2. ENQUADRAMENTO GERAL</h2>
+                      <p className="text-gray-300 text-sm leading-relaxed">{relatorio.texto.enquadramento}</p>
+                    </div>
+                    <div>
+                      <h2 className="text-md font-bold text-blue-400 mb-2">3. INDICADORES DE DESEMPENHO</h2>
+                      {/* Module-specific indicators from dados */}
+                      {relatorio.dados?.indicadores?.length > 0 ? (
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                          {relatorio.dados.indicadores.map((ind, i) => (
+                            <div key={i} className="bg-gray-700 p-2 rounded text-center">
+                              <p className="text-xs text-gray-400">{ind.nome}</p>
+                              <p className="text-sm font-bold text-white">{formatValor(ind.valor, ind.fmt)}</p>
+                            </div>
+                          ))}
+                        </div>
+                      ) : relatorio.dados?.indicadoresAgregados?.length > 0 ? (
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                          {relatorio.dados.indicadoresAgregados.map((ind, i) => (
+                            <div key={i} className="bg-gray-700 p-2 rounded text-center">
+                              <p className="text-xs text-gray-400">{ind.nome}</p>
+                              <p className="text-sm font-bold text-purple-400">{formatValor(ind.valor, 'moeda')}</p>
+                            </div>
+                          ))}
+                        </div>
+                      ) : <p className="text-gray-400 text-sm">Nenhum indicador disponível para este módulo.</p>}
+                    </div>
+                    <div>
+                      <h2 className="text-md font-bold text-blue-400 mb-2">4. ANÁLISE FINANCEIRA</h2>
+                      <p className="text-gray-300 text-sm leading-relaxed">{relatorio.texto.analiseFinanceira}</p>
+                    </div>
+                    <div>
+                      <h2 className="text-md font-bold text-blue-400 mb-2">5. ANÁLISE OPERACIONAL</h2>
+                      <p className="text-gray-300 text-sm leading-relaxed">{relatorio.texto.analiseOperacional}</p>
+                    </div>
+                    <div>
+                      <h2 className="text-md font-bold text-blue-400 mb-2">6. ANÁLISE DE CONTAS CORRENTES</h2>
+                      <p className="text-gray-300 text-sm leading-relaxed">{relatorio.texto.analiseContasCorrentes || relatorio.contasCorrentes?.analise}</p>
+                    </div>
+                    <div>
+                      <h2 className="text-md font-bold text-blue-400 mb-2">7. RECOMENDAÇÕES ESTRATÉGICAS</h2>
+                      <div className="bg-yellow-900/20 p-4 rounded-lg">
+                        <p className="text-gray-300 text-sm leading-relaxed whitespace-pre-wrap">{relatorio.texto.recomendacoes}</p>
                       </div>
                     </div>
-                  )}
+                    <div>
+                      <h2 className="text-md font-bold text-blue-400 mb-2">8. CONCLUSÃO</h2>
+                      <p className="text-gray-300 text-sm leading-relaxed">{relatorio.texto.conclusao}</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Top Clientes */}
+                {relatorio.topClientes?.length > 0 && (
+                  <div className="mt-4">
+                    <h3 className="text-md font-semibold text-blue-400 mb-2">Top Clientes do Período</h3>
+                    <div className="space-y-1 max-h-40 overflow-y-auto">
+                      {relatorio.topClientes.slice(0, 5).map((c, i) => (
+                        <div key={i} className="flex justify-between items-center p-2 bg-gray-700 rounded">
+                          <span className="text-white">{c.nome}</span>
+                          <span className="text-green-400">{formatarMoeda(c.total)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Alertas */}
+                {relatorio.dados?.alertas?.length > 0 && (
+                  <div>
+                    <h3 className="text-md font-bold text-red-400 mb-3">Alertas</h3>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                      {relatorio.dados.alertas.map((a, i) => (
+                        <div key={i} className="bg-red-900/30 p-3 rounded-lg text-center border border-red-800">
+                          <p className="text-xs text-red-300">{a.nome}</p>
+                          <p className="text-lg font-bold text-red-400">{a.quantidade}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Gráficos do módulo */}
+                {relatorio.dados?.graficos?.length > 0 && (
+                  <div>
+                    <h3 className="text-md font-bold text-blue-400 mb-3">Gráficos</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {relatorio.dados.graficos.map((g, i) => (
+                        <div key={i}>
+                          <h4 className="text-sm font-semibold text-gray-300 mb-2">{g.titulo}</h4>
+                          {g.datasets ? (
+                            <div style={{ height: 250 }}>
+                              {g.datasets.map((ds, di) => (
+                                <ReportChart
+                                  key={di}
+                                  tipo={getChartType(g.tipo)}
+                                  rotulos={ds.data?.map(d => d.label) || []}
+                                  dados={ds.data?.map(d => d.valor) || []}
+                                  titulo={ds.label}
+                                  altura={120}
+                                />
+                              ))}
+                            </div>
+                          ) : (
+                            <ReportChart
+                              tipo={getChartType(g.tipo)}
+                              rotulos={g.data?.map(d => d.label) || []}
+                              dados={g.data?.map(d => d.valor) || []}
+                              titulo={g.titulo}
+                              altura={250}
+                            />
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Sub-módulos (group mode) */}
+                {relatorio.grupo && relatorio.dados?.subModulos && (
                   <div className="space-y-4">
+                    <h3 className="text-md font-bold text-purple-400 mb-3">Módulos do Grupo</h3>
                     {relatorio.dados.subModulos.map((sub, si) => (
                       <div key={si} className="border border-gray-700 rounded-lg p-4">
                         <h3 className="text-md font-bold text-blue-400 mb-3">{sub.nome}</h3>
@@ -529,81 +749,8 @@ const Relatorios = () => {
                       </div>
                     ))}
                   </div>
-                </div>
-              )}
-
-              {/* Sub-module mode */}
-              {!relatorio.grupo && (
-                <>
-                  {/* Indicadores */}
-                  {relatorio.dados?.indicadores?.length > 0 && (
-                    <div className="mb-6">
-                      <h3 className="text-md font-bold text-blue-400 mb-3">Indicadores</h3>
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                        {relatorio.dados.indicadores.map((ind, i) => (
-                          <div key={i} className="bg-gray-700 p-3 rounded-lg text-center">
-                            <p className="text-xs text-gray-400">{ind.nome}</p>
-                            <p className={`text-lg font-bold ${ind.valor < 0 ? 'text-red-400' : 'text-green-400'}`}>
-                              {formatValor(ind.valor, ind.fmt)}
-                            </p>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Alertas */}
-                  {relatorio.dados?.alertas?.length > 0 && (
-                    <div className="mb-6">
-                      <h3 className="text-md font-bold text-red-400 mb-3">Alertas</h3>
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                        {relatorio.dados.alertas.map((a, i) => (
-                          <div key={i} className="bg-red-900/30 p-3 rounded-lg text-center border border-red-800">
-                            <p className="text-xs text-red-300">{a.nome}</p>
-                            <p className="text-lg font-bold text-red-400">{a.quantidade}</p>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Gráficos */}
-                  {relatorio.dados?.graficos?.length > 0 && (
-                    <div>
-                      <h3 className="text-md font-bold text-blue-400 mb-3">Gráficos</h3>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {relatorio.dados.graficos.map((g, i) => (
-                          <div key={i}>
-                            <h4 className="text-sm font-semibold text-gray-300 mb-2">{g.titulo}</h4>
-                            {g.datasets ? (
-                              <div style={{ height: 250 }}>
-                                {g.datasets.map((ds, di) => (
-                                  <ReportChart
-                                    key={di}
-                                    tipo={getChartType(g.tipo)}
-                                    rotulos={ds.data?.map(d => d.label) || []}
-                                    dados={ds.data?.map(d => d.valor) || []}
-                                    titulo={ds.label}
-                                    altura={120}
-                                  />
-                                ))}
-                              </div>
-                            ) : (
-                              <ReportChart
-                                tipo={getChartType(g.tipo)}
-                                rotulos={g.data?.map(d => d.label) || []}
-                                dados={g.data?.map(d => d.valor) || []}
-                                titulo={g.titulo}
-                                altura={250}
-                              />
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </>
-              )}
+                )}
+              </div>
             </div>
           )}
         </div>

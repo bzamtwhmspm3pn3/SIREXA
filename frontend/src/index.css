@@ -203,17 +203,25 @@ html, body { margin: 0; padding: 0; min-height: 100vh; }
 /* ========================================
    OVERRIDES GLOBAIS — FUNDOS
    ======================================== */
-[data-tema] .bg-gray-700,
 [data-tema] .bg-gray-800,
 [data-tema] .bg-gray-900,
-[data-tema] .bg-slate-700,
 [data-tema] .bg-slate-800,
 [data-tema] .bg-slate-900,
-[data-tema] .bg-gray-700\/50,
 [data-tema] .bg-gray-800\/90,
 [data-tema] .bg-gray-800\/50,
 [data-tema] .bg-slate-800\/90 {
   background: var(--bg-card) !important;
+}
+
+[data-tema] .bg-gray-700,
+[data-tema] .bg-slate-700,
+[data-tema] .bg-gray-700\/50 {
+  background: var(--bg-card-hover) !important;
+}
+
+[data-tema] .rounded-lg.bg-gray-800,
+[data-tema] .rounded-lg.bg-slate-800 {
+  border: 1px solid var(--border) !important;
 }
 
 [data-tema] .bg-gray-750 {
