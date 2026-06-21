@@ -761,7 +761,7 @@ router.get('/submodulo/:moduloId', logMiddleware('relatorio-submodulo'), async (
       buscarIndicadoresEmpresa(empresaId)
     ]);
 
-    const texto = gerarTextoModulo(MODULOS[moduloId], dados, empresa.nome, periodo, financeiros, indicadoresEmpresa);
+    const texto = gerarTextoModulo(MODULOS[moduloId], dados, empresa.nome, periodo, financeiros, indicadoresEmpresa, 'submodulo');
 
     const relatorio = {
       sucesso: true, modulo: moduloId, grupo: MODULOS[moduloId].grupo,
@@ -824,7 +824,7 @@ router.get('/grupo/:grupoId', logMiddleware('relatorio-grupo'), async (req, res)
       buscarIndicadoresEmpresa(empresaId)
     ]);
 
-    const texto = gerarTextoModulo({ nome: grupo.nome }, { indicadores: Object.entries(totalIndicadores).map(([k, v]) => ({ nome: k, valor: v, fmt: v > 999 ? 'moeda' : 'numero' })), alertas: [] }, empresa.nome, periodo, financeiros, indicadoresEmpresa);
+    const texto = gerarTextoModulo({ nome: grupo.nome }, { indicadores: Object.entries(totalIndicadores).map(([k, v]) => ({ nome: k, valor: v, fmt: v > 999 ? 'moeda' : 'numero' })), alertas: [] }, empresa.nome, periodo, financeiros, indicadoresEmpresa, 'grupo');
 
     const relatorio = {
       sucesso: true, grupo: grupoId, nome: grupo.nome,
@@ -877,7 +877,7 @@ router.get('/geral', logMiddleware('relatorio-geral'), async (req, res) => {
       buscarIndicadoresEmpresa(empresaId)
     ]);
 
-    const texto = gerarTextoModulo({ nome: 'Geral' }, { indicadores: [], alertas: [] }, empresa.nome, periodo, financeiros, indicadoresEmpresa);
+    const texto = gerarTextoModulo({ nome: 'Geral' }, { indicadores: [], alertas: [] }, empresa.nome, periodo, financeiros, indicadoresEmpresa, 'geral');
 
     const relatorio = {
       sucesso: true, modulo: 'geral',
@@ -943,48 +943,68 @@ function analisarEficiencia(mb, ml) {
 // ============================================
 // NARRATIVE TEXT GENERATOR FOR ANY MODULE
 // ============================================
-function gerarTextoModulo(cfg, dados, empresaNome, periodo, financeiros, indicadoresEmpresa) {
+function gerarTextoModulo(cfg, dados, empresaNome, periodo, financeiros, indicadoresEmpresa, tipo) {
   const fi = financeiros || {};
   const ei = indicadoresEmpresa || {};
-  const totalReceitas = fi.totalReceitas || 0;
-  const totalDespesas = fi.totalDespesas || 0;
-  const resultadoLiquido = fi.resultadoLiquido || 0;
-  const margemLucro = fi.margemLucro || "0.00";
-  const margemBruta = fi.margemBruta || "0.00";
-  const ticketMedio = fi.ticketMedio || 0;
-  const totalVendas = fi.totalVendas || 0;
-  const saldoInicial = fi.saldoInicial || 0;
-  const saldoFinal = fi.saldoFinal || 0;
-  const despesasPorCategoria = fi.despesasPorCategoria || { fornecedores: 0, salarios: 0, impostos: 0, outros: 0 };
-
-  const variacaoSaldo = analisarVariacaoSaldo(saldoInicial, saldoFinal);
-  const resultadoAnalise = analisarResultado(resultadoLiquido, margemLucro);
-  const eficienciaAnalise = analisarEficiencia(margemBruta, margemLucro);
   const nomeModulo = cfg?.nome || "Módulo";
-  const textoVariacaoSaldo = variacaoSaldo.positivo
-    ? `evolução favorável, com ${variacaoSaldo.descricao}, sinalizando uma gestão de tesouraria eficaz`
-    : `evolução desfavorável, com ${variacaoSaldo.descricao}, situação que merece atenção da administração`;
-
-  // Get module-specific indicators for contextual text
   const inds = dados?.indicadores || [];
-  const indMap = {};
-  inds.forEach(ind => { indMap[ind.id] = ind.valor; });
+  const alertas = dados?.alertas || [];
+  const isModulo = tipo === 'submodulo';
+  const isGrupo = tipo === 'grupo';
+  const isGeral = tipo === 'geral';
 
-  // INTRODUCAO
-  const introducao = `O presente Relatório de Gestão do módulo "${nomeModulo}", elaborado nos termos da legislação comercial angolana e das boas práticas de governação corporativa, tem como objectivo primordial apresentar uma análise exaustiva e pormenorizada da execução financeira, operacional e estratégica da sociedade comercial denominada "${empresaNome}", relativamente ao período compreendido entre ${periodo.dataInicio ? new Date(periodo.dataInicio).toLocaleDateString('pt-AO') : 'N/A'} e ${periodo.dataFim ? new Date(periodo.dataFim).toLocaleDateString('pt-AO') : 'N/A'}, correspondente ao ${periodo.nome || 'período em análise'} do exercício económico em curso.
+  // INTRODUCAO — module-specific for submodulos, comprehensive for grupo/geral
+  let introducao;
+  if (isModulo) {
+    introducao = `O presente Relatório de Gestão do módulo "${nomeModulo}" apresenta uma análise detalhada dos dados registados no sistema de gestão empresarial, relativamente ao período de ${periodo.nome || 'em análise'}.
 
-Este documento constitui um instrumento de gestão fundamental para a tomada de decisões informadas, permitindo aos órgãos de administração, accionistas e demais stakeholders uma visão clara e transparente do desempenho organizacional no âmbito do módulo "${nomeModulo}". A metodologia adoptada baseou-se na recolha, tratamento e análise crítica dos dados registados no sistema de gestão empresarial.
+Este documento constitui um instrumento de gestão fundamental para a tomada de decisões informadas no âmbito específico do módulo "${nomeModulo}", permitindo aos órgãos de administração e gestão uma visão clara e objectiva do desempenho desta área funcional.
 
-Durante o período em análise, a empresa manteve o seu compromisso com a excelência operacional e a satisfação dos seus clientes, tendo implementado diversas acções com vista à optimização dos seus processos internos. Os resultados alcançados reflectem o esforço colectivo de toda a equipa e a eficácia das estratégias delineadas pela administração.
+A metodologia adoptada baseou-se na recolha, tratamento e análise crítica dos dados registados no sistema, garantindo a fiabilidade das informações constantes do presente documento.`;
+  } else {
+    introducao = `O presente Relatório de Gestão, elaborado nos termos da legislação comercial angolana e das boas práticas de governação corporativa, tem como objectivo primordial apresentar uma análise exaustiva e pormenorizada da execução financeira, operacional e estratégica da sociedade comercial denominada "${empresaNome}", relativamente ao período compreendido entre ${periodo.dataInicio ? new Date(periodo.dataInicio).toLocaleDateString('pt-AO') : 'N/A'} e ${periodo.dataFim ? new Date(periodo.dataFim).toLocaleDateString('pt-AO') : 'N/A'}, correspondente ao ${periodo.nome || 'período em análise'} do exercício económico em curso.
+
+Este documento constitui um instrumento de gestão fundamental para a tomada de decisões informadas, permitindo aos órgãos de administração, accionistas e demais stakeholders uma visão clara e transparente do desempenho organizacional.
+
+Durante o período em análise, a empresa manteve o seu compromisso com a excelência operacional e a satisfação dos seus clientes, tendo implementado diversas acções com vista à optimização dos seus processos internos.
 
 Importa salientar que este relatório foi produzido em conformidade com os princípios de transparência, rigor e objectividade, constituindo-se como uma ferramenta de trabalho indispensável para a avaliação do desempenho organizacional e para a definição de objectivos futuros.`;
+  }
 
-  // ENQUADRAMENTO GERAL (company-wide context)
-  const textoVendas = `${totalVendas} ${PL(totalVendas, "transacção comercial", "transacções comerciais")}`;
-  const textoResultado = resultadoLiquido !== 0 ? `${FN(Math.abs(resultadoLiquido))} Kwanzas` : "zero Kwanzas";
-  const textoSinal = resultadoLiquido > 0 ? "lucro" : (resultadoLiquido < 0 ? "prejuízo" : "equilíbrio");
+  // ENQUADRAMENTO — module-specific
+  let enquadramento;
+  if (isModulo) {
+    enquadramento = `No âmbito do módulo "${nomeModulo}", foram analisados os dados referentes ao período ${periodo.nome || 'em análise'}. `;
+    if (inds.length > 0) {
+      enquadramento += `Os indicadores apurados são: ${inds.map(i => `${i.nome}: ${i.fmt === 'moeda' ? FN(i.valor) + ' Kz' : FI(i.valor)}`).join('; ')}. `;
+    } else {
+      enquadramento += `Não foram registados dados específicos para este módulo no período em análise. `;
+    }
+    if (alertas.length > 0) {
+      enquadramento += `Foram identificados ${alertas.length} ${PL(alertas.length, "alerta", "alertas")} que requerem atenção: ${alertas.map(a => `${a.nome} (${a.quantidade})`).join(', ')}.`;
+    }
+  } else {
+    const totalReceitas = fi.totalReceitas || 0;
+    const totalDespesas = fi.totalDespesas || 0;
+    const resultadoLiquido = fi.resultadoLiquido || 0;
+    const margemLucro = fi.margemLucro || "0.00";
+    const margemBruta = fi.margemBruta || "0.00";
+    const ticketMedio = fi.ticketMedio || 0;
+    const totalVendas = fi.totalVendas || 0;
+    const saldoInicial = fi.saldoInicial || 0;
+    const saldoFinal = fi.saldoFinal || 0;
+    const despesasPorCategoria = fi.despesasPorCategoria || { fornecedores: 0, salarios: 0, impostos: 0, outros: 0 };
+    const resultadoAnalise = analisarResultado(resultadoLiquido, margemLucro);
+    const eficienciaAnalise = analisarEficiencia(margemBruta, margemLucro);
+    const variacaoSaldo = analisarVariacaoSaldo(saldoInicial, saldoFinal);
+    const textoVariacaoSaldo = variacaoSaldo.positivo
+      ? `evolução favorável, com ${variacaoSaldo.descricao}, sinalizando uma gestão de tesouraria eficaz`
+      : `evolução desfavorável, com ${variacaoSaldo.descricao}, situação que merece atenção da administração`;
+    const textoVendas = `${totalVendas} ${PL(totalVendas, "transacção comercial", "transacções comerciais")}`;
+    const textoResultado = resultadoLiquido !== 0 ? `${FN(Math.abs(resultadoLiquido))} Kwanzas` : "zero Kwanzas";
+    const textoSinal = resultadoLiquido > 0 ? "lucro" : (resultadoLiquido < 0 ? "prejuízo" : "equilíbrio");
 
-  const enquadramento = `No período em análise, a "${empresaNome}" registou receitas totais no montante de ${FN(totalReceitas)} Kwanzas, provenientes da comercialização de produtos e da prestação de serviços, com destaque para as transacções comerciais realizadas com os seus clientes, que totalizaram ${textoVendas}. Do lado das despesas, a empresa incorreu em custos totais de ${FN(totalDespesas)} Kwanzas, distribuídos pelas seguintes categorias: pagamentos a fornecedores (${totalDespesas > 0 ? ((despesasPorCategoria.fornecedores / totalDespesas) * 100).toFixed(1) : 0}% do total), despesas com pessoal (${totalDespesas > 0 ? ((despesasPorCategoria.salarios / totalDespesas) * 100).toFixed(1) : 0}%), obrigações fiscais (${totalDespesas > 0 ? ((despesasPorCategoria.impostos / totalDespesas) * 100).toFixed(1) : 0}%) e outras despesas (${totalDespesas > 0 ? ((despesasPorCategoria.outros / totalDespesas) * 100).toFixed(1) : 0}%).
+    enquadramento = `No período em análise, a "${empresaNome}" registou receitas totais no montante de ${FN(totalReceitas)} Kwanzas, provenientes da comercialização de produtos e da prestação de serviços, com destaque para as transacções comerciais realizadas com os seus clientes, que totalizaram ${textoVendas}. Do lado das despesas, a empresa incorreu em custos totais de ${FN(totalDespesas)} Kwanzas, distribuídos pelas seguintes categorias: pagamentos a fornecedores (${totalDespesas > 0 ? ((despesasPorCategoria.fornecedores / totalDespesas) * 100).toFixed(1) : 0}% do total), despesas com pessoal (${totalDespesas > 0 ? ((despesasPorCategoria.salarios / totalDespesas) * 100).toFixed(1) : 0}%), obrigações fiscais (${totalDespesas > 0 ? ((despesasPorCategoria.impostos / totalDespesas) * 100).toFixed(1) : 0}%) e outras despesas (${totalDespesas > 0 ? ((despesasPorCategoria.outros / totalDespesas) * 100).toFixed(1) : 0}%).
 
 ${fi.resultadoAntesImpostos !== undefined ? `O resultado antes de impostos apurado foi de ${FN(fi.resultadoAntesImpostos)} Kwanzas. ${fi.resultadoAntesImpostos > 0 ? `Após a aplicação do imposto industrial à taxa de 25%, no montante de ${FN(fi.imposto || 0)} Kwanzas, o resultado líquido do período foi de ${FN(Math.abs(resultadoLiquido))} Kwanzas, configurando um desempenho financeiro ${resultadoAnalise.tipo} (${textoSinal} de ${textoResultado}).` : `Não houve imposto a pagar uma vez que não se registou lucro tributável.`}` : ''}
 
@@ -993,122 +1013,187 @@ A margem de lucro líquida situou-se em ${margemLucro}%, enquanto a margem bruta
 No que concerne à liquidez, o saldo bancário ${textoVariacaoSaldo}. Partiu de ${FN(saldoInicial)} Kwanzas no início do período e encerrou em ${FN(saldoFinal)} Kwanzas no final do período.${fi.detalhesContas && fi.detalhesContas.length > 0 ? ` A distribuição do saldo pelas contas bancárias é: ${fi.detalhesContas.map(c => `${c.nome}: ${FN(c.saldoAtual)} Kz (${c.percentual.toFixed(1)}%)`).join(', ')}.` : ''}
 
 Relativamente ao módulo "${nomeModulo}", ${inds.length > 0 ? `foram apurados os seguintes indicadores: ${inds.map(i => `${i.nome}: ${i.fmt === 'moeda' ? FN(i.valor) + ' Kz' : FI(i.valor)}`).join('; ')}.` : 'não foram registados indicadores específicos no período.'}`;
-
-  // ANALISE FINANCEIRA
-  let analiseFinanceira = `A análise financeira detalhada da "${empresaNome}" revela aspectos importantes sobre a saúde financeira da organização. As receitas totais de ${FN(totalReceitas)} Kwanzas reflectem a actividade comercial do período. `;
-
-  if (resultadoLiquido < 0) {
-    analiseFinanceira += `O resultado líquido negativo de ${FN(Math.abs(resultadoLiquido))} Kwanzas indica que a empresa está a gastar mais do que arrecada. Esta situação requer uma revisão aprofundada da estrutura de custos e da política de preços. Recomenda-se a implementação de medidas de contenção de despesas e aumento da eficiência operacional. `;
-  } else if (parseFloat(margemLucro) < 10 && resultadoLiquido > 0) {
-    analiseFinanceira += `Embora a empresa tenha gerado lucro de ${FN(resultadoLiquido)} Kwanzas, a margem reduzida de ${margemLucro}% sugere vulnerabilidade a pequenas variações nos custos ou receitas. Recomenda-se a optimização da eficiência operacional. `;
-  } else if (parseFloat(margemLucro) > 25) {
-    analiseFinanceira += `A excelente margem de lucro de ${margemLucro}% demonstra a capacidade da empresa de gerar valor a partir das suas operações. `;
-  } else if (parseFloat(margemLucro) === 0) {
-    analiseFinanceira += `A empresa operou no ponto de equilíbrio, sem gerar lucro nem prejuízo no período. `;
   }
 
-  if (parseFloat(margemBruta) < 0) {
-    analiseFinanceira += `A margem bruta negativa de ${margemBruta}% é preocupante, indicando que as operações principais estão a gerar prejuízo antes mesmo de considerar despesas administrativas ou financeiras. `;
-  }
-
-  analiseFinanceira += `No contexto do módulo "${nomeModulo}", `;
-  if (inds.length > 0) {
-    analiseFinanceira += `os indicadores apurados reflectem o desempenho específico desta área funcional, contribuindo para a análise integrada da organização. `;
+  // ANALISE FINANCEIRA — only for grupo/geral
+  let analiseFinanceira;
+  if (isModulo) {
+    analiseFinanceira = `No contexto do módulo "${nomeModulo}", `;
+    if (inds.length > 0) {
+      analiseFinanceira += `os indicadores apurados reflectem o desempenho específico desta área funcional no período em análise. `;
+    } else {
+      analiseFinanceira += `não foram registados indicadores específicos neste período, recomendando-se o preenchimento dos dados necessários para uma análise mais precisa. `;
+    }
   } else {
-    analiseFinanceira += `não foram registados indicadores específicos neste período, recomendando-se o preenchimento dos dados necessários para uma análise mais precisa. `;
+    const totalReceitas = fi.totalReceitas || 0;
+    const totalDespesas = fi.totalDespesas || 0;
+    const resultadoLiquido = fi.resultadoLiquido || 0;
+    const margemLucro = fi.margemLucro || "0.00";
+    const margemBruta = fi.margemBruta || "0.00";
+
+    analiseFinanceira = `A análise financeira detalhada da "${empresaNome}" revela aspectos importantes sobre a saúde financeira da organização. As receitas totais de ${FN(totalReceitas)} Kwanzas reflectem a actividade comercial do período. `;
+
+    if (resultadoLiquido < 0) {
+      analiseFinanceira += `O resultado líquido negativo de ${FN(Math.abs(resultadoLiquido))} Kwanzas indica que a empresa está a gastar mais do que arrecada. Esta situação requer uma revisão aprofundada da estrutura de custos e da política de preços. `;
+    } else if (parseFloat(margemLucro) < 10 && resultadoLiquido > 0) {
+      analiseFinanceira += `Embora a empresa tenha gerado lucro de ${FN(resultadoLiquido)} Kwanzas, a margem reduzida de ${margemLucro}% sugere vulnerabilidade a pequenas variações nos custos ou receitas. `;
+    } else if (parseFloat(margemLucro) > 25) {
+      analiseFinanceira += `A excelente margem de lucro de ${margemLucro}% demonstra a capacidade da empresa de gerar valor a partir das suas operações. `;
+    } else if (parseFloat(margemLucro) === 0) {
+      analiseFinanceira += `A empresa operou no ponto de equilíbrio, sem gerar lucro nem prejuízo no período. `;
+    }
+    if (parseFloat(margemBruta) < 0) {
+      analiseFinanceira += `A margem bruta negativa de ${margemBruta}% é preocupante, indicando que as operações principais estão a gerar prejuízo antes mesmo de considerar despesas administrativas ou financeiras. `;
+    }
+    analiseFinanceira += `No contexto do módulo "${nomeModulo}", `;
+    if (inds.length > 0) {
+      analiseFinanceira += `os indicadores apurados reflectem o desempenho específico desta área funcional, contribuindo para a análise integrada da organização. `;
+    } else {
+      analiseFinanceira += `não foram registados indicadores específicos neste período. `;
+    }
   }
 
-  // ANALISE OPERACIONAL
-  const totalFuncionarios = ei.totalFuncionarios || 0;
-  const totalClientes = ei.totalClientes || 0;
-  const totalProdutos = ei.totalProdutos || 0;
-  const totalViaturas = ei.totalViaturas || 0;
-
-  let analiseOperacional = `Do ponto de vista operacional, a empresa realizou ${totalVendas} ${PL(totalVendas, "transacção comercial", "transacções comerciais")} no período. `;
-
-  if (totalVendas === 0) {
-    analiseOperacional += `A ausência de vendas é um sinal de alerta que requer investigação imediata. `;
-  } else if (totalVendas < 10) {
-    analiseOperacional += `O volume reduzido de negócios sugere necessidade de reforço das acções de marketing e prospecção. `;
-  }
-
-  if (totalFuncionarios === 0) {
-    analiseOperacional += `A empresa não possui colaboradores registados, lacuna que compromete a gestão de recursos humanos. `;
+  // ANALISE OPERACIONAL — only for grupo/geral
+  let analiseOperacional;
+  if (isModulo) {
+    analiseOperacional = `No âmbito do módulo "${nomeModulo}", `;
+    if (alertas.length > 0) {
+      analiseOperacional += `foram identificados ${alertas.length} ${PL(alertas.length, "alerta", "alertas")} que requerem atenção: ${alertas.map(a => `${a.nome} (${a.quantidade})`).join(', ')}. `;
+    } else {
+      analiseOperacional += `não foram identificados alertas ou anomalias no período, indicando uma operação dentro dos parâmetros esperados. `;
+    }
   } else {
-    analiseOperacional += `A equipa é composta por ${totalFuncionarios} ${PL(totalFuncionarios, "colaborador", "colaboradores")}. `;
-  }
-  if (totalClientes === 0) {
-    analiseOperacional += `Não existem clientes cadastrados, o que limita a análise do relacionamento comercial. `;
-  } else {
-    analiseOperacional += `Existem ${totalClientes} ${PL(totalClientes, "cliente cadastrado", "clientes cadastrados")}. `;
-  }
-  if (totalProdutos === 0) {
-    analiseOperacional += `O cadastro de produtos está vazio, impossibilitando o controlo de inventário. `;
-  } else {
-    analiseOperacional += `O inventário conta com ${totalProdutos} ${PL(totalProdutos, "produto", "produtos")}. `;
-  }
-  if (totalViaturas > 0) {
-    analiseOperacional += `A frota é constituída por ${totalViaturas} ${PL(totalViaturas, "viatura", "viaturas")}. `;
+    const totalVendas = fi.totalVendas || 0;
+    const totalFuncionarios = ei.totalFuncionarios || 0;
+    const totalClientes = ei.totalClientes || 0;
+    const totalProdutos = ei.totalProdutos || 0;
+    const totalViaturas = ei.totalViaturas || 0;
+
+    analiseOperacional = `Do ponto de vista operacional, a empresa realizou ${totalVendas} ${PL(totalVendas, "transacção comercial", "transacções comerciais")} no período. `;
+    if (totalVendas === 0) {
+      analiseOperacional += `A ausência de vendas é um sinal de alerta que requer investigação imediata. `;
+    } else if (totalVendas < 10) {
+      analiseOperacional += `O volume reduzido de negócios sugere necessidade de reforço das acções de marketing e prospecção. `;
+    }
+    if (totalFuncionarios === 0) {
+      analiseOperacional += `A empresa não possui colaboradores registados, lacuna que compromete a gestão de recursos humanos. `;
+    } else {
+      analiseOperacional += `A equipa é composta por ${totalFuncionarios} ${PL(totalFuncionarios, "colaborador", "colaboradores")}. `;
+    }
+    if (totalClientes === 0) {
+      analiseOperacional += `Não existem clientes cadastrados, o que limita a análise do relacionamento comercial. `;
+    } else {
+      analiseOperacional += `Existem ${totalClientes} ${PL(totalClientes, "cliente cadastrado", "clientes cadastrados")}. `;
+    }
+    if (totalProdutos === 0) {
+      analiseOperacional += `O cadastro de produtos está vazio, impossibilitando o controlo de inventário. `;
+    } else {
+      analiseOperacional += `O inventário conta com ${totalProdutos} ${PL(totalProdutos, "produto", "produtos")}. `;
+    }
+    if (totalViaturas > 0) {
+      analiseOperacional += `A frota é constituída por ${totalViaturas} ${PL(totalViaturas, "viatura", "viaturas")}. `;
+    }
+    analiseOperacional += `No âmbito do módulo "${nomeModulo}", `;
+    if (alertas.length > 0) {
+      analiseOperacional += `foram identificados ${alertas.length} ${PL(alertas.length, "alerta", "alertas")} que requerem atenção: ${alertas.map(a => `${a.nome} (${a.quantidade})`).join(', ')}. `;
+    } else {
+      analiseOperacional += `não foram identificados alertas ou anomalias no período. `;
+    }
   }
 
-  analiseOperacional += `No âmbito do módulo "${nomeModulo}", `;
-  const alertas = dados?.alertas || [];
-  if (alertas.length > 0) {
-    analiseOperacional += `foram identificados ${alertas.length} ${PL(alertas.length, "alerta", "alertas")} que requerem atenção: ${alertas.map(a => `${a.nome} (${a.quantidade})`).join(', ')}. `;
-  } else {
-    analiseOperacional += `não foram identificados alertas ou anomalias no período, indicando uma operação dentro dos parâmetros esperados. `;
+  // ANALISE CONTAS CORRENTES — only for grupo/geral
+  let analiseContasCorrentes = '';
+  if (!isModulo) {
+    analiseContasCorrentes = `\n\nANÁLISE DE CONTAS CORRENTES\n`;
+    analiseContasCorrentes += `Verificar o módulo específico de Contas Correntes para detalhes sobre fornecedores e saldos devedores.`;
   }
-
-  // ANALISE CONTAS CORRENTES (placeholder)
-  let analiseContasCorrentes = `\n\nANÁLISE DE CONTAS CORRENTES\n`;
-  analiseContasCorrentes += `Não existem dados de contas correntes de fornecedores específicos para o módulo "${nomeModulo}". `;
 
   // RECOMENDACOES
   const todasRecomendacoes = [];
-  if (resultadoLiquido < 0) {
-    todasRecomendacoes.push("Implementação urgente de um plano de recuperação financeira com metas mensais de redução de custos e aumento de receitas.");
-    todasRecomendacoes.push("Revisão aprofundada da estrutura de custos, identificando e eliminando despesas não essenciais.");
+  if (isModulo) {
+    if (alertas.length > 0) {
+      todasRecomendacoes.push(`Atenção especial aos ${alertas.length} alertas identificados, priorizando a resolução dos mais críticos.`);
+    }
+    if (inds.length === 0) {
+      todasRecomendacoes.push(`Preenchimento dos dados do módulo "${nomeModulo}" no sistema para permitir uma análise mais precisa no próximo período.`);
+    }
+    todasRecomendacoes.push(`Monitorização contínua dos indicadores do módulo "${nomeModulo}" com reporte periódico à administração.`);
+  } else {
+    const resultadoLiquido = fi.resultadoLiquido || 0;
+    const totalVendas = fi.totalVendas || 0;
+    const totalClientes = ei.totalClientes || 0;
+    const totalFuncionarios = ei.totalFuncionarios || 0;
+    const totalProdutos = ei.totalProdutos || 0;
+    const saldoInicial = fi.saldoInicial || 0;
+    const saldoFinal = fi.saldoFinal || 0;
+    const variacaoSaldo = analisarVariacaoSaldo(saldoInicial, saldoFinal);
+
+    if (resultadoLiquido < 0) {
+      todasRecomendacoes.push("Implementação urgente de um plano de recuperação financeira com metas mensais de redução de custos e aumento de receitas.");
+      todasRecomendacoes.push("Revisão aprofundada da estrutura de custos, identificando e eliminando despesas não essenciais.");
+    }
+    if (!variacaoSaldo.positivo) {
+      todasRecomendacoes.push("Reforço da gestão de tesouraria através da negociação de prazos alargados com fornecedores e aceleração de recebimentos de clientes.");
+    }
+    if (totalVendas < 10) {
+      todasRecomendacoes.push("Desenvolvimento de um plano estratégico de marketing e vendas com acções concretas de prospecção de clientes.");
+      todasRecomendacoes.push("Capacitação da equipa comercial em técnicas de vendas, negociação e relacionamento com clientes.");
+    }
+    if (totalClientes === 0) {
+      todasRecomendacoes.push("Cadastramento urgente dos clientes no sistema para permitir gestão do relacionamento e análise de comportamento de compra.");
+    }
+    if (totalFuncionarios === 0) {
+      todasRecomendacoes.push("Registo dos colaboradores no sistema, fundamental para gestão de folha salarial, controlo de férias e avaliação de desempenho.");
+    }
+    if (totalProdutos === 0) {
+      todasRecomendacoes.push("Estruturação do catálogo de produtos/serviços no sistema para controlo de inventário e análise de rentabilidade por item.");
+    }
+    if (alertas.length > 0) {
+      todasRecomendacoes.push(`Atenção especial aos ${alertas.length} alertas identificados no módulo "${nomeModulo}".`);
+    }
+    todasRecomendacoes.push(`Monitorização contínua dos indicadores do módulo "${nomeModulo}" com reporte periódico à administração.`);
+    todasRecomendacoes.push("Manutenção do registo actualizado de todas as operações no sistema de gestão empresarial.");
   }
-  if (!variacaoSaldo.positivo) {
-    todasRecomendacoes.push("Reforço da gestão de tesouraria através da negociação de prazos alargados com fornecedores e aceleração de recebimentos de clientes.");
-  }
-  if (totalVendas < 10) {
-    todasRecomendacoes.push("Desenvolvimento de um plano estratégico de marketing e vendas com acções concretas de prospecção de clientes.");
-    todasRecomendacoes.push("Capacitação da equipa comercial em técnicas de vendas, negociação e relacionamento com clientes.");
-  }
-  if (totalClientes === 0) {
-    todasRecomendacoes.push("Cadastramento urgente dos clientes no sistema para permitir gestão do relacionamento e análise de comportamento de compra.");
-  }
-  if (totalFuncionarios === 0) {
-    todasRecomendacoes.push("Registo dos colaboradores no sistema, fundamental para gestão de folha salarial, controlo de férias e avaliação de desempenho.");
-  }
-  if (totalProdutos === 0) {
-    todasRecomendacoes.push("Estruturação do catálogo de produtos/serviços no sistema para controlo de inventário e análise de rentabilidade por item.");
-  }
-  if (altoNumeroAlertas(alertas)) {
-    todasRecomendacoes.push(`Atenção especial aos ${alertas.length} alertas identificados no módulo "${nomeModulo}", priorizando a resolução dos mais críticos.`);
-  }
-  todasRecomendacoes.push(`Monitorização contínua dos indicadores do módulo "${nomeModulo}" com reporte periódico à administração.`);
-  todasRecomendacoes.push("Manutenção do registo actualizado de todas as operações no sistema de gestão empresarial.");
-  todasRecomendacoes.push("Estabelecimento de um sistema de metas e incentivos alinhado com os objectivos estratégicos da organização.");
 
   let textoRecomendacoes = "Com base na análise efectuada, recomenda-se:\n\n";
   todasRecomendacoes.forEach((rec, index) => { textoRecomendacoes += `${index + 1}. ${rec}\n`; });
 
-  // CONCLUSAO
-  let conclusao = `Em síntese, o presente Relatório de Gestão do módulo "${nomeModulo}" permite concluir que a "${empresaNome}" encerrou o período ${periodo.nome || 'em análise'} com um desempenho financeiro ${resultadoAnalise.tipo}. `;
-  if (resultadoLiquido > 0) {
-    conclusao += `A empresa gerou lucro de ${FN(resultadoLiquido)} Kwanzas, com margem de ${margemLucro}%. `;
-  } else if (resultadoLiquido < 0) {
-    conclusao += `A empresa registou prejuízo de ${FN(Math.abs(resultadoLiquido))} Kwanzas, situação que exige acção correctiva urgente. `;
+  // CONCLUSAO — module-specific vs comprehensive
+  let conclusao;
+  if (isModulo) {
+    conclusao = `Em síntese, o presente Relatório de Gestão do módulo "${nomeModulo}" apresenta o desempenho desta área funcional no período ${periodo.nome || 'em análise'}. `;
+    if (inds.length > 0) {
+      conclusao += `Foram apurados ${inds.length} ${PL(inds.length, "indicador", "indicadores")} que reflectem a operação do módulo. `;
+    } else {
+      conclusao += `Não foram registados dados suficientes para uma análise aprofundada. `;
+    }
+    if (alertas.length > 0) {
+      conclusao += `Os ${alertas.length} ${PL(alertas.length, "alerta identificado", "alertas identificados")} requerem atenção da administração. `;
+    }
+    conclusao += `Recomenda-se a implementação das medidas propostas e o acompanhamento contínuo dos indicadores de desempenho.`;
   } else {
-    conclusao += `A empresa atingiu o ponto de equilíbrio, sem lucro nem prejuízo, situação que requer identificação de oportunidades de crescimento. `;
+    const resultadoLiquido = fi.resultadoLiquido || 0;
+    const margemLucro = fi.margemLucro || "0.00";
+    const totalVendas = fi.totalVendas || 0;
+    const totalClientes = ei.totalClientes || 0;
+    const totalFuncionarios = ei.totalFuncionarios || 0;
+    const variacaoSaldo = analisarVariacaoSaldo(fi.saldoInicial || 0, fi.saldoFinal || 0);
+    const resultadoAnalise = analisarResultado(resultadoLiquido, margemLucro);
+
+    conclusao = `Em síntese, o presente Relatório de Gestão do módulo "${nomeModulo}" permite concluir que a "${empresaNome}" encerrou o período ${periodo.nome || 'em análise'} com um desempenho financeiro ${resultadoAnalise.tipo}. `;
+    if (resultadoLiquido > 0) {
+      conclusao += `A empresa gerou lucro de ${FN(resultadoLiquido)} Kwanzas, com margem de ${margemLucro}%. `;
+    } else if (resultadoLiquido < 0) {
+      conclusao += `A empresa registou prejuízo de ${FN(Math.abs(resultadoLiquido))} Kwanzas, situação que exige acção correctiva urgente. `;
+    } else {
+      conclusao += `A empresa atingiu o ponto de equilíbrio, sem lucro nem prejuízo, situação que requer identificação de oportunidades de crescimento. `;
+    }
+    if (variacaoSaldo.positivo) conclusao += `O saldo bancário evoluiu favoravelmente (${variacaoSaldo.descricao}), sinal positivo para a liquidez. `;
+    if (totalVendas === 0 || totalClientes === 0) {
+      conclusao += `Verifica-se a necessidade de preenchimento de dados críticos no sistema, fundamentais para uma gestão mais eficaz. `;
+    }
+    conclusao += `Recomenda-se a implementação das medidas propostas e o acompanhamento contínuo dos indicadores de desempenho. A administração mantém o compromisso com a melhoria contínua, a transparência na gestão e a criação de valor sustentável para todos os stakeholders.`;
   }
-  if (variacaoSaldo.positivo) conclusao += `O saldo bancário evoluiu favoravelmente (${variacaoSaldo.descricao}), sinal positivo para a liquidez. `;
-  if (totalVendas === 0 || totalClientes === 0) {
-    conclusao += `Verifica-se a necessidade de preenchimento de dados críticos no sistema, fundamentais para uma gestão mais eficaz. `;
-  }
-  conclusao += `Recomenda-se a implementação das medidas propostas e o acompanhamento contínuo dos indicadores de desempenho. A administração mantém o compromisso com a melhoria contínua, a transparência na gestão e a criação de valor sustentável para todos os stakeholders.`;
 
   return { introducao, enquadramento, analiseFinanceira, analiseOperacional, analiseContasCorrentes, recomendacoes: textoRecomendacoes, conclusao };
 }
