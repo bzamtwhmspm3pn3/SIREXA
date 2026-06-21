@@ -259,19 +259,6 @@ function observacoes(doc, y, obs, condicoes, textosLegais) {
   return y;
 }
 
-function qrCodeArea(doc, y, payload) {
-  try {
-    const qrUrl = QRCode.toDataURL(JSON.stringify(payload), { width: 30, margin: 1 });
-    qrUrl.then(url => {
-      doc.addImage(url, 'PNG', RMARGIN - 32, y - 28, 22, 22);
-      doc.setFontSize(4.5);
-      doc.setFont('helvetica', 'italic');
-      doc.setTextColor(COR_CINZA_MEDIO[0], COR_CINZA_MEDIO[1], COR_CINZA_MEDIO[2]);
-      doc.text('QR Code AGT', RMARGIN - 21, y - 28, { align: 'center' });
-    });
-  } catch {}
-}
-
 // =============================================
 // FUNÇÃO PRINCIPAL UNIFICADA
 // =============================================
@@ -465,20 +452,15 @@ export async function gerarPDFProfissional(documento, itens, opcoes = {}) {
   const textosLegais = documentosTextoLegal(tipo, total, formatarMoeda);
   y = observacoes(doc, y, documento.observacoes, documento.condicoesPagamento, textosLegais);
 
-  // QR Code at bottom-right
-  const qrPayload = {
-    empresa: empresa.nome || '',
-    nif: empresa.nif || '',
-    documento: numeroDocumento,
-    data: dataEmissao,
-    total: `${total.toFixed(2)} Kz`,
-    cliente: documento.cliente || '',
-    nifCliente: documento.nifCliente || '',
-    atcud: atcud || '',
-    hash: hash || '',
-    software: 'SIREXA v1.0 — AGT Certificado',
-  };
-  qrCodeArea(doc, PAGE_H - 44, qrPayload);
+  // QR Code at bottom-right (opcional)
+  try {
+    const qrDataUrl = await QRCode.toDataURL(JSON.stringify(qrPayload), { width: 30, margin: 1 });
+    doc.addImage(qrDataUrl, 'PNG', RMARGIN - 32, PAGE_H - 72, 22, 22);
+    doc.setFontSize(4.5);
+    doc.setFont('helvetica', 'italic');
+    doc.setTextColor(COR_CINZA_MEDIO[0], COR_CINZA_MEDIO[1], COR_CINZA_MEDIO[2]);
+    doc.text('QR Code AGT', RMARGIN - 21, PAGE_H - 72, { align: 'center' });
+  } catch {}
 
   // Footer
   rodape(doc, empresa.nome, { numeroDocumento, hash });
