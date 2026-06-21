@@ -765,7 +765,10 @@ const FolhaSalarial = () => {
       salarioLiquido: formatarNumero(salarioLiquido),
       dataPagamento: dataAtual.toISOString().split('T')[0]
     });
-    const qrBase64 = await QRCode.toDataURL(qrData, { width: 40, margin: 1 });
+    let qrBase64 = null;
+    try {
+      qrBase64 = await QRCode.toDataURL(qrData, { width: 40, margin: 1 });
+    } catch (err) { console.warn('QR Code nao gerado:', err); }
 
     // Cabeçalho com VIA + logo + empresa + NIF
     const corVia = tipoVia === 'ORIGINAL' ? [37, 99, 235] : [220, 38, 38];

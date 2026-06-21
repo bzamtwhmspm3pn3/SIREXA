@@ -13,6 +13,7 @@ import {
   CreditCard, DollarSign, Phone, Mail, MapPin, Wrench, Briefcase
 } from "lucide-react";
 import { gerarPDFProfissional } from "../services/sirexaPdfService";
+import { gerarDocumentoProfissional } from "../services/documentoService";
 
 const Facturacao = () => {
   const [empresas, setEmpresas] = useState([]);

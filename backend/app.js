@@ -187,6 +187,7 @@ app.use('/api/fluxocaixa', verifyToken, require('./routes/fluxoCaixa'));
 // 📈 Relatórios e Gráficos
 app.use('/api/graficos', verifyToken, require('./routes/graficos'));
 app.use('/api/relatorios', verifyToken, require('./routes/relatorios'));
+app.use('/api/relatorios', verifyToken, require('./routes/relatoriosModulos'));
 
 // 🛒 Vendas e Stock
 app.use('/api/stock', verifyToken, stockRoutes);

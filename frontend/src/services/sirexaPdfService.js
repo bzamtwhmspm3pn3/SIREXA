@@ -17,7 +17,7 @@ async function logoBase64(empresa) {
     if (!r.ok) return null;
     const blob = await r.blob();
     return await new Promise(r => { const f = new FileReader(); f.onloadend = () => r(f.result); f.onerror = () => r(null); f.readAsDataURL(blob); });
-  } catch { return null; }
+  } catch (err) { console.warn('Erro ao carregar logo:', err); return null; }
 }
 
 function extenso(valor) {
@@ -472,7 +472,7 @@ export async function gerarPDFProfissional(documento, itens, opcoes = {}) {
     doc.setFont('helvetica', 'italic');
     doc.setTextColor(COR_CINZA_MEDIO[0], COR_CINZA_MEDIO[1], COR_CINZA_MEDIO[2]);
     doc.text('QR Code AGT', RMARGIN - 21, PAGE_H - 72, { align: 'center' });
-  } catch {}
+  } catch (err) { console.warn('QR Code nao gerado:', err); }
 
   // Footer
   rodape(doc, empresa.nome, { numeroDocumento, hash });

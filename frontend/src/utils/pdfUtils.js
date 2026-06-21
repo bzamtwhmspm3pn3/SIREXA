@@ -20,7 +20,7 @@ export async function carregarLogoBase64(empresa) {
       reader.onerror = () => resolve(null);
       reader.readAsDataURL(blob);
     });
-  } catch { return null; }
+  } catch { console.warn('Erro ao carregar logo base64'); return null; }
 }
 
 function detectarFormatoImagem(logotipo, base64) {
@@ -39,7 +39,7 @@ export async function carregarDadosEmpresa(empresaId) {
       const data = await response.json();
       return data.dados || data;
     }
-  } catch {}
+  } catch { console.warn('Erro ao carregar dados empresa'); }
   return { nome: 'Empresa', nif: '---' };
 }
 

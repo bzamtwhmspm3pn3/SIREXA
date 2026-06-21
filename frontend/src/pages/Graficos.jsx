@@ -214,6 +214,7 @@ export default function Graficos() {
     if (!printContent) return;
     
     const win = window.open("", "", "width=1200,height=800");
+    if (!win) { console.warn('Popup bloqueada. Permitir popups para imprimir.'); return; }
     win.document.write(`
       <html>
         <head>
